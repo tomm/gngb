@@ -77,14 +77,12 @@ int frame_skip(int init) {
   static uclock_t rfd;
   static uclock_t target;
   static int nbFrame=0;
-    static int skpFrm=0;
+  static int skpFrm=0;
 
   if (init_frame_skip) {
     init_frame_skip=0;
     target=get_ticks();
     nbFrame=0;
-    //f2skip=0;
-    //skpFrm=0;
     sec=0;
     return 0;
   }
@@ -119,12 +117,11 @@ if (f2skip>0) {
  
   nbFrame++;
   if (get_ticks()-sec>=TICKS_PER_SEC) {
-    //printf("%d\n",nbFrame);
-    if (conf.show_fps) {
-      set_info("fps:%d",nbFrame);
-    }
-    nbFrame=0;
-    sec=get_ticks();
+	  if (conf.show_fps) {
+		  set_info("fps:%d",nbFrame);
+	  }
+	  nbFrame=0;
+	  sec=get_ticks();
   }
   return 0;
 }

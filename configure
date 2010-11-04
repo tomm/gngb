@@ -309,7 +309,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO SET_MAKE CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SDL_CONFIG CPP EGREP LIBOBJS UNZIP_SRC NATIVE_GETOPT_LONG_TRUE NATIVE_GETOPT_LONG_FALSE LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO SET_MAKE CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT SDL_CONFIG CPP EGREP LIBOBJS NATIVE_GETOPT_LONG_TRUE NATIVE_GETOPT_LONG_FALSE LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -845,7 +845,6 @@ if test -n "$ac_init_help"; then
 Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
-  --disable-compress-roms      disable compress roms support
   --enable-gl               enable opengl support
   --enable-big-endian               Force Big Endian
 
@@ -1496,7 +1495,7 @@ fi
 
 PACKAGE=gngb
 
-VERSION=20060204
+VERSION=20060309
 
 if test "`cd $srcdir && pwd`" != "`pwd`" && test -f $srcdir/config.status; then
   { { echo "$as_me:$LINENO: error: source directory already configured; run \"make distclean\" there first" >&5
@@ -4517,17 +4516,8 @@ done
 
 
 #Compress Roms
-# Check whether --enable-compress_roms or --disable-compress_roms was given.
-if test "${enable_compress_roms+set}" = set; then
-  enableval="$enable_compress_roms"
-  enablecompress_roms=$enableval
-else
-  enablecompress_roms=yes
-fi;
 
-
-if test "$enablecompress_roms" = yes; then
-	if test "${ac_cv_header_bzlib_h+set}" = set; then
+if test "${ac_cv_header_bzlib_h+set}" = set; then
   echo "$as_me:$LINENO: checking for bzlib.h" >&5
 echo $ECHO_N "checking for bzlib.h... $ECHO_C" >&6
 if test "${ac_cv_header_bzlib_h+set}" = set; then
@@ -4735,12 +4725,16 @@ _ACEOF
 
   LIBS="-lbz2 $LIBS"
 
+else
+  { { echo "$as_me:$LINENO: error: can't find bzlil on your system" >&5
+echo "$as_me: error: can't find bzlil on your system" >&2;}
+   { (exit 1); exit 1; }; }
 fi
 
 fi
 
 
-	if test "${ac_cv_header_zlib_h+set}" = set; then
+if test "${ac_cv_header_zlib_h+set}" = set; then
   echo "$as_me:$LINENO: checking for zlib.h" >&5
 echo $ECHO_N "checking for zlib.h... $ECHO_C" >&6
 if test "${ac_cv_header_zlib_h+set}" = set; then
@@ -4948,23 +4942,16 @@ _ACEOF
 
   LIBS="-lz $LIBS"
 
-fi
-
-fi
-
-
-	#UNZIP_SRC="unzip.c unzip.h"
-		case $LIBOBJS in
-    "unzip.$ac_objext"   | \
-  *" unzip.$ac_objext"   | \
-    "unzip.$ac_objext "* | \
-  *" unzip.$ac_objext "* ) ;;
-  *) LIBOBJS="$LIBOBJS unzip.$ac_objext" ;;
-esac
-
 else
-	UNZIP_SRC=""
+  { { echo "$as_me:$LINENO: error: can't find zlib on your system" >&5
+echo "$as_me: error: can't find zlib on your system" >&2;}
+   { (exit 1); exit 1; }; }
 fi
+
+fi
+
+
+
 
 
 
@@ -5241,12 +5228,12 @@ echo "${ECHO_T}System: $sys_info" >&6
 
 case $arch_info in
 i686|i586|i486|i386) OPT="-O3  -Wno-unused -funroll-loops -fstrength-reduce \
-                          -ffast-math -malign-functions=2 -malign-jumps=2 \
-                          -malign-loops=2 -fomit-frame-pointer -Wall -g" ;;
+                          -ffast-math -falign-functions=2 -falign-jumps=2 \
+                          -falign-loops=2 -fomit-frame-pointer -Wall " ;;
 sun4u)               OPT="-O3  -Wno-unused -funroll-loops -fstrength-reduce \
-                          -ffast-math -malign-functions=4 -malign-jumps=4 \
-                          -malign-loops=4 -fomit-frame-pointer -Wall -g " ;;
-no)                  OPT="-O3 -Wall -g" ;;
+                          -ffast-math -falign-functions=4 -falign-jumps=4 \
+                          -falign-loops=4 -fomit-frame-pointer -Wall " ;;
+no)                  OPT="-O3 -Wall " ;;
 esac
 
 case $sys_info in
@@ -5903,7 +5890,6 @@ s,@SDL_CONFIG@,$SDL_CONFIG,;t t
 s,@CPP@,$CPP,;t t
 s,@EGREP@,$EGREP,;t t
 s,@LIBOBJS@,$LIBOBJS,;t t
-s,@UNZIP_SRC@,$UNZIP_SRC,;t t
 s,@NATIVE_GETOPT_LONG_TRUE@,$NATIVE_GETOPT_LONG_TRUE,;t t
 s,@NATIVE_GETOPT_LONG_FALSE@,$NATIVE_GETOPT_LONG_FALSE,;t t
 s,@LTLIBOBJS@,$LTLIBOBJS,;t t

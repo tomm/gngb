@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src/cpu.c)
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(gngb,20060204)
+AM_INIT_AUTOMAKE(gngb,20060309)
 
 dnl Setup for automake
 
@@ -47,18 +47,19 @@ dnl AC_CHECK_FUNCS(getopt_long , , [LIBOBJS="$LIBOBJS getopt.o getopt1.o"])
 AC_CHECK_FUNCS(getopt_long , , [ AC_LIBOBJ(getopt) AC_LIBOBJ(getopt1) ])
 
 #Compress Roms
-AC_ARG_ENABLE(compress_roms,[  --disable-compress-roms      disable compress roms support], [enablecompress_roms=$enableval], [enablecompress_roms=yes])
+dnl AC_ARG_ENABLE(compress_roms,[  --disable-compress-roms      disable compress roms support], [enablecompress_roms=$enableval], [enablecompress_roms=yes])
 
-AC_SUBST(UNZIP_SRC)
-if test "$enablecompress_roms" = yes; then
-	AC_CHECK_HEADER(bzlib.h,AC_CHECK_LIB(bz2, BZ2_bzopen,,))
-	AC_CHECK_HEADER(zlib.h,AC_CHECK_LIB(z, gzopen,,))
-	#UNZIP_SRC="unzip.c unzip.h"
-	dnl LIBOBJS="$LIBOBJS unzip.o"
-	AC_LIBOBJ([unzip])
-else 
-	UNZIP_SRC=""
-fi	
+dnl if test "$enablecompress_roms" = yes; then
+AC_CHECK_HEADER(bzlib.h,AC_CHECK_LIB(bz2, BZ2_bzopen,,AC_MSG_ERROR(can't find bzlil on your system)))
+AC_CHECK_HEADER(zlib.h,AC_CHECK_LIB(z, gzopen,,AC_MSG_ERROR(can't find zlib on your system)))
+
+dnl UNZIP_SRC="unzip.c unzip.h"
+dnl LIBOBJS="$LIBOBJS unzip.o"
+dnl AC_LIBOBJ([unzip])
+dnl else 
+dnl UNZIP_SRC=""
+dnl fi	
+dnl AC_SUBST(UNZIP_SRC)
 
 
 
@@ -107,12 +108,12 @@ AC_MSG_RESULT(System: $sys_info)
 
 case $arch_info in
 i686|i586|i486|i386) OPT="-O3  -Wno-unused -funroll-loops -fstrength-reduce \
-                          -ffast-math -malign-functions=2 -malign-jumps=2 \
-                          -malign-loops=2 -fomit-frame-pointer -Wall -g" ;;
+                          -ffast-math -falign-functions=2 -falign-jumps=2 \
+                          -falign-loops=2 -fomit-frame-pointer -Wall " ;;
 sun4u)               OPT="-O3  -Wno-unused -funroll-loops -fstrength-reduce \
-                          -ffast-math -malign-functions=4 -malign-jumps=4 \
-                          -malign-loops=4 -fomit-frame-pointer -Wall -g " ;;
-no)                  OPT="-O3 -Wall -g" ;;
+                          -ffast-math -falign-functions=4 -falign-jumps=4 \
+                          -falign-loops=4 -fomit-frame-pointer -Wall " ;;
+no)                  OPT="-O3 -Wall " ;;
 esac
 
 case $sys_info in

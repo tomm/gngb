@@ -1,6 +1,11 @@
 
 WHAT'S NEW ?
 
+* Memory.c: Add uspport for Joy Analogique: Thanks to "XWolf"
+* Clean code (cpu.c suprression des inline)
+* Compiler: Fix -maligne => faligne Warnings
+* Now zlib and bzlib recquir
+
 20060117
 * Fix gcc4.0 bug.
 	

@@ -1,6 +1,11 @@
-gngb for Debian
----------------
+gngb
+----------------------
 
-<possible notes regarding this package - if none, delete this file>
+Please see the sample gngbrc to see how you can set up your configuration
+options.  It goes in your .gngb directory.
 
- -- Ryan Underwood <nemesis@dbz.icequake.net>, Thu, 26 Jun 2003 06:51:00 -0500
+gngb will operate with gzipped roms so you can gzip all your roms to
+save space.
+
+
+Ryan Underwood <nemesis@icequake.net>, Sat, 10 May 2003 04:09:38 -0500

@@ -512,7 +512,7 @@ __inline__ void sgb_window_mask(void) {
 
   /* je ne sais pas si c'est ca */
   /* apres quelque test: apparement nan :( */
-	//printf("LCDCSTAT: %02x LCDCCONT: %02x SCR: %02x %02x WIN: %02x %02x LY: %02x LYC: %02x\n",LCDCSTAT,LCDCCONT,SCRX,SCRY,WINX,WINY,CURLINE,CMP_LINE);
+  printf("LCDCSTAT: %02x LCDCCONT: %02x SCR: %02x %02x WIN: %02x %02x LY: %02x LYC: %02x\n",LCDCSTAT,LCDCCONT,SCRX,SCRY,WINX,WINY,CURLINE,CMP_LINE);
   switch(sgb.pack[1]&0x03) {
   case 0x00:sgb_mask=0;break;
   case 0x01:  // i dint know what it do
