@@ -21,6 +21,7 @@
 #define _MEMORY_H
 
 #include "global.h"
+#include <SDL/SDL.h>
 
 #ifdef LINUX_JOYSTICK
 #include "joystick.h"
@@ -30,6 +31,7 @@ typedef struct {
   UINT8 autofs;
   UINT8 fs;
   UINT8 sound;
+  UINT8 joy_no;
   UINT8 normal_gb;
   UINT8 gb_done;
 }GNGB_CONF;
@@ -176,6 +178,8 @@ extern JOY_CONTROL *my_joy;
 
 extern UINT8 gb_pad_code[8];
 extern UINT8 key[256];
+SDL_Joystick *joy;
+
 UINT8 gb_pad;
 
 void update_gb_pad(void);

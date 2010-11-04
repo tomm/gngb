@@ -24,8 +24,12 @@
 #include "vram.h"
 #include "cpu.h"
 
+#ifdef USE_LOG
+#include "log.h"
+#endif
+
 UINT16 tb_vram_cycle[2][11]={{170,184,196,208,220,234,244,260,270,284,296},
-                             {342,370,394,420,445,470,492,518,543,568,593}}; // DOUBLE SPEED
+                             {342,370,394,420,445,470,492,518,543,568,593}}; 
 
 UINT16 tb_hblank_cycle[2][11]={{204,190,178,166,154,140,130,114,104,90,78},
                                {405,380,356,330,305,280,258,232,207,182,157}};
@@ -44,8 +48,7 @@ UINT16 mode2cycle=82;
 UINT16 mode3cycle;
 
 UINT16 timer_clk_inc=0;   // nb_cycle when inc timer
-
-// static UINT8 inc_line;
+INT16 lcdc_cycle=0;
 
 UINT32 get_nb_cycle(void)
 {
@@ -61,7 +64,7 @@ void go2double_speed(void)
   if (gbcpu->mode==DOUBLE_SPEED) return;
   mode0cycle=tb_hblank_cycle[1][0];
   mode1cycle=912;
-  mode2cycle=162;//150;
+  mode2cycle=162;
   mode3cycle=tb_vram_cycle[1][0];
   gbcpu->mode=DOUBLE_SPEED;
   vblank_cycle=70224*2;
@@ -78,16 +81,12 @@ void go2simple_speed(void)
   vblank_cycle=70224;
 }
 
-inline UINT8 request_interrupt(UINT8 n) {
-  return ((INT_ENABLE&n) && (gbcpu->int_flag))?n:0;
-}
-
-
 inline UINT8 make_interrupt(UINT8 n) {
-  //printf("try int %d  %0.2x %0.2x %d",n,INT_ENABLE,INT_FLAG,gbcpu->int_flag);
+  //printf("try int %d  %02x %02x %d\n",n,INT_ENABLE,INT_FLAG,gbcpu->int_flag);
   if ((INT_ENABLE&n) && (gbcpu->int_flag)) {
-    // printf("do int %d %0.4x\n",n,gbcpu->pc.w);
-    //printf("make int %d %d %d %d\n",n,CURLINE,CMP_LINE,LCDCSTAT);
+#ifdef USE_LOG
+    put_log("make int %d CURLINE %d CMP_LINE %d\n",n,CURLINE,CMP_LINE);
+#endif
     INT_FLAG&=(~n);
     gbcpu->int_flag=0;
     push_stack_word(gbcpu->pc.w);
@@ -112,8 +111,8 @@ inline UINT16 lcdc_update(void)  // LCDC is on
   
   if (CURLINE==0x90) {
     lcdc_mode=VBLANK_PER;
-    if (LCDCSTAT&0x10) INT_FLAG|=LCDC_INT;
-    else INT_FLAG|=VBLANK_INT;
+    /*if (LCDCSTAT&0x10) INT_FLAG|=LCDC_INT;
+      else*/ INT_FLAG|=VBLANK_INT;
   }
   
   if (CURLINE==0x9a) {
@@ -132,8 +131,7 @@ inline UINT16 lcdc_update(void)  // LCDC is on
     
   LCDCSTAT&=0xf8;
   if (CMP_LINE==CURLINE) LCDCSTAT|=0x04;
-
-  //  printf("lcdc mode %d ",lcdc_mode);
+  
   switch(lcdc_mode) {
   case HBLANK_PER:       // HBLANK
     if (LCDCSTAT&0x08 && LCDCCONT&0x80) INT_FLAG|=LCDC_INT;
@@ -184,7 +182,10 @@ inline void halt_update(void) // gbcpu->state=HALT_STATE
 { 
   if (INT_FLAG&INT_ENABLE) {
     gbcpu->state=0;
-    // gbcpu->pc.w++;
+    gbcpu->pc.w++;
+#ifdef USE_LOG
+    put_log("stop halt\n");
+#endif
   }
 }
 

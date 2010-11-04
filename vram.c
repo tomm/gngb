@@ -27,12 +27,7 @@
 #define SCREEN_Y 144
 #define BIT_PER_PIXEL 16
 
-struct mask_shift {
-  unsigned char mask;
-  unsigned char shift;
-};
-
-struct mask_shift tab_ms[]={
+struct mask_shift tab_ms[8]={
   { 0x80,7 },
   { 0x40,6 },
   { 0x20,5 },
@@ -49,9 +44,10 @@ UINT16 pal_bck[4];
 UINT16 pal_obj0[4];
 UINT16 pal_obj1[4];
 
-TYPE_COLOR pal_col_bck[8][4];
-TYPE_COLOR pal_col_obj[8][4];
-
+UINT16 pal_col_bck_gb[8][4];
+UINT16 pal_col_obj_gb[8][4];
+UINT16 pal_col_bck[8][4];
+UINT16 pal_col_obj[8][4];
 UINT16 Filter[32768];
 
 UINT8 back_col[170][170];
@@ -124,7 +120,7 @@ void free_buffer(void)
 
 void init_vram(UINT32 flag)
 {
-  if (SDL_Init(SDL_INIT_VIDEO|(conf.sound)?SDL_INIT_AUDIO:0)<0) {
+  if (SDL_Init(SDL_INIT_JOYSTICK|SDL_INIT_VIDEO|((conf.sound)?SDL_INIT_AUDIO:0))<0) {
     printf("Couldn't initialize SDL: %s\n",SDL_GetError());
     exit(1);
   }
@@ -149,9 +145,7 @@ void init_vram(UINT32 flag)
 
 void close_vram(void)
 {
-  
   //free_buffer();
-
 }
 
 inline UINT8 get_nb_spr(void)
@@ -223,13 +217,17 @@ inline void draw_spr_col(UINT16 *buf,GB_SPRITE *sp)
     if (LCDCCONT&0x01) {
       if (c) {
 	if (back_col[sp->x+nx][CURLINE]&0x80) {
-	  if (!(back_col[sp->x+nx][CURLINE]&0x0f)) buf[sp->x+nx]=pal_col_obj[sp->pal_col][c].alleg_tp;
+	  if (!(back_col[sp->x+nx][CURLINE]&0x0f)) 
+	    buf[sp->x+nx]=pal_col_obj[sp->pal_col][c];
 	}
- 	else if (!sp->priority) buf[sp->x+nx]=pal_col_obj[sp->pal_col][c].alleg_tp;
-	else if (!(back_col[sp->x+nx][CURLINE]&0x0f)) buf[sp->x+nx]=pal_col_obj[sp->pal_col][c].alleg_tp;
+ 	//else if (!sp->priority) buf[sp->x+nx]=pal_col_obj[sp->pal_col][c].alleg_tp;
+	else if (!sp->priority) buf[sp->x+nx]=pal_col_obj[sp->pal_col][c];
+	//else if (!(back_col[sp->x+nx][CURLINE]&0x0f)) buf[sp->x+nx]=pal_col_obj[sp->pal_col][c].alleg_tp;
+	else if (!(back_col[sp->x+nx][CURLINE]&0x0f)) buf[sp->x+nx]=pal_col_obj[sp->pal_col][c];
       }
     }
-    else buf[sp->x+nx]=pal_col_obj[sp->pal_col][c].alleg_tp;
+    //else buf[sp->x+nx]=pal_col_obj[sp->pal_col][c].alleg_tp;
+    else buf[sp->x+nx]=pal_col_obj[sp->pal_col][c];
   }
 }
 
@@ -313,7 +311,8 @@ inline void draw_back_col(UINT16 *buf)
     bit0=((*tp)&tab_ms[wbit].mask)>>tab_ms[wbit].shift;
     bit1=((*(tp+1))&tab_ms[wbit].mask)>>tab_ms[wbit].shift;
     c=(bit1<<1)|bit0;
-    buf[x]=pal_col_bck[p][c].alleg_tp;
+    //buf[x]=pal_col_bck[p][c].alleg_tp;
+    buf[x]=pal_col_bck[p][c];
     if (!(att&0x80)) back_col[x][CURLINE]=c;
     else back_col[x+sx][CURLINE]=0x80+c;
   }
@@ -339,7 +338,8 @@ inline void draw_back_col(UINT16 *buf)
       bit0=((*tp)&tab_ms[wbit].mask)>>tab_ms[wbit].shift;
       bit1=((*(tp+1))&tab_ms[wbit].mask)>>tab_ms[wbit].shift;
       c=(bit1<<1)|bit0;
-      buf[x+sx]=pal_col_bck[p][c].alleg_tp;
+      //buf[x+sx]=pal_col_bck[p][c].alleg_tp;
+      buf[x+sx]=pal_col_bck[p][c];
       if (!(att&0x80)) back_col[x+sx][CURLINE]=c;
       else back_col[x+sx][CURLINE]=0x80+c;
     }
@@ -436,7 +436,8 @@ inline void draw_win_col(UINT16 *buf)
 	bit0=((*tp)&tab_ms[wbit].mask)>>tab_ms[wbit].shift;
 	bit1=((*(tp+1))&tab_ms[wbit].mask)>>tab_ms[wbit].shift;
 	c=(bit1<<1)|bit0;
-	buf[x+sx]=pal_col_bck[p][c].alleg_tp;
+	//buf[x+sx]=pal_col_bck[p][c].alleg_tp;
+	buf[x+sx]=pal_col_bck[p][c];
 	if (!(att&0x80)) back_col[x+sx][CURLINE]=c;
 	else back_col[x+sx][CURLINE]=0x80+c;	    
       }
@@ -516,13 +517,6 @@ inline void blit_screen(void)
   SDL_Flip(screen);
   if ((!(LCDCCONT&0x20) || !(LCDCCONT&0x01)) && (gameboy_type&NORMAL_GAMEBOY))
       clear_screen();
-}
-
-
-inline void draw_tile(SDL_Surface *buf,int x,int y,int n) {
-
-  
-
 }
 
 

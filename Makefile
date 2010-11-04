@@ -17,7 +17,7 @@
 
 
 # configuration
-# JOYSTICK = 1
+#JOYSTICK = 1   old version now use SDL_Joystick
 
 
 DEBUG = -g 
@@ -26,18 +26,19 @@ OPT = -O3  -mpentiumpro  -Wno-unused -funroll-loops -fstrength-reduce -ffast-mat
 OBJ = cpu.o memory.o vram.o interrupt.o rom.o sound.o frame_skip.o 
 
 
-CFLAGS = $(OPT) -D_REENTRANT
+#CFLAGS = $(OPT) -D_REENTRANT -DUSE_LOG
 # CFLAGS = $(PROFILE) -D_REENTRANT
+CFLAGS = $(OPT) -D_REENTRANT
 LIBS = -lSDL -lpthread  
 
-ifdef JOYSTICK
-CFLAGS += -DLINUX_JOYSTICK 
-OBJ += joystick.o 
-endif
+#ifdef JOYSTICK
+#CFLAGS += -DLINUX_JOYSTICK 
+#OBJ += joystick.o 
+#endif
 
 DEP = global.h 
 
-all: gngb
+all : gngb
 
 # GNGB
 
@@ -68,16 +69,26 @@ joystick.o : joystick.h joystick.c
 main.o : main.c rom.h memory.h cpu.h vram.h interrupt.h sound.h $(DEP)
 	gcc -c $(CFLAGS) main.c
 
+log.o: log.c log.h
+	gcc -c $(CFLAGS) log.c
+
 gngb_debug.o : gngb_debug.c rom.h memory.h cpu.h vram.h interrupt.h $(DEP)
 	gcc -c $(CFLAGS) gngb_debug.c
+
+debuger.o : debuger.c debuger.h 
+	gcc -c -g `glib-config --cflags glib` `libglade-config --cflags gtk` debuger.c $(CFLAGS) 
+
 
 # PROGRAMME
 
 gngb_debug : $(OBJ) gngb_debug.o
 	gcc $(CFLAGS) $(OBJ) gngb_debug.o $(LIBS) -lreadline -lncurses -o gngb_debug
 
-gngb : $(OBJ) main.o
+gngb : $(OBJ) main.o 
 	gcc $(CFLAGS) $(OBJ)  main.o $(LIBS) -o gngb
+
+debuger :  $(OBJ) debuger.o log.o
+	gcc  $(OBJ) debuger.o log.o $(LIBS) `glib-config --libs glib` `libglade-config --libs gtk` -o debuger
 
 # ACTION
 

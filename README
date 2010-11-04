@@ -12,9 +12,10 @@ Use :
 
 gngb [option] game 
 option:
-h : show this help
-a : auto frame skip
-g : force normal gameboy
-f : fullscreen
-s : sound on
+-h            : show this help
+-a            : auto frame skip
+-g            : force normal gameboy
+-f            : fullscreen
+-j joy_num    : use joy_num as joystick 
+-s            : sound on
 

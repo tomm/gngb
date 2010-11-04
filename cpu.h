@@ -68,7 +68,7 @@ typedef struct {
 extern const GB_INST gb_inst_tb[];
 
 void gbcpu_init(void);  
-UINT8 gbcpu_exec(UINT32 nb_cycle);
+//UINT8 gbcpu_exec(UINT32 nb_cycle);
 inline UINT8 gbcpu_exec_one(void);
 inline void update_gb(void);
 inline void update_gb_one(void);

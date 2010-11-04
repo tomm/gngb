@@ -17,6 +17,7 @@
  */
                 
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include "global.h"
 #include "memory.h"
@@ -47,18 +48,19 @@ void exit_gngb(void)
   close_vram();
   if (conf.sound)
     close_sound();
-  //allegro_exit();
+  
   exit(0);
 }
  
 void print_help(void) {
   printf("gngb [option] game \n");
   printf("option:\n");
-  printf("h : show this help\n");
-  printf("a : auto frame skip\n");
-  printf("g : force normal gameboy\n");
-  printf("f : fullscreen\n");
-  printf("s : sound on\n");
+  printf("-h           : show this help\n");
+  printf("-a           : auto frame skip\n");
+  printf("-g           : force normal gameboy\n");
+  printf("-f           : fullscreen\n");
+  printf("-j joy_num   : use joy_num as joystick\n");
+  printf("-s           : sound on\n");
   exit_gngb();
 }
   
@@ -70,14 +72,16 @@ void check_option(int argc,char *argv[])
   conf.normal_gb=0;
   conf.autofs=0;
   conf.sound=0;
+  conf.joy_no=0;
   conf.fs=0;
   conf.gb_done=0;
-  while((c=getopt(argc,argv,"ghasf"))!=EOF) {
+  while((c=getopt(argc,argv,"ghasfj:"))!=EOF) {
     switch(c) {
     case 'g':conf.normal_gb=1;break;
     case 'a':conf.autofs=1;break;
     case 's':conf.sound=1;break;
-    case 'f':fullscr=SDL_FULLSCREEN;break;
+    case 'j':conf.joy_no=atoi(optarg);break;
+    case 'f':conf.fs=1;fullscr|=SDL_FULLSCREEN;break;
     case 'h':print_help();break;
     }
   }
@@ -117,10 +121,21 @@ int main(int argc,char *argv[])
 #ifdef LINUX_JOYSTICK 
   my_joy=install_joy(JOY_DEVICE0);
 #endif
+
   gbcpu_init();
   init_gb_memory();
   init_vram(fullscr);
   if (conf.sound) init_sound();
+
+  if(SDL_NumJoysticks()>0){
+    joy=SDL_JoystickOpen(conf.joy_no);
+    if(joy) {
+      printf("Name: %s\n", SDL_JoystickName(conf.joy_no));
+      printf("Number of Axes: %d\n", SDL_JoystickNumAxes(joy));
+      printf("Number of Buttons: %d\n", SDL_JoystickNumButtons(joy));
+      printf("Number of Balls: %d\n", SDL_JoystickNumBalls(joy));
+    }
+  }
 
   while(!conf.gb_done) {
     update_gb();

@@ -39,10 +39,12 @@ extern UINT16 timer_clk_inc;
 extern UINT32 nb_cycle;
 extern UINT16 lcdc_mode_clk[4];
 
+extern INT16 lcdc_cycle;
+
 UINT8 skip_next_frame;
 UINT32 vblank_cycle;
 
-inline void update_int(void); // DEBUGAGE
+
 void go2double_speed(void);
 void go2simple_speed(void);
 inline void main_loop(void);

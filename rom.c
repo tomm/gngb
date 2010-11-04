@@ -295,9 +295,10 @@ int open_rom(char *filename)
 
     /* RAM */
 
-    if (rom_type&RAM) {
+    if ((rom_type&RAM) || (rom_type&SRAM)) {
+      printf("ram id %02x\n",gb_memory[0x149]);
       switch(gb_memory[0x149]) {
-      case 0:printf("NO RAM\n");nb_ram_page=0;ram_mask=0x00;break;
+      case 0:printf("RAM size : 0 ?????\n");nb_ram_page=1;ram_mask=0x00;break;
       case 1:printf("RAM size : 2 kbyte\n");nb_ram_page=1;ram_mask=0x00;break;
       case 2:printf("RAM size : 8 kbyte\n");nb_ram_page=1;ram_mask=0x00;break;
       case 3:printf("RAM size : 32 kbyte\n");nb_ram_page=4;ram_mask=0x03;break;

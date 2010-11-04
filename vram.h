@@ -23,6 +23,13 @@
 #include "global.h"
 #include <SDL/SDL.h>
 
+struct mask_shift {
+  unsigned char mask;
+  unsigned char shift;
+};
+
+extern struct mask_shift tab_ms[8];
+
 extern SDL_Surface *screen,*back;
 
 extern UINT16 grey[4];
@@ -30,13 +37,10 @@ extern UINT16 pal_bck[4];
 extern UINT16 pal_obj0[4];
 extern UINT16 pal_obj1[4];
 
-typedef struct {
-  UINT16 gb_tp;      // 0BBBBBGGGGGRRRRR
-  UINT16 alleg_tp;   // BBBBBGGGGG1RRRRR avec Filtre
-}TYPE_COLOR;
-
-extern TYPE_COLOR pal_col_bck[8][4];
-extern TYPE_COLOR pal_col_obj[8][4];
+extern UINT16 pal_col_bck_gb[8][4]; // 0BBBBBGGGGGRRRRR
+extern UINT16 pal_col_obj_gb[8][4];
+extern UINT16 pal_col_bck[8][4];    // BBBBBGGGGG1RRRRR avec filtre
+extern UINT16 pal_col_obj[8][4];
 extern UINT16 Filter[32768];
 
 typedef struct {
@@ -52,6 +56,8 @@ typedef struct {
 GB_SPRITE gb_spr[11];
 extern UINT8 nb_spr;
 
+UINT8 draw_screen_wb(void);
+UINT8 draw_screen_col(void);
 extern UINT8 (*draw_screen)(void);
 
 void init_vram(UINT32 flag);
@@ -60,8 +66,6 @@ inline void blit_screen(void);
 void clear_screen(void);
 
 inline UINT8 get_nb_spr(void);
-
-inline void draw_tile(SDL_Surface *buf,int x,int y,int n);
 
 #endif
 
