@@ -828,10 +828,9 @@ __inline__ void mem_write_ff(Uint16 adr,Uint8 v) {
      
       pal_col_bck[p][c]=Filter[pal_col_bck_gb[p][c]&0x7FFF];
       if (BGPAL_SPE&0x80) {
-	/*a=BGPAL_SPE&0x3f;
+	a=BGPAL_SPE&0x3f;
 	a++;
-	BGPAL_SPE=(a&0x3f)|0x80;*/
-	BGPAL_SPE++;
+	BGPAL_SPE=(a&0x3f)|0x80;
       }
       BGPAL_DATA=v;
       return;

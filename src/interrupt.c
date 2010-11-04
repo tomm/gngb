@@ -157,7 +157,7 @@ Uint16 gblcdc_update(void)  // LCDC is on
   int x;
 
   if (!(LCDCCONT&0x80)) return 0;
-  
+
   if (gblcdc->inc_line) {
     CURLINE++;
     LCDCSTAT&=0xf8;
@@ -194,6 +194,7 @@ Uint16 gblcdc_update(void)  // LCDC is on
     
     gblcdc->mode=LINE_99;
   }
+
   
   switch(gblcdc->mode) {
   case HBLANK_PER:       // HBLANK
