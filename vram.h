@@ -22,6 +22,17 @@
 
 #include "global.h"
 #include <SDL/SDL.h>
+#ifdef SDL_GL
+#include <GL/gl.h>
+
+typedef struct GLTEX {
+  GLubyte *bmp;
+  GLuint id;
+}GLTEX;
+
+GLTEX gl_tex;
+
+#endif
 
 struct mask_shift {
   unsigned char mask;
@@ -58,6 +69,10 @@ UINT8 rb_on;
 
 UINT8 draw_screen_wb(void);
 UINT8 draw_screen_col(void);
+#ifdef SDL_GL
+UINT8 draw_screen_gl_wb(void);
+UINT8 draw_screen_gl_col(void);
+#endif
 extern UINT8 (*draw_screen)(void);
 
 void init_vram(UINT32 flag);

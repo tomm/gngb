@@ -22,6 +22,9 @@
 #include "rom.h"
 #include "interrupt.h"
 #include <SDL/SDL.h>
+#ifdef SDL_GL
+#include <GL/gl.h>
+#endif
 
 #define SCREEN_X 160
 #define SCREEN_Y 144
@@ -64,6 +67,73 @@ UINT8 (*draw_screen)(void);
 
 UINT8 draw_screen_col(void);
 UINT8 draw_screen_wb(void);
+#ifdef SDL_GL
+void update_gldisp(void/*UINT16 *buf*/)
+{
+  static GLfloat tu=SCREEN_X/256.0,tv=SCREEN_Y/256.0;
+  
+  // memcpy(gl_tex.bmp,buf,SCREEN_X*SCREEN_Y*2);
+
+  glClearColor( 0.0, 0.0, 0.0, 1.0 );
+  glClear( GL_COLOR_BUFFER_BIT);
+  glEnable(GL_TEXTURE_2D);
+
+  glBindTexture(GL_TEXTURE_2D,gl_tex.id);
+  glTexSubImage2D(GL_TEXTURE_2D,0,0,0,SCREEN_X,SCREEN_Y,
+                  GL_RGB,GL_UNSIGNED_SHORT_5_6_5,gl_tex.bmp);
+
+  glBegin(GL_QUADS);
+  glTexCoord2f(0.0,tv);
+  glVertex2i(0,0);
+ 
+  
+  glTexCoord2f(tu,tv);
+  glVertex2i(SCREEN_X,0);
+
+  glTexCoord2f(tu,0.0); 
+  glVertex2i(SCREEN_X,SCREEN_Y);
+  
+  
+  glTexCoord2f(0.0,0.0);
+  glVertex2i(0,SCREEN_Y);
+
+
+
+
+  
+
+  glEnd();  
+  glDisable(GL_TEXTURE_2D);
+  SDL_GL_SwapBuffers( );
+
+}
+
+void init_gl(void)
+{
+  glViewport(0,0,conf.gl_w,conf.gl_h);
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(0.0,(GLfloat)SCREEN_X,0.0,(GLfloat)SCREEN_Y,-1.0,1.0);
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+  gl_tex.bmp=(UINT8 *)malloc(256*256*2);
+  glEnable(GL_TEXTURE_2D);
+  
+  glGenTextures(1,&gl_tex.id);
+  gl_tex.id=glGenLists(1);
+  glBindTexture(GL_TEXTURE_2D,gl_tex.id);
+  glTexImage2D(GL_TEXTURE_2D,0,GL_RGB5,256,256,0,
+	       GL_RGB,GL_UNSIGNED_BYTE,NULL);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+  
+  
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP);
+  
+}
+#endif
+
 
 /* take from VGBC (not VGB) */
 
@@ -131,8 +201,13 @@ void init_vram(UINT32 flag)
     exit(1);
   }
   atexit(SDL_Quit);   
-  
-  gb_screen=SDL_SetVideoMode(SCREEN_X,SCREEN_Y,BIT_PER_PIXEL,SDL_HWSURFACE|flag);
+
+#ifdef SDL_GL
+  if (conf.gl) 
+    gb_screen=SDL_SetVideoMode(conf.gl_w,conf.gl_h,BIT_PER_PIXEL,SDL_HWSURFACE|flag);
+  else 
+#endif
+    gb_screen=SDL_SetVideoMode(SCREEN_X,SCREEN_Y,BIT_PER_PIXEL,SDL_HWSURFACE|flag);
   back=SDL_CreateRGBSurface(SDL_HWSURFACE,SCREEN_X,SCREEN_Y+1,BIT_PER_PIXEL,
 			    0xf800,0x7e0,0x1f,0x00);
   if (gb_screen==NULL) {
@@ -149,11 +224,23 @@ void init_vram(UINT32 flag)
   SDL_WM_SetCaption("Gngb",NULL);
   SDL_ShowCursor(0);
 
+#ifdef SDL_GL
+  init_gl();
+#endif
+
   init_buffer();
   init_pallete();
-
-  if (gameboy_type&COLOR_GAMEBOY) draw_screen=draw_screen_col;
-  else draw_screen=draw_screen_wb;
+#ifdef SDL_GL
+  if (conf.gl) {
+    if (gameboy_type&COLOR_GAMEBOY) draw_screen=draw_screen_gl_col;
+    else draw_screen=draw_screen_gl_wb;
+  } else {
+#endif
+    if (gameboy_type&COLOR_GAMEBOY) draw_screen=draw_screen_col;
+    else draw_screen=draw_screen_wb;
+#ifdef SDL_GL
+  }
+#endif
 }
 
 void switch_fullscreen(void) {
@@ -241,7 +328,7 @@ inline void draw_spr_col(UINT16 *buf,GB_SPRITE *sp)
 	else if (!(back_col[sp->x+nx][CURLINE]&0x0f)) buf[sp->x+nx]=pal_col_obj[sp->pal_col][c];
       }
     }
-    else buf[sp->x+nx]=pal_col_obj[sp->pal_col][c];
+    else if (c) buf[sp->x+nx]=pal_col_obj[sp->pal_col][c];
   }
 }
 
@@ -510,6 +597,31 @@ UINT8 draw_screen_col(void)
   if (SDL_MUSTLOCK(back)) SDL_UnlockSurface(back);
   return 0;
 }
+
+#ifdef SDL_GL
+UINT8 draw_screen_gl_wb(void)
+{
+  UINT16 *buf=(UINT16 *)gl_tex.bmp + CURLINE*SCREEN_X;
+  //  if (SDL_MUSTLOCK(back) && SDL_LockSurface(back)<0) printf("can't lock surface\n");
+  if (LCDCCONT&0x01) draw_back(buf);
+  if (LCDCCONT&0x20) draw_win(buf);
+  if (LCDCCONT&0x02) draw_obj(buf);
+  //  if (SDL_MUSTLOCK(back)) SDL_UnlockSurface(back);
+  return 0;
+}
+
+UINT8 draw_screen_gl_col(void) 
+{
+  UINT16 *buf=(UINT16 *)gl_tex.bmp + CURLINE*SCREEN_X;
+  //  if (SDL_MUSTLOCK(back) && SDL_LockSurface(back)<0) printf("can't lock surface\n");
+  draw_back_col(buf);
+  if (LCDCCONT&0x20) draw_win_col(buf);
+  if (LCDCCONT&0x02) draw_obj_col(buf);
+  //  if (SDL_MUSTLOCK(back)) SDL_UnlockSurface(back);
+  return 0;
+}
+#endif
+     
      
 inline void clear_screen(void)
 {
@@ -534,9 +646,16 @@ inline void blit_screen(void)
     }
   }
 
-  SDL_BlitSurface(back,&scrR,gb_screen,&dstR);
-  SDL_Flip(gb_screen);
-  
+#ifdef SDL_GL
+  if (conf.gl)
+    update_gldisp();
+  else {
+#endif
+    SDL_BlitSurface(back,&scrR,gb_screen,&dstR);
+    SDL_Flip(gb_screen);
+#ifdef SDL_GL
+  }
+#endif  
   if ((!(LCDCCONT&0x20) || !(LCDCCONT&0x01)) && (gameboy_type&NORMAL_GAMEBOY))
       clear_screen();
 }

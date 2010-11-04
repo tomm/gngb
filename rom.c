@@ -30,12 +30,14 @@
 #include "cpu.h"
 #include "interrupt.h"
 #include "vram.h"
+#include "sound.h"
 
 typedef enum {
   CPU_SECTION,
   LCDC_SECTION,
   PAL_SECTION,
-  TIMER_SECTION
+  TIMER_SECTION,
+  DMA_SECTION
 }SECTION_TYPE;
 
 INT16 rom_type;
@@ -289,122 +291,23 @@ char *get_snap_name(char *name,int n) {
   return a;
 }
 
-
-int save_snap(void) {
-  FILE *stream;
-  int i;
-  char dir[100];
-  char *a=getenv("HOME");
-  
-  dir[0]=0;
-  strcat(dir,a);
-  strcat(dir,"/.gngb/");
-  check_dir(dir);
-
-  strcat(dir,get_snap_name(rom_name,0));
-  stream=fopen(dir,"wb");
-  if (!stream) {
-    printf("Error while trying to write file %s \n",dir);
-    return 1;
-  }
-
-  for(i=0;i<nb_ram_page;i++)
-    fwrite(ram_page[i],sizeof(UINT8),0x2000,stream);
-
-  for(i=0;i<nb_vram_page;i++)
-    fwrite(vram_page[i],sizeof(UINT8),0x2000,stream);
-
-  for(i=0;i<nb_wram_page;i++)
-    fwrite(wram_page[i],sizeof(UINT8),0x1000,stream);
-
-  fwrite(oam_space,sizeof(UINT8),0xa0,stream);
-  fwrite(himem,sizeof(UINT8),0x160,stream);
-
-  fwrite(&active_rom_page,sizeof(UINT8),1,stream);
-  fwrite(&active_ram_page,sizeof(UINT8),1,stream);
-  fwrite(&active_vram_page,sizeof(UINT8),1,stream);
-  fwrite(&active_wram_page,sizeof(UINT8),1,stream);
-
-  // Section
-
-  fwrite(gbcpu,sizeof(GB_CPU),1,stream);
-  fwrite(gblcdc,sizeof(GBLCDC),1,stream);
-  // Write Pal
-  fwrite(pal_col_bck_gb,sizeof(UINT32),8*4,stream);
-  fwrite(pal_col_obj_gb,sizeof(UINT32),8*4,stream);
-  fwrite(pal_col_bck,sizeof(UINT32),8*4,stream);
-  fwrite(pal_col_obj,sizeof(UINT32),8*4,stream);
-  fwrite(pal_bck,sizeof(UINT32),8,stream);
-  fwrite(pal_obj0,sizeof(UINT32),8,stream);
-  fwrite(pal_obj1,sizeof(UINT32),8,stream);
-
-  fclose(stream);
-  return 0;
-}
-
-int load_snap(void) {
-  FILE *stream;
-  int i;
-  char dir[100];
-  char *a=getenv("HOME");
-  
-  dir[0]=0;
-  strcat(dir,a);
-  strcat(dir,"/.gngb/");
-  check_dir(dir);
-
-  strcat(dir,get_snap_name(rom_name,0));
-  stream=fopen(dir,"rb");
-  if (!stream) {
-    printf("Error while trying to read file %s \n",dir);
-    return 1;
-  }
-
-  for(i=0;i<nb_ram_page;i++)
-    fread(ram_page[i],sizeof(UINT8),0x2000,stream);
-
-  for(i=0;i<nb_vram_page;i++)
-    fread(vram_page[i],sizeof(UINT8),0x2000,stream);
-
-  for(i=0;i<nb_wram_page;i++)
-    fread(wram_page[i],sizeof(UINT8),0x1000,stream);
-
-  fread(oam_space,sizeof(UINT8),0xa0,stream);
-  fread(himem,sizeof(UINT8),0x160,stream);
-
-  fread(&active_rom_page,sizeof(UINT8),1,stream);
-  fread(&active_ram_page,sizeof(UINT8),1,stream);
-  fread(&active_vram_page,sizeof(UINT8),1,stream);
-  fread(&active_wram_page,sizeof(UINT8),1,stream);
-
-  // Section 
-
-  fread(gbcpu,sizeof(GB_CPU),1,stream);
-  fread(gblcdc,sizeof(GBLCDC),1,stream);
-  // Read Pal
-  fread(pal_col_bck_gb,sizeof(UINT32),8*4,stream);
-  fread(pal_col_obj_gb,sizeof(UINT32),8*4,stream);
-  fread(pal_col_bck,sizeof(UINT32),8*4,stream);
-  fread(pal_col_obj,sizeof(UINT32),8*4,stream);
-  fread(pal_bck,sizeof(UINT32),8,stream);
-  fread(pal_obj0,sizeof(UINT32),8,stream);
-  fread(pal_obj1,sizeof(UINT32),8,stream);
-  
-  fclose(stream);
-  return 0;
-}
+/* For keep a compatibility beetwen different version we save the 
+   state of the gameboy by section.
+   In this version we have 3 section:
+        CPU_SECTION
+	LCDC_SECTION
+	PAL_SECTION 
+*/   
 
 void write_cpu_info(FILE *stream) {
   /* CPU INFO is
-     - REGISTER: 6 * UINT16  (id=1 af,bc,de,hl,sp,pc)
-     - IME: 1 * UINT8        (id=2) 
-     - STATE: 1 * UINT8      (id=3)
-     - MODE: 1 * UINT8       (id=4)
-     size = 6*2+1+1+1+4
+     - REGISTER: 6 * UINT16         (id=1 af,bc,de,hl,sp,pc)
+     - IME,ie_flag,STATE,MODE: 3 * UINT8    (id=2) 
+     size = 6*2+4+1+1
   */
   
   UINT8 t=CPU_SECTION;
-  UINT16 size=19;
+  UINT16 size=18;
 
   // SECTION + size
 
@@ -422,35 +325,28 @@ void write_cpu_info(FILE *stream) {
   fwrite(&gbcpu->sp.w,sizeof(UINT16),1,stream);
   fwrite(&gbcpu->pc.w,sizeof(UINT16),1,stream);
 
-  // IME
+  // IME,ie_flag,STATE,MODE
   
   t=2;
   fwrite(&t,sizeof(UINT8),1,stream);
   fwrite(&gbcpu->int_flag,sizeof(UINT8),1,stream);
-
-  // STATE
-
-  t=3;
-  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&gbcpu->ei_flag,sizeof(UINT8),1,stream);
   fwrite(&gbcpu->state,sizeof(UINT8),1,stream);
-
-  // MODE 
-  
-  t=4;
-  fwrite(&t,sizeof(UINT8),1,stream);
   fwrite(&gbcpu->mode,sizeof(UINT8),1,stream);
+  
 }
 
 int read_cpu_info(FILE *stream,int size) {
   /* CPU INFO is defined by id
      - id=1 => REGISTER: 6 * UINT16  (af,bc,de,hl,sp,pc)
-     - id=2 => IME: 1 * UINT8         
-     - id=3 => STATE: 1 * UINT8      
-     - id=4 => MODE: 1 * UINT8       
+     - id=2 => IME,ie_flag,STATE,MODE: 4 * UINT8         
   */
   
   long end=ftell(stream)+size;
   UINT8 t;
+  
+  printf("read cpu info\n");
+
   while(ftell(stream)!=end) {
     fread(&t,sizeof(UINT8),1,stream);
     switch(t) {
@@ -464,11 +360,8 @@ int read_cpu_info(FILE *stream,int size) {
       break;
     case 2:
       fread(&gbcpu->int_flag,sizeof(UINT8),1,stream);
-      break;
-    case 3:
+      fread(&gbcpu->ei_flag,sizeof(UINT8),1,stream);
       fread(&gbcpu->state,sizeof(UINT8),1,stream);
-      break;
-    case 4:
       fread(&gbcpu->mode,sizeof(UINT8),1,stream);
       break;
     default:return -1;
@@ -478,11 +371,243 @@ int read_cpu_info(FILE *stream,int size) {
 }
 
 void write_lcdc_info(FILE *stream) {
-  
+  /* LCDC INFO is defined by id
+     - id=1 => MODE: 1 * UINT8
+     - id=2 => CYCLE_TODO: 1 * UINT16
+     - id=3 => VBLANK_CYCLE*MODE1CYCLE*MODE2CYCLE: UINT32, 2*UINT16
+     size = 1+2+4+2*2+3
+  */
 
+  UINT8 t=LCDC_SECTION;
+  UINT16 size=14;
+
+  // SECTION + size
+
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&size,sizeof(UINT16),1,stream);
+     
+  // MODE
+
+  t=1;
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&gblcdc->mode,sizeof(UINT8),1,stream);
+
+  // CYCLE_TODO
+
+  t=2;
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&gblcdc->cycle,sizeof(UINT16),1,stream);
+
+  // VBLANK_CYCLE*MODE1CYCLE*MODE2CYCLE:
+
+  t=3;
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&gblcdc->vblank_cycle,sizeof(UINT32),1,stream);
+  fwrite(&gblcdc->mode1cycle,sizeof(UINT16),1,stream);
+  fwrite(&gblcdc->mode2cycle,sizeof(UINT16),1,stream);
+  
 }
 
 int read_lcdc_info(FILE *stream,int size) {
+  /* LCDC INFO is defined by id
+     - id=1 => MODE: 1 * UINT8
+     - id=2 => CYCLE_TODO: 1 * UINT16
+     - id=3 => VBLANK_CYCLE*MODE1CYCLE*MODE2CYCLE: UINT32, 2*UINT16
+  */
+
+  long end=ftell(stream)+size;
+  UINT8 t;
+  
+  printf("read lcdc info\n");
+
+  while(ftell(stream)!=end) {
+    fread(&t,sizeof(UINT8),1,stream);
+    switch(t) {
+    case 1:
+      fread(&gblcdc->mode,sizeof(UINT8),1,stream);
+      break;
+    case 2:
+      fread(&gblcdc->cycle,sizeof(UINT16),1,stream);
+      break;
+    case 3:
+      fread(&gblcdc->vblank_cycle,sizeof(UINT32),1,stream);
+      fread(&gblcdc->mode1cycle,sizeof(UINT16),1,stream);
+      fread(&gblcdc->mode2cycle,sizeof(UINT16),1,stream);
+      break;
+    default:return -1;
+    }
+  }
+  return 0; 
+}
+
+void write_pal_info(FILE *stream) {
+  /* PAL INFO is simply defined by id
+     - id=1 => all palette
+     size = 512+96
+   */
+  
+  UINT8 t=PAL_SECTION;
+  UINT16 size=512+96+1;
+
+  // SECTION + size
+  
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&size,sizeof(UINT16),1,stream);
+
+  // WRITE ALL PALETTE
+
+  t=1;
+  fwrite(&t,sizeof(UINT8),1,stream);
+
+  fwrite(pal_col_bck_gb,sizeof(UINT32),8*4,stream);
+  fwrite(pal_col_obj_gb,sizeof(UINT32),8*4,stream);
+  fwrite(pal_col_bck,sizeof(UINT32),8*4,stream);
+  fwrite(pal_col_obj,sizeof(UINT32),8*4,stream);
+  fwrite(pal_bck,sizeof(UINT32),8,stream);
+  fwrite(pal_obj0,sizeof(UINT32),8,stream);
+  fwrite(pal_obj1,sizeof(UINT32),8,stream);
+
+}
+
+int read_pal_info(FILE *stream,int size) {
+  /* PAL INFO is simply defined by id
+     - id=1 => all palette
+  */
+
+  long end=ftell(stream)+size;
+  UINT8 t;
+  
+  printf("read pal info\n");
+
+  while(ftell(stream)!=end) {
+    fread(&t,sizeof(UINT8),1,stream);
+    switch(t) {
+    case 1:
+      fread(pal_col_bck_gb,sizeof(UINT32),8*4,stream);
+      fread(pal_col_obj_gb,sizeof(UINT32),8*4,stream);
+      fread(pal_col_bck,sizeof(UINT32),8*4,stream);
+      fread(pal_col_obj,sizeof(UINT32),8*4,stream);
+      fread(pal_bck,sizeof(UINT32),8,stream);
+      fread(pal_obj0,sizeof(UINT32),8,stream);
+      fread(pal_obj1,sizeof(UINT32),8,stream);
+      break;
+    default:return -1;
+    }
+  }
+  return 0;
+}
+
+void write_timer_info(FILE *stream) {
+  /* TIMER INFO is simply defined by id
+     - id=1 => clk_inc 1*UINT16
+     - id=2 => cycle 1*UINT32
+     size = 8
+   */
+
+  UINT8 t=TIMER_SECTION;
+  UINT16 size=8;
+
+  // SECTION + size
+  
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&size,sizeof(UINT16),1,stream);
+  
+  // clk_inc
+
+  t=1;
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&gbtimer->clk_inc,sizeof(UINT16),1,stream);
+
+  // cycle
+
+  t=2;
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&gbtimer->cycle,sizeof(UINT32),1,stream);
+}
+
+int read_timer_info(FILE *stream,int size) {
+  /* TIMER INFO is simply defined by id
+     - id=1 => clk_inc 1*UINT16
+     - id=2 => cycle 1*UINT32
+  */
+
+  long end=ftell(stream)+size;
+  UINT8 t;
+  
+  printf("read timer info\n");
+
+  while(ftell(stream)!=end) {
+    fread(&t,sizeof(UINT8),1,stream);
+    switch(t) {
+    case 1:
+      fread(&gbtimer->clk_inc,sizeof(UINT16),1,stream);
+      break;
+    case 2:
+      fread(&gbtimer->cycle,sizeof(UINT32),1,stream);
+      break;
+    default:return -1;
+    }
+  }
+ return 0;
+}
+
+void write_dma_info(FILE *stream) {
+  /* DMA INFO is simply defined by id
+     - id=1 => type  1*UINT8
+     - id=2 => src,dest,lg 3*UINT16
+     size = 9
+   */
+
+  UINT8 t=DMA_SECTION;
+  UINT16 size=9;
+
+  // SECTION + size
+  
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&size,sizeof(UINT16),1,stream);
+
+  // type
+
+  t=1;
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&dma_info.type,sizeof(UINT8),1,stream);
+
+  // src,dest,lg
+  
+  t=2;
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&dma_info.src,sizeof(UINT16),1,stream);
+  fwrite(&dma_info.dest,sizeof(UINT16),1,stream);
+  fwrite(&dma_info.lg,sizeof(UINT16),1,stream);
+
+}
+
+int read_dma_info(FILE *stream,int size) {
+  /* DMA INFO is simply defined by id
+     - id=1 => type  1*UINT8
+     - id=2 => src,dest,lg 3*UINT16
+     
+  */
+
+  long end=ftell(stream)+size;
+  UINT8 t;
+  
+  printf("read dma info\n");
+
+  while(ftell(stream)!=end) {
+    fread(&t,sizeof(UINT8),1,stream);
+    switch(t) {
+    case 1:
+      fread(&dma_info.type,sizeof(UINT8),1,stream);
+      break;
+    case 2:
+      fread(&dma_info.src,sizeof(UINT16),1,stream);
+      fread(&dma_info.dest,sizeof(UINT16),1,stream);
+      fread(&dma_info.lg,sizeof(UINT16),1,stream);
+      break;
+    default:return -1;
+    }
+  }
   return 0;
 }
 
@@ -504,7 +629,7 @@ int save_state(int n) {
     return 1;
   }
 
-  /* We write all ram vram wram page oam and himem */
+  /* We write all the bank and the active page */
 
   for(i=0;i<nb_ram_page;i++)
     fwrite(ram_page[i],sizeof(UINT8),0x2000,stream);
@@ -526,23 +651,11 @@ int save_state(int n) {
   /* now we write a couple of (section id,size) */
   
   write_cpu_info(stream);
-  /*write_lcdc_info(stream);
-    write_pal_info(stream);
-    write_timer_info(stream);*/
+  write_lcdc_info(stream);
+  write_pal_info(stream);
+  write_timer_info(stream);
+  write_dma_info(stream);
 
-  /*
-    fwrite(gbcpu,sizeof(GB_CPU),1,stream);
-    fwrite(gblcdc,sizeof(GBLCDC),1,stream);
-    
-    fwrite(pal_col_bck_gb,sizeof(UINT32),8*4,stream);
-    fwrite(pal_col_obj_gb,sizeof(UINT32),8*4,stream);
-    fwrite(pal_col_bck,sizeof(UINT32),8*4,stream);
-    fwrite(pal_col_obj,sizeof(UINT32),8*4,stream);
-    fwrite(pal_bck,sizeof(UINT32),8,stream);
-    fwrite(pal_obj0,sizeof(UINT32),8,stream);
-    fwrite(pal_obj1,sizeof(UINT32),8,stream);
-  */
-  
   fclose(stream);
   return 0;
 }
@@ -572,12 +685,16 @@ int load_state(int n) {
   end=ftell(stream);
   fseek(stream,0,SEEK_SET);
 
+  /* we read all the bank and the active page */
+
+  printf("read page \n");
+
   for(i=0;i<nb_ram_page;i++)
     fread(ram_page[i],sizeof(UINT8),0x2000,stream);
-
+  
   for(i=0;i<nb_vram_page;i++)
     fread(vram_page[i],sizeof(UINT8),0x2000,stream);
-
+  
   for(i=0;i<nb_wram_page;i++)
     fread(wram_page[i],sizeof(UINT8),0x1000,stream);
 
@@ -595,35 +712,35 @@ int load_state(int n) {
 
     fread(&section_id,sizeof(UINT8),1,stream);
     fread(&size,sizeof(UINT16),1,stream);
-    printf("section %d size %d \n",section_id,size);
+    //    printf("section %d size %d \n",section_id,size);
     switch(section_id) {
     case CPU_SECTION:
-      if (read_cpu_info(stream,size)<0) {
-	fclose(stream);
-	printf("Error while reading file %s \n",dir);
-	return -1;
-      }
+      if (read_cpu_info(stream,size)<0) goto read_error;
+      break;
+    case LCDC_SECTION:
+      if (read_lcdc_info(stream,size)<0) goto read_error;
+      break;
+    case PAL_SECTION:
+      if (read_pal_info(stream,size)<0) goto read_error;
+      break;
+    case TIMER_SECTION:
+      if (read_timer_info(stream,size)<0) goto read_error;
+      break;
+    case DMA_SECTION:
+      if (read_dma_info(stream,size)<0) goto read_error;
       break;
     }
   }
-	
-
-  /*
-    // Section 
-    fread(gbcpu,sizeof(GB_CPU),1,stream);
-    fread(gblcdc,sizeof(GBLCDC),1,stream);
-    // Read Pal
-    fread(pal_col_bck_gb,sizeof(UINT32),8*4,stream);
-    fread(pal_col_obj_gb,sizeof(UINT32),8*4,stream);
-    fread(pal_col_bck,sizeof(UINT32),8*4,stream);
-    fread(pal_col_obj,sizeof(UINT32),8*4,stream);
-    fread(pal_bck,sizeof(UINT32),8,stream);
-    fread(pal_obj0,sizeof(UINT32),8,stream);
-    fread(pal_obj1,sizeof(UINT32),8,stream);
-  */
-
+  
   fclose(stream);
+  if (conf.sound) 
+    update_sound_reg();
   return 0;
+
+ read_error:  
+  fclose(stream);
+  printf("Error while reading file %s \n",dir);
+  return -1;
 }
 
 

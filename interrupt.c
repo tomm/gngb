@@ -35,7 +35,7 @@ UINT16 tb_hblank_cycle[2][11]={{204,190,178,166,154,140,130,114,104,90,78},
                                {408,348,356,332,308,280,260,228,208,180,156}};
 
 UINT32 nb_cycle=0;
-UINT16 timer_clk_inc=0;   // nb_cycle when inc timer
+UINT8 int_todo=0;
 
 UINT32 get_nb_cycle(void)
 {
@@ -55,9 +55,18 @@ void gblcdc_init(void) {
   gblcdc->mode1cycle=456;
   gblcdc->mode2cycle=82;
 
-  gblcdc->cycle_todo=gblcdc->mode2cycle;
+  gblcdc->cycle=gblcdc->mode2cycle;
   gblcdc->mode=OAM_PER;
 }
+
+void gbtimer_init(void) {
+  
+  gbtimer=(GBTIMER *)malloc(sizeof(GBTIMER));
+  
+  gbtimer->clk_inc=0;
+  gbtimer->cycle=0;
+}
+
 
 void go2double_speed(void)
 {
@@ -84,19 +93,30 @@ inline void set_interrupt(UINT8 n) {
 
   old=INT_FLAG;
   INT_FLAG|=n;
+   
+#ifdef DEBUG
+  if (active_log)
+    put_log("set int %d CURLINE %02x CMPLINE %02x INT_ENABLE %02x\n",
+	    n,CURLINE,CMP_LINE,INT_ENABLE);
+#endif
 
   if (((old&n)^(INT_FLAG&n)) && (INT_FLAG&INT_ENABLE)) {
     if (gbcpu->state==HALT_STATE) {
+#ifdef DEBUG
+      if (active_log)
+	put_log("stop halt\n");
+#endif
       gbcpu->state=0;
       gbcpu->pc.w++;
-    }
+    } 
   }
 }
 
 inline UINT8 make_interrupt(UINT8 n) {
   if ((INT_ENABLE&n) && (gbcpu->int_flag)) {
 #ifdef DEBUG
-    put_log("make int %d CURLINE %d CMP_LINE %d INT_ENABLE %02x \n",n,CURLINE,CMP_LINE,INT_ENABLE);
+    if (active_log)
+      put_log("make int %d CURLINE %02x CMP_LINE %02x INT_ENABLE %02x \n",n,CURLINE,CMP_LINE,INT_ENABLE);
 #endif
     INT_FLAG&=(~n);
     gbcpu->int_flag=0;
@@ -106,13 +126,28 @@ inline UINT8 make_interrupt(UINT8 n) {
     case LCDC_INT:gbcpu->pc.w=0x0048;break;
     case TIMEOWFL_INT:gbcpu->pc.w=0x0050;break;
     case SERIAL_INT:gbcpu->pc.w=0x0058;break;
-    }   
+    }  
+    /* FIXME i'm not sure is necessary */
+    /*if (gbcpu->state==HALT_STATE) {
+      #ifdef DEBUG
+      if (active_log)
+      put_log("stop halt\n");
+      #endif
+      gbcpu->state=0;
+      gbcpu->pc.w++;
+      } */
     return 1;
   }
   return 0;
 }
 
-inline UINT16 lcdc_update(void)  // LCDC is on
+UINT8 request_interrupt(UINT8 n) {
+  if ((INT_ENABLE&n) && (gbcpu->int_flag)) 
+    return 1;
+  return 0;
+}
+
+inline UINT16 gblcdc_update(void)  // LCDC is on
 {
   UINT16 ret=0;
   static UINT8 inc_line;
@@ -120,28 +155,26 @@ inline UINT16 lcdc_update(void)  // LCDC is on
  
   if (inc_line) CURLINE++;
   
-  if (CURLINE==0x90) {
-    gblcdc->mode=VBLANK_PER;
-    if (CMP_LINE==CURLINE) LCDCSTAT|=0x04;
-    if ((LCDCCONT&0x80 && LCDCSTAT&0x10) || 
-	(LCDCSTAT&0x40 && LCDCSTAT&0x04 && LCDCCONT&0x80)) set_interrupt(LCDC_INT);
-    if (LCDCCONT&0x80) set_interrupt(VBLANK_INT); 
+  if (CURLINE==0x90 && gblcdc->mode==OAM_PER) {
+    /*gblcdc->mode=VBLANK_PER;
+      if (CMP_LINE==CURLINE) LCDCSTAT|=0x04;
+      if ((LCDCCONT&0x80 && LCDCSTAT&0x10) || 
+      (LCDCSTAT&0x40 && LCDCSTAT&0x04 && LCDCCONT&0x80)) set_interrupt(LCDC_INT);
+      if (LCDCCONT&0x80) set_interrupt(VBLANK_INT); */
+    gblcdc->mode=LINE_90_BEGIN;
   }
 
-  /* normally it is 0x9a (I think) but with 0x9b addamsfamily work */
   if (CURLINE==0x9a) {   
     CURLINE=0;
-    if (LCDCCONT&0x80) {
-     if (conf.autofs) {
+    if (conf.autofs) {
        skip_this_frame=skip_next_frame;
        skip_next_frame=barath_skip_next_frame(0);
        //skip_next_frame=frame_skip(0);
        if (!skip_this_frame) blit_screen();
      }
      else blit_screen();
-    }
-    //    printf("%d \n",get_nb_cycle());
     gblcdc->mode=OAM_PER;
+    //gblcdc->mode=END_VBLANK_PER;
   }
 
   LCDCSTAT&=0xf8;
@@ -149,29 +182,44 @@ inline UINT16 lcdc_update(void)  // LCDC is on
 
   switch(gblcdc->mode) {
   case HBLANK_PER:       // HBLANK
-    if (LCDCSTAT&0x08 && LCDCCONT&0x80) set_interrupt(LCDC_INT);
-    if (LCDCCONT&0x80) {
-      if (conf.autofs) {
+    if (LCDCSTAT&0x08) set_interrupt(LCDC_INT);
+    if (conf.autofs) {
 	if (!skip_next_frame) draw_screen();
       }
-      else draw_screen();
-    }
+    else draw_screen();
     ret=tb_hblank_cycle[gbcpu->mode][nb_spr];
     gblcdc->mode=OAM_PER;
     if (dma_info.type==HDMA) do_hdma();
-    /*else*/ inc_line=1;
+    inc_line=1;
+    break;
+  case LINE_90_BEGIN:
+    inc_line=0;
+    ret=24;
+    LCDCSTAT|=0x01;
+    if ((LCDCSTAT&0x10) || 
+	(LCDCSTAT&0x40 && LCDCSTAT&0x04 )) set_interrupt(LCDC_INT);
+    gblcdc->mode=LINE_90_END;
+    break;
+  case LINE_90_END:
+    inc_line=1;
+    ret=gblcdc->mode1cycle-24;
+    LCDCSTAT|=0x01;
+    gblcdc->mode=VBLANK_PER;
+    //    if (CMP_LINE==CURLINE) LCDCSTAT|=0x04;
+    /*if ((LCDCSTAT&0x10) || 
+      (LCDCSTAT&0x40 && LCDCSTAT&0x04 )) set_interrupt(LCDC_INT);*/
+    set_interrupt(VBLANK_INT);
     break;
   case VBLANK_PER:       // VBLANK
     LCDCSTAT|=0x01;
     ret=gblcdc->mode1cycle;
     inc_line=1;
-    //if (dma_info.type==GDMA_STAND) do_gdma();
     break;
   case OAM_PER:       // OAM 
     LCDCSTAT|=0x02;
     inc_line=0;
-    if (LCDCSTAT&0x20 && LCDCCONT&0x80) set_interrupt(LCDC_INT);
-    if (LCDCSTAT&0x40 && LCDCSTAT&0x04 && LCDCCONT&0x80) set_interrupt(LCDC_INT);  
+    if (LCDCSTAT&0x20) set_interrupt(LCDC_INT);
+    if (LCDCSTAT&0x40 && LCDCSTAT&0x04/* && request_interrupt(LCDC_INT)*/) set_interrupt(LCDC_INT);  
     ret=gblcdc->mode2cycle;
     gblcdc->mode=VRAM_PER;
     nb_spr=get_nb_spr();   
@@ -185,7 +233,7 @@ inline UINT16 lcdc_update(void)  // LCDC is on
   return ret;
 }
 
-inline void timer_update(void)
+inline void gbtimer_update(void)
 {
   INT16 t=TIME_COUNTER+1;  //timer_inc;
   if (t>0xff) {
@@ -200,7 +248,15 @@ inline void halt_update(void) // gbcpu->state=HALT_STATE
     gbcpu->state=0;
     gbcpu->pc.w++;
 #ifdef DEBUG
-    put_log("stop halt\n");
+    if (active_log)
+      put_log("stop halt\n");
 #endif
   }
 }
+
+
+
+
+
+
+

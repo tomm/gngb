@@ -1,10 +1,22 @@
 WHAT'S NEW?
 
+ * Fix EI instruction -> doesn't take effect imediately (bubble91 work)
+ * Fix vblank interrupt -> doesn't take effect imediately :) (addams family work) 
+ * toggle fullscreen by F9
+ * add save/load state (but still experimantale) : 
+	shift F(1-8) for save 
+	F(1-8) for load
+ * add a opengl mode: -o or -O WxH
+
+
+20010305
+
  * Fix a gb_pad bug, when pad is off return 0xff ( BMBERMAN work)
  * Fix a bug interrupt, update interrupt when write to CMPLINE (Mickey racing work)
 	
 	
 20010219
+
  * Length conter of sound mode 3 wasn't working
  * Timer cycle speed is the same for GB and GBC
  * "Simulation" of the Rumble, -r for enable it (The screen will shake)

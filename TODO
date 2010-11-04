@@ -2,3 +2,5 @@ Improve compatibility
 Fix some random crash
 Configuration
 Optimisation
+Add serial support
+Fix some interrupt bug

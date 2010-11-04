@@ -26,7 +26,9 @@
 #define VBLANK_PER 1
 #define OAM_PER 2
 #define VRAM_PER 3
-#define BEGIN_VBLANK_PER 4
+#define END_VBLANK_PER 4
+#define LINE_90_BEGIN 5
+#define LINE_90_END 6
 
 #define NO_INT 0
 #define VBLANK_INT 0x01
@@ -34,11 +36,10 @@
 #define TIMEOWFL_INT 0x04
 #define SERIAL_INT 0x08
 
-extern UINT16 timer_clk_inc;
 extern UINT32 nb_cycle;
 
 typedef struct {
-  INT16 cycle_todo;
+  INT16 cycle;
   UINT8 mode;
   
   UINT32 vblank_cycle;
@@ -50,9 +51,22 @@ typedef struct {
 
 GBLCDC *gblcdc;
 
+typedef struct {
+
+  UINT16 clk_inc;
+  UINT32 cycle;
+
+}GBTIMER;
+
+GBTIMER *gbtimer;
+
 UINT8 skip_next_frame;
 
+INT8 int_delay;
+extern UINT8 int_todo;
+
 void gblcdc_init(void);
+void gbtimer_init(void);
 
 void go2double_speed(void);
 void go2simple_speed(void);
@@ -61,9 +75,10 @@ UINT32 get_nb_cycle(void);
 
 void set_interrupt(UINT8 n);
 UINT8 make_interrupt(UINT8 n);
-UINT16 lcdc_update(void);
-UINT16 lcdc_update_off(void);
-void timer_update(void);
+UINT8 request_interrupt(UINT8 n);
+
+UINT16 gblcdc_update(void);
+void gbtimer_update(void);
 void halt_update(void); 
 
 #endif

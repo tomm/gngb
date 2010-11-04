@@ -91,7 +91,7 @@ inline void pop_r(REG *r)
 #define PUSH_R(r) (push_r(&r))
 #define POP_R(r) (pop_r(&r))
 
-#define EI (gbcpu->int_flag=1)
+#define EI (gbcpu->ei_flag=1)
 #define DI (gbcpu->int_flag=0)
 
 inline UINT8 unknown(void);
@@ -616,6 +616,7 @@ void gbcpu_init(void)
   gbcpu->mode=-1;
   gbcpu->state=0;
   gbcpu->int_flag=1;
+  gbcpu->ei_flag=0;
   gbcpu->mode=SIMPLE_SPEED;
 }
 
@@ -1340,6 +1341,10 @@ inline UINT8 ld_mem_hl_l(void){
 
 inline UINT8 halt(void){
   if (gbcpu->int_flag) {
+#ifdef DEBUG
+    if (active_log)
+      put_log("set halt \n");
+#endif
     gbcpu->state=HALT_STATE;
     gbcpu->pc.w--;
   } /*else {
@@ -2192,7 +2197,8 @@ inline UINT8 ret_c(void){
 
 inline UINT8 reti(void){
 #ifdef DEBUG
-  put_log("RETI\n");
+  if (active_log)
+    put_log("RETI\n");
 #endif 
   POP_R(REG_PC);
   EI;
@@ -2325,6 +2331,10 @@ inline UINT8 ld_a_mem_c(void){
 }
 
 inline UINT8 di(void){
+#ifdef DEBUG
+  if (active_log) 
+    put_log("DI\n");
+#endif
   DI;
   SUB_CYCLE(4);
 }
@@ -2371,7 +2381,8 @@ inline UINT8 ld_a_mem_nn(void){
 
 inline UINT8 ei(void){
 #ifdef DEBUG
-  put_log("EI\n");
+  if (active_log)
+    put_log("EI\n");
 #endif
   EI;
   SUB_CYCLE(4);
@@ -4012,6 +4023,10 @@ inline UINT8 cb_inst(void){
 
 inline UINT8 gbcpu_exec_one(void)
 {
+  if (gbcpu->ei_flag) {
+    gbcpu->int_flag=1;
+    gbcpu->ei_flag=0;
+  }
   switch(mem_read(PC++)) {
   case 0x00: return nop();
   case 0x01: return ld_bc_nn();
@@ -4276,12 +4291,13 @@ inline UINT8 gbcpu_exec_one(void)
 inline void update_gb(void) {
   static UINT8 a;
   static UINT32 divid_cycle;
-  static UINT32 timer_cycle;
   static UINT32 key_cycle;
-  static INT16 serial_cycle;
+  //static INT16 serial_cycle;
   int v=0;
 
+#ifndef DEBUG
   while(!conf.gb_done) {
+#endif
     v=0;
 
     if (gbcpu->state!=HALT_STATE) a=gbcpu_exec_one();
@@ -4296,16 +4312,16 @@ inline void update_gb(void) {
     }
     
     if (LCDCCONT&0x80) {
-      gblcdc->cycle_todo-=a;
-      if (gblcdc->cycle_todo<=0) gblcdc->cycle_todo+=(lcdc_update());
+      gblcdc->cycle-=a;
+      if (gblcdc->cycle<=0) gblcdc->cycle+=(gblcdc_update());
       //else gblcdc->cycle_todo-=a;
     }// else gblcdc->cycle_todo=0;
         
     if (TIME_CONTROL&0x04) {
-      timer_cycle+=a;
-      if (timer_cycle>=timer_clk_inc) {
-	timer_update();
-	timer_cycle-=timer_clk_inc;
+      gbtimer->cycle+=a;
+      if (gbtimer->cycle>=gbtimer->clk_inc) {
+	gbtimer_update();
+	gbtimer->cycle-=gbtimer->clk_inc;
       }
     }
     
@@ -4320,82 +4336,23 @@ inline void update_gb(void) {
 	set_interrupt(SERIAL_INT);
       }
     } //else serial_cycle-=a;
-        
+
+    //if (gbcpu->state==HALT_STATE) halt_update();
+    
     if (INT_FLAG&VBLANK_INT)  v=make_interrupt(VBLANK_INT);
     if (INT_FLAG&LCDC_INT && !v) v=make_interrupt(LCDC_INT);
     if (INT_FLAG&TIMEOWFL_INT && !v) v=make_interrupt(TIMEOWFL_INT);  
-    if (INT_FLAG&SERIAL_INT && !v) v=make_interrupt(SERIAL_INT); 
+    //if (INT_FLAG&SERIAL_INT && !v) v=make_interrupt(SERIAL_INT); 
 
     key_cycle+=a;
     if (key_cycle>=gblcdc->vblank_cycle) {
       update_key();
       key_cycle=0;
     }
+#ifndef DEBUG
   }
-}
-
-#ifdef DEBUG
-inline void update_gb_one(void) {
-  static UINT8 a;
-  static UINT32 divid_cycle;
-  static UINT32 timer_cycle;
-  static UINT32 key_cycle;
-  int v=0;
-
-  v=0;
-    
-    if (gbcpu->state!=HALT_STATE) a=gbcpu_exec_one();
-    else a=4;
-    
-    nb_cycle+=a;
-    divid_cycle+=a;
-    
-    if (divid_cycle>256) {
-      DIVID++;
-      divid_cycle=0;
-    }
-    
-    if (LCDCCONT&0x80) {
-      gblcdc->cycle_todo-=a;
-      if (gblcdc->cycle_todo<=0) gblcdc->cycle_todo+=(lcdc_update());
-      //else gblcdc->cycle_todo-=a;
-    }// else gblcdc->cycle_todo=0;
-        
-    if (TIME_CONTROL&0x04) {
-      timer_cycle+=a;
-      if (timer_cycle>=timer_clk_inc) {
-	timer_update();
-	timer_cycle-=timer_clk_inc;
-      }
-    }
-    
-    /* FIXME: serial is experimentale */
-    if (conf.serial_on/* && serial_cycle<0*/) {
-      int n;
-      //      serial_cycle=1024;
-      if ((n=recept_byte())>=0) {
-	if (!(SC&0x01)) send_byte(SB);
-	SB=(UINT8)n;
-	SC&=0x7f;
-	set_interrupt(SERIAL_INT);
-      }
-    } //else serial_cycle-=a;
-    
-        
-    if (INT_FLAG&VBLANK_INT) v=make_interrupt(VBLANK_INT);
-    else if (INT_FLAG&LCDC_INT && !v) v=make_interrupt(LCDC_INT);
-    else if (INT_FLAG&TIMEOWFL_INT && !v) v=make_interrupt(TIMEOWFL_INT);  
-    else if (INT_FLAG&SERIAL_INT && !v) v=make_interrupt(SERIAL_INT); 
-
-    key_cycle+=a;
-    if (key_cycle>=gblcdc->vblank_cycle) {
-      update_key();
-      key_cycle=0;
-    } 
-}
-
-
 #endif
+}
 
 #undef REG_AF
 #undef REG_BC

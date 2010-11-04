@@ -49,8 +49,6 @@ extern UINT8 gameboy_type;
 int open_rom(char *filename);
 int save_ram(void);
 int load_ram(void);
-int save_snap(void);
-int load_snap(void);
 
 int save_state(int n);
 int load_state(int n);

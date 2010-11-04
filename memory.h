@@ -32,6 +32,8 @@ typedef struct {
   UINT8 serial_on;
   UINT8 gb_done;
   UINT8 joy_no;
+  UINT8 gl;
+  int gl_w,gl_h;
 }GNGB_CONF;
 
 GNGB_CONF conf;
@@ -135,7 +137,7 @@ extern UINT8 ram_mask;
 UINT8 **alloc_mem_page(UINT16 nb_page,UINT32 size);
 void free_mem_page(UINT8 **page,UINT16 nb_page);
 
-void init_gb_memory(int nb_axe);
+void gbmemory_init(void);
 inline UINT8 mem_read(UINT16 adr);
 inline void mem_write(UINT16 adr,UINT8 v);
 inline UINT8 mem_read_ff(UINT16 adr);
@@ -146,6 +148,8 @@ void push_stack_word(UINT16 v);
 inline void do_gdma(void);
 inline void do_hdma(void);
 
+inline void update_key(void);
+
 #define NO_DMA 0
 #define SPRITE_DMA 1
 #define HDMA 2
@@ -155,10 +159,8 @@ inline void do_hdma(void);
 
 typedef struct {
   UINT8 type;
-  UINT8 v;
   UINT16 src,dest;
-  UINT32 lg;
-  INT32 clk;
+  UINT16 lg;
 }DMA_INFO;
 
 extern DMA_INFO dma_info;
@@ -174,13 +176,8 @@ extern DMA_INFO dma_info;
 
 extern UINT8 gb_pad_code[8];
 extern UINT8 key[256];
-SDL_Joystick *joy;
 
 UINT8 gb_pad;
-
-void update_gb_pad(void);
-
-inline void update_key(void);
 
 #endif
 

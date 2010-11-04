@@ -33,12 +33,10 @@
 #include "debuger/log.h"
 #endif
 
-INT32 *joy_axis;
-UINT32 joy_but=0;
-UINT8 joy_num_axe=0;
-
 UINT8 key[256];
 UINT8 gb_pad_code[8]={98,104,100,102,53,52,36,62};
+
+SDL_Joystick *joy=NULL;
 
 UINT8 rom_mask;
 UINT16 nb_rom_page;
@@ -93,35 +91,26 @@ void select_default(UINT16 adr,UINT8 v)
 
 void mbc1_select_page(UINT16 adr,UINT8 v)
 {
-  UINT8 bank=v&0x1f;
+  UINT8 bank=v;//&rom_mask;
   if (bank<1) bank=1;
   active_rom_page=bank;
-#ifdef DEBUG
-  put_log2("mbc1 select page %d\n",active_rom_page);
-#endif
 }
 
 void mbc2_select_page(UINT16 adr,UINT8 v)
 {
   UINT8 bank;
   if (adr==0x2100) {
-    bank=v&0x1f;
+    bank=v;//&rom_mask;
     if (bank<1) bank=1;
     active_rom_page=bank;
   }
-#ifdef DEBUG
-  put_log2("mbc2 select page %d\n",active_rom_page);
-#endif
 }
 
 void mbc3_select_page(UINT16 adr,UINT8 v)
 {
-  UINT8 bank=v&0x7f;
+  UINT8 bank=v;//rom_mask;
   if (bank<1) bank=1;
   active_rom_page=bank;
-#ifdef DEBUG
-  put_log2("mbc3 select page %d\n",active_rom_page);
-#endif
 }
 
 void mbc5_select_page(UINT16 adr,UINT8 v)
@@ -134,13 +123,10 @@ void mbc5_select_page(UINT16 adr,UINT8 v)
   }
   bank=mbc5_lower+((mbc5_upper)?256:0);
   active_rom_page=bank;//&rom_mask;
-#ifdef DEBUG
-  put_log2("mbc5 select page %d\n",active_rom_page);
-#endif
 }
      
 
-void init_gb_memory(int nb_axe)
+void gbmemory_init(void)
 {
   memset(key,0,256);
   memset(oam_space,0,0xa0);
@@ -149,13 +135,7 @@ void init_gb_memory(int nb_axe)
   NR52=0xF1;
 
   dma_info.type=NO_DMA;
-
-  /* to work */
-  if (nb_axe<2) nb_axe=2;
-  joy_axis=(INT32 *)malloc(sizeof(INT32)*nb_axe);
-  memset(joy_axis,0,sizeof(INT32)*nb_axe);
-  joy_num_axe=nb_axe;
-
+  
   if (rom_type&MBC1) select_rom_page=mbc1_select_page;
   else if (rom_type&MBC2) select_rom_page=mbc2_select_page;
   else if (rom_type&MBC3) select_rom_page=mbc3_select_page;
@@ -205,6 +185,7 @@ inline void do_hdma(void) {
   HDMA_CTRL4=(dma_info.dest&0xf0);
   
   HDMA_CTRL5--;
+  dma_info.lg-=16;
   if (HDMA_CTRL5==0xff) dma_info.type=NO_DMA;
 }
 
@@ -226,15 +207,20 @@ inline void hdma_request(UINT8 v)
 {
   /* FIXME : control are necesary ( i think ) */
   //if (LCDCCONT&0x80) {
-    dma_info.v=v;
-    /*dma_info.src=(HDMA_CTRL1<<8)|(HDMA_CTRL2&0xf0);
-    dma_info.dest=(HDMA_CTRL3<<8)|(HDMA_CTRL4&0xf0)|0x8000;*/
-    dma_info.src=((HDMA_CTRL1<<4)|(HDMA_CTRL2>>4))<<4;
-    dma_info.dest=((((HDMA_CTRL3&31)|0x80)<<4)|(HDMA_CTRL4>>4))<<4;
-    dma_info.lg=((v&0x7f)+1)<<4;
-    HDMA_CTRL5=v&0x7f;
-    dma_info.type=HDMA;
-    if ((LCDCSTAT&0x03)==0x00) do_hdma();
+
+  if (dma_info.type==HDMA) {
+    int i;
+    for(i=0;i<dma_info.lg;i++)
+    mem_write(dma_info.dest++,mem_read(dma_info.src++));
+  }
+
+  dma_info.src=((HDMA_CTRL1<<4)|(HDMA_CTRL2>>4))<<4;
+  dma_info.dest=((((HDMA_CTRL3&31)|0x80)<<4)|(HDMA_CTRL4>>4))<<4;
+  dma_info.lg=((v&0x7f)+1)<<4;
+  HDMA_CTRL5=v&0x7f;
+  dma_info.type=HDMA;
+  
+  if ((LCDCSTAT&0x03)==0x00) do_hdma();
     /*} else  {
       dma_info.v=v;
       dma_info.src=(HDMA_CTRL1<<8)|(HDMA_CTRL2&0xf0);
@@ -248,15 +234,14 @@ inline void hdma_request(UINT8 v)
 
 inline void gdma_request(UINT8 v)
 {
-  dma_info.v=v;
-  /*dma_info.src=(HDMA_CTRL1<<8)|(HDMA_CTRL2&0xf0);
-    dma_info.dest=(HDMA_CTRL3<<8)|(HDMA_CTRL4&0xf0)|0x8000;*/
+
   dma_info.src=((HDMA_CTRL1<<4)|(HDMA_CTRL2>>4))<<4;
   dma_info.dest=((((HDMA_CTRL3&31)|0x80)<<4)|(HDMA_CTRL4>>4))<<4;
   dma_info.lg=((v&0x7f)+1)<<4;
 
   /* FIXME : control are necesary ( i think ) */
   //  if ((!(LCDCCONT&0x80))  || ((LCDCSTAT&0x01)==0x01)) {
+  //printf("gdma\n");
   do_gdma();
   /*} else {
     dma_info.type=NO_DMA;*/   
@@ -303,7 +288,7 @@ inline UINT8 mem_read_ff(UINT16 adr)
 {
   if (adr==0xff00) {
     if (GB_PAD==0xff) return 0xff;
-     update_gb_pad();
+    //update_gb_pad();
     if (GB_PAD&0x10) GB_PAD=((~(gb_pad&0x0f))&0xdf);
     else if (GB_PAD&0x20) GB_PAD=((~(gb_pad>>4))&0xef);
     return GB_PAD;
@@ -369,6 +354,7 @@ inline void write2lcdccont(UINT8 v)
     LCDCSTAT=(LCDCSTAT&0xfc);
     CURLINE=0;
     dma_info.type=NO_DMA;
+    gblcdc->cycle=0;
     HDMA_CTRL5=0xff;
   }
   
@@ -380,10 +366,24 @@ inline void write2lcdccont(UINT8 v)
       }*/
     gblcdc->mode=OAM_PER;
     LCDCSTAT=(LCDCSTAT&0xfc)|0x02;
-    gblcdc->cycle_todo=gblcdc->mode2cycle;
+    gblcdc->cycle=gblcdc->mode2cycle;
     CURLINE=0;
   }
   LCDCCONT=v;
+}
+
+inline void update_gb_pad(void) {
+  gb_pad=0;
+  
+  if ((SDL_JoystickGetButton(joy,0)) || (key[gb_pad_code[PAD_START]])) gb_pad|=0x08;   // Start
+  if ((SDL_JoystickGetButton(joy,1)) || (key[gb_pad_code[PAD_SELECT]])) gb_pad|=0x04;  // Select
+  if ((SDL_JoystickGetButton(joy,3)) || (key[gb_pad_code[PAD_A]])) gb_pad|=0x01;     // A
+  if ((SDL_JoystickGetButton(joy,2)) || (key[gb_pad_code[PAD_B]])) gb_pad|=0x02; // B
+
+  if ((SDL_JoystickGetAxis(joy,0)<-1000) || (key[gb_pad_code[PAD_LEFT]])) gb_pad|=0x20;
+  if ((SDL_JoystickGetAxis(joy,0)>1000) || (key[gb_pad_code[PAD_RIGHT]])) gb_pad|=0x10;
+  if ((SDL_JoystickGetAxis(joy,1)<-1000) || (key[gb_pad_code[PAD_UP]])) gb_pad|=0x40;
+  if ((SDL_JoystickGetAxis(joy,1)>1000) || (key[gb_pad_code[PAD_DOWN]])) gb_pad|=0x80;
 }
 
 inline void mem_write_ff(UINT16 adr,UINT8 v) {
@@ -477,52 +477,78 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
   case 0xff00:
     if (v==0x30) GB_PAD=0xff;
     else GB_PAD=v;
+    update_gb_pad();
     break;
     /* EXPERIMENTAL */
   case 0xff01:
     SB=v;
     break;
   case 0xff02:
-    if (conf.serial_on) {
+    /*    if (conf.serial_on) {
       if ((v&0x81)==0x81) {
 	send_byte(SB);
 	//serial_cycle_todo=4096*2;
       } 
     } 
-    SC=v&0x7f;
+    SB=0xff;
+    SC=v&0x7f;*/
     break;
   case 0xff0f:
-#ifdef DEBUG
-    put_log("write to INT_FLAG %02x\n",v);
-#endif
     INT_FLAG=v&0x1f;
+#ifdef DEBUG
+    if (active_log)
+      put_log("write %02x to INT_FLAG %02x\n",v,INT_FLAG);
+#endif
     break;
   case 0xffff:
     INT_ENABLE=v&0x1f;
 #ifdef DEBUG
-    put_log("write %02x to INT_ENABLE %02x\n",v,INT_ENABLE);
+    if (active_log)
+      put_log("write %02x to INT_ENABLE %02x\n",v,INT_ENABLE);
 #endif
     break;
   case 0xff04:DIVID=0;break;
   case 0xff07:
     if (v&4) {
       switch(v&3) {
-      case 0: timer_clk_inc=1024;break;
-      case 1: timer_clk_inc=16;break;
-      case 2: timer_clk_inc=64;break;
-      case 3: timer_clk_inc=256;break;
+      case 0: gbtimer->clk_inc=1024;break;
+      case 1: gbtimer->clk_inc=16;break;
+      case 2: gbtimer->clk_inc=64;break;
+      case 3: gbtimer->clk_inc=256;break;
       }
-    } else timer_clk_inc=0;
+    } else gbtimer->clk_inc=0;
     TIME_CONTROL=v;
     break;
   case 0xff40:
     write2lcdccont(v);
+#ifdef DEBUG
+    if (active_log)
+      put_log("write %02x to LCDCCONT %02x\n",v,LCDCCONT);
+#endif   
     break;
   case 0xff41:LCDCSTAT=(LCDCSTAT&0x07)|(v&0xf8);
+#ifdef DEBUG
+    if (active_log)
+      put_log("write %02x to LCDCSTAT %02x\n",v,LCDCSTAT);
+#endif  
     break;
-  case 0xff44:CURLINE=0;
+  case 0xff44:
+    gblcdc->mode=OAM_PER;
+    LCDCSTAT=(LCDCSTAT&0xfc)|0x02;
+    gblcdc->cycle=gblcdc->mode2cycle;
+#ifdef DEBUG
+    if (active_log) {
+      v=CURLINE;
+      put_log("write to CURLINE %02x \n",v);
+    }
+#endif
+     CURLINE=0;
     break;
   case 0xff45:CMP_LINE=v;
+#ifdef DEBUG
+    if (active_log)
+      put_log("write %02x to CMPLINE %02x %02x\n",v,CMP_LINE,CURLINE);
+#endif   
     if (CMP_LINE==CURLINE)
       LCDCSTAT|=0x04;
     else 
@@ -564,8 +590,6 @@ inline void mem_write(UINT16 adr,UINT8 v)
 {
   UINT8 bk;
 
-  //  if (adr==0xc664) printf("%02x %d \n",INT_FLAG,v);
-  
   if (adr>=0xfe00 && adr<0xfea0) {
     oam_space[adr-0xfe00]=v;
     return;
@@ -598,9 +622,6 @@ inline void mem_write(UINT16 adr,UINT8 v)
     }
     else active_ram_page=(v)&ram_mask;
     if (rom_type&RUMBLE && conf.rumble_on && v&0x08) rb_on=1;
-#ifdef DEBUG
-    put_log2("select RAM page %d v %d \n",active_ram_page,v);
-#endif
     return;
   case 6:
   case 7:
@@ -618,20 +639,6 @@ inline void mem_write(UINT16 adr,UINT8 v)
   }
 }
 
-void update_gb_pad(void) {
-  gb_pad=0;
-  if ((joy_but&0x01) || (key[gb_pad_code[PAD_START]])) gb_pad|=0x08;   // Start
-  if ((joy_but&0x02) || (key[gb_pad_code[PAD_SELECT]])) gb_pad|=0x04;  // Select
-  if ((joy_but&0x08) || (key[gb_pad_code[PAD_A]])) gb_pad|=0x01;     // A
-  if ((joy_but&0x04) || (key[gb_pad_code[PAD_B]])) gb_pad|=0x02; // B
-
-  if ((joy_axis[0]<-1000) || (key[gb_pad_code[PAD_LEFT]])) gb_pad|=0x20;
-  if ((joy_axis[0]>1000) || (key[gb_pad_code[PAD_RIGHT]])) gb_pad|=0x10;
-  if ((joy_axis[1]<-1000) || (key[gb_pad_code[PAD_UP]])) gb_pad|=0x40;
-  if ((joy_axis[1]>1000) || (key[gb_pad_code[PAD_DOWN]])) gb_pad|=0x80;
-}
-
-
 inline void update_key(void) {
   SDL_Event event;
   while(SDL_PollEvent(&event)) {
@@ -643,25 +650,23 @@ inline void update_key(void) {
       key[event.key.keysym.scancode]=1;
       switch(event.key.keysym.scancode) {
       case 9: conf.gb_done=1;break;
-	/* FIXME : SaveSnap are experimental */
-      case 67:if (!save_state(1)) printf("save snap done\n");break;
-      case 68:if (!load_state(1)) printf("load snap done\n");break;
-      case 69:switch_fullscreen();break;
-      case 70:rb_on=1;break;
+      case 75:switch_fullscreen();break;  // F9 swicth fullscreen
+	/* FIXME : Save State are experimental */
+      case 67:
+      case 68:
+      case 69:
+      case 70:
+      case 71:
+      case 72:
+      case 73:
+      case 74:
+	if (event.key.keysym.mod==1) {
+	  if (!save_state(event.key.keysym.scancode-67)) 
+	    printf("save state %d done\n",event.key.keysym.scancode-67);
+	} else if (!load_state(event.key.keysym.scancode-67)) 
+	  printf("load state %d done\n",event.key.keysym.scancode-67);
+	break;
       }
-      break;
-    case SDL_JOYAXISMOTION:
-      if (event.jaxis.axis>=joy_num_axe) return;
-      joy_axis[event.jaxis.axis]=event.jaxis.value;
-      break;
-    case SDL_JOYBUTTONDOWN:
-      joy_but|=(1<<event.jbutton.button);
-      break;
-    case SDL_JOYBUTTONUP:
-      joy_but&=(~(1<<event.jbutton.button));
-      break;  
-    case SDL_QUIT:
-      conf.gb_done=1;
       break;
     default:
       break;

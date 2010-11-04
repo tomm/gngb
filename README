@@ -6,6 +6,8 @@ The 1.0 serie don't work, sorry.
 Installation :
 
 Just do make, it should work (I hope :)
+If you dont want opengl mode comment the line
+GL_MODE = 1 in the Makefile
 
 Use :
 
@@ -18,4 +20,18 @@ option:
 -j joy_num    : use joy_num as joystick 
 -s            : sound on
 -r            : rumble on
+-o            : opengl renderer
+-O WxH        : same as o, but with WxH resolution (instead of double size)
+
+
+Key :
+
+Enter          : Start
+Right Shift    : Select
+W              : B       (on azerty kerboard)
+X              : A    
+
+F9             : fullscreen on/off
+Shift + F(1-8) : save state (experimental)
+F(1-8)         : load state (experimental)
 

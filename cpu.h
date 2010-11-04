@@ -51,25 +51,21 @@ typedef struct {
   REG hl;
   REG sp;
   REG pc;
-  UINT8 int_flag;        // IME
+  UINT8 int_flag;        // IME 
+  UINT8 ei_flag;         
   UINT8 mode;
   UINT8 state;
 }GB_CPU;
 
 extern GB_CPU *gbcpu;
 
-typedef struct {
-	UINT8 id;
-	UINT8 (*inst)(void);
-}GB_INST;
-
-extern const GB_INST gb_inst_tb[];
-
 void gbcpu_init(void);  
-//UINT8 gbcpu_exec(UINT32 nb_cycle);
 inline UINT8 gbcpu_exec_one(void);
 inline void update_gb(void);
+#ifdef DEBUG
 inline void update_gb_one(void);
+#endif
+
 #endif
 
 	

@@ -64,22 +64,39 @@ float wave_duty[]={8,4,2,1.3333};
 
 /* retourne l'entier de l bit, debutant au bit d de v */
 // #define BITS(v,d,l) ((v>>(d-l+1))&(l*l-1))
+void update_sound_reg(void) {
+  int i;
+  for(i=0xff10;i<=0xFF3F;i++)
+    write_sound_reg(i,himem[i-0xFEA0]);
+}
 
-
+UINT32 clk;
 void write_sound_reg(UINT16 add,UINT8 val)
 {
   // UINT32 snd_len =(UINT32)((float)get_nb_cycle()*(sample_rate/59.73)
   //			   /((gbcpu->mode== DOUBLE_SPEED)?140448.0:70224.0));
-  UINT32 snd_len = (UINT32)((float)get_nb_cycle()*sample_rate/(float)((gbcpu->mode== DOUBLE_SPEED)?8388608.0:4194304.0));
-  static float samp;
+  //  static UINT32 clk;
+  UINT32 snd_len;
+  static float samp; 
+
+ clk=get_nb_cycle();
+  snd_len = (UINT32)((float)clk*sample_rate/(float)((gbcpu->mode== DOUBLE_SPEED)?8388608.0:4194304.0));
+  
+ 
   // printf("%d\n",snd_len);
-  if (snd_len) 
+  if (snd_len) {
     update_gb_sound(snd_len<<1);
+    // printf("%d\n",clk);
+    //clk=0;
+  }
+
+  himem[add-0xfea0]=val;
 
   if (add>=0xFF30 && add<=0xFF3F) { // Wave Pattern RAM
     if (!snd_m3.is_on) {
       snd_m3.wave[add-0xFF30]=val;
-      // printf("WaveRam Write %x\n",add-0xFF30);
+      /*      printf("%02x(%x),",val,add-0xFF30);
+	      if (add-0xFF30==0xf) printf("\n");*/
     }
     return;
   }
@@ -186,6 +203,7 @@ void write_sound_reg(UINT16 add,UINT8 val)
     /*--- Sound Mode 3 ---*/
   case 0xFF1A : // NR30
     snd_m3.is_on=(val&0x80)>>7;
+    //    printf("[%x]",snd_m3.is_on);
     //    printf("snd3 on:%d\n",snd_m3.is_on);
     break;
   case 0xFF1B : // NR31
@@ -578,10 +596,10 @@ inline INT8 update_snd_m3(void)
   }
 
   if (snd_m3.mode==1) { // on doit gerer la durée
-    // printf("Mode 1\n");
+    //    printf("Mode 1\n");
     lp++;
     if (lp>snd_m3.sample_len) {
-      //     snd_m3.is_on=0;
+      //    snd_m3.is_on=0;
       snd_g.Sound3_On_Off=0;
       sp=0;
       // lp=0;
@@ -619,7 +637,7 @@ inline INT8 update_snd_m3(void)
   else
     val=(snd_m3.wave[sp>>1]&0xF0)>>4;
   
-
+  //  printf("|%02x|",sp>>1);
 
   /*  val -=8;
   if (snd_m3.level) val <<= (3 - snd_m3.level);
@@ -884,8 +902,11 @@ void update_stream(void *userdata,UINT8 *stream,int snd_len)
 
   /* update tous les buffer dans playbuf*/
 
-  if (snd_len-(lastpos<<1)>0)
-     update_gb_sound(snd_len-(lastpos<<1));
+  if (snd_len-(lastpos<<1)>0) {
+    // printf("HOHO\n");
+    update_gb_sound(snd_len-(lastpos<<1));
+    // clk=0;
+  }
   get_nb_cycle();
 
 #ifdef LOG_SOUND
@@ -903,7 +924,7 @@ void update_stream(void *userdata,UINT8 *stream,int snd_len)
 }
 
 
-int init_sound(void)
+int gbsound_init(void)
 {
   SDL_AudioSpec desired;
 #ifdef LOG_SOUND
@@ -931,6 +952,7 @@ int init_sound(void)
 
   SDL_PauseAudio(0);
   SDL_Delay(1000); // Pour pemetre au thread audio de ce lancer
+  update_sound_reg();
   return 0;
 }
 

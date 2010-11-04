@@ -33,6 +33,8 @@
 
 UINT32 fullscr=0;
 
+extern SDL_Joystick *joy;
+
 void exit_gngb(void)
 {
   if (rom_page) free_mem_page(rom_page,nb_rom_page);
@@ -59,6 +61,8 @@ void print_help(void) {
   printf("-j joy_num   : use joy_num as joystick\n");
   printf("-s           : sound on\n");
   printf("-r           : rumble on\n");
+  printf("-o           : opengl renderer\n");
+  printf("-O WxH       : same as o, but with WxH resolution (instead of double size)\n");
   exit_gngb();
 }
   
@@ -75,7 +79,7 @@ void check_option(int argc,char *argv[])
   conf.fs=0;
   conf.gb_done=0;
   conf.rumble_on=0;
-  while((c=getopt(argc,argv,"c:lrghasfj:"))!=EOF) {
+  while((c=getopt(argc,argv,"c:lrghasfj:O:o"))!=EOF) {
     switch(c) {
     case 'g':conf.normal_gb=1;break;
     case 'a':conf.autofs=1;break;
@@ -86,6 +90,18 @@ void check_option(int argc,char *argv[])
     case 'l':conf.serial_on=1;gbserial_init(1,NULL);break;
     case 'c':conf.serial_on=1;gbserial_init(0,optarg);break;
     case 'h':print_help();break;
+#ifdef SDL_GL
+    case 'O':
+   	sscanf(optarg,"%dx%d",&conf.gl_w,&conf.gl_h);
+	conf.gl=1;fullscr|=SDL_OPENGL;break;
+    case 'o' :
+      conf.gl_w=160*2;
+      conf.gl_h=144*2;
+      conf.gl=1;fullscr|=SDL_OPENGL;break;
+#else
+    case 'o':
+    case 'O':printf("Opengl mode not conpiled in\n");break; 
+#endif
     }
   }
 }
@@ -103,8 +119,10 @@ int main(int argc,char *argv[])
   }
 
   gblcdc_init();
+  gbtimer_init();
   gbcpu_init();
   init_vram(fullscr);
+  gbmemory_init();
 
   if(SDL_NumJoysticks()>0){
     joy=SDL_JoystickOpen(conf.joy_no);
@@ -116,8 +134,7 @@ int main(int argc,char *argv[])
     }
   }
 
-  init_gb_memory(SDL_JoystickNumAxes(joy));
-  if (conf.sound) init_sound();
+  if (conf.sound) gbsound_init();
 
   while(!conf.gb_done) {
     update_gb();

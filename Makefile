@@ -15,6 +15,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
+GL_MODE = 1
+
 CC = gcc
 INCDIRS = -I. -I/usr/include 
 LIBDIRS =  -L/usr/X11R6/lib 
@@ -24,15 +26,17 @@ OPT = -O3  -mpentiumpro  -Wno-unused -funroll-loops -fstrength-reduce -ffast-mat
 OBJ = memory.o vram.o interrupt.o  cpu.o rom.o sound.o serial.o frame_skip.o main.o 
 DOBJ = debuger/memory.o debuger/vram.o debuger/interrupt.o debuger/cpu.o debuger/rom.o debuger/sound.o debuger/serial.o debuger/frame_skip.o debuger/log.o debuger/debuger.o
 
-CFLAGS = $(OPT) -D_REENTRANT
-LIBS = -lSDL -lpthread  
+ifdef GL_MODE
+CFLAGS = $(OPT) -D_REENTRANT -DSDL_GL
+LIBS = -lSDL -lpthread -lGL
+else
+CFLAGS = $(OPT) -D_REENTRANT 
+LIBS = -lSDL -lpthread 
+endif
 
 all : gngb
 
 # GNGB
-
-debuger/%.o : %.c
-	$(CC) -c $(CFLAGS) -DDEBUG $(INCDIRS)  $< -o $@
 
 %.o : %.c
 	$(CC) -c $(CFLAGS) $(INCDIRS)  $< -o $@
@@ -47,31 +51,12 @@ serial.c : serial.h
 frame_skip.c : frame_skip.h  
 main.c : rom.h memory.h cpu.h vram.h interrupt.h sound.h 
 
-# DEBUGER
-
-debuger/debuger.o : debuger/debuger.c debuger/debuger.h 
-	$(CC) -c  `glib-config --cflags glib` `libglade-config --cflags gtk` $(CFLAGS) -DDEBUG debuger/debuger.c -o  debuger/debuger.o
-
-#log.o : log.c log.h
-#	$( CC ) -c $( CFLAGS ) -DDEBUG log.c
-
-gngb_debug.o : gngb_debug.c rom.h memory.h cpu.h vram.h interrupt.h 
-	$(CC) -c $(CFLAGS) -DDEBUG $(INCDIRS)  $< -o $@
-
-debuger.c : debuger.h memory.h
-
 # PROGRAMME
-
-gngb_debug : $(DOBJ) gngb_debug.o
-	gcc $(CFLAGS) $(DOBJ) gngb_debug.o $(LIBS) -lreadline -lncurses -o gngb_debug
 
 gngb : $(OBJ) 
 	gcc $(CFLAGS) $(OBJ) $(LIBS) -o gngb
 
-debuger :  $(DOBJ) 
-	gcc  $(DOBJ)  $(LIBS) `glib-config --libs glib` `libglade-config --libs gtk` -o debuger/debuger
-
 clean : 
-	rm -f *.o *~ ; rm -f ./debuger/*.o ./debuger/*~
+	rm -f *.o *~
 
 

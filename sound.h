@@ -184,11 +184,11 @@ SoundG snd_g;
 #define RIGHT 2
 
 void update_gb_sound(UINT32 len);
-int init_sound(void);
+int gbsound_init(void);
 void close_sound(void);
 void write_sound_reg(UINT16 add,UINT8 val);
 UINT8 read_sound_reg(UINT16 add);
-
+void update_sound_reg(void);
 
 
 #endif
