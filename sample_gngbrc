@@ -14,8 +14,8 @@ rumble 1
 
 # GL Mode ?
 glmode 0
-gl_size_w 640
-gl_size_h 576
+gl_size_w 320
+gl_size_h 240
 
 # gameboy type
 # 0 AUTOMATIC
@@ -32,8 +32,15 @@ sleep_idle 0
 # Interrupt Delay
 dely_int 0
 
+# Emulate Gdma Cycle ( experimentale )
+# Some game like MagicalDrop work better with this options
+gdma_cycle 0
+
+# Use constant cycle for lcd (try it for Parodius)
+const_cycle 0
+
 # Joystick number device
-no_joy 0
+nb_joy 0
 
 # Joystick configuration
 # order : AXE_UP,AXE_DOWN,AXE_LEFT,AXE_RIGHT,A,B,START,SELECT
@@ -48,4 +55,12 @@ map_joy     1,1,0,0,3,2,0,1
 # (you can do the same for the joystick)
 
 map_key      273,274,276,275,120,119,13,303
+
+
+# Normal GB palette (bright to dark)
+pal_1 0xB8A68D,0x917D5E,0x635030,0x211A10
+pal_2 0x79b752,0x507a37,0x324c22,0x0a0f06
+pal_3 0x85d1f1,0x5d92b2,0x406483,0x283e5c
+pal_4 0xFEFEFE,0xA0A0A0,0x606060,0x101010
+pal_5 0xebc3b8,0xc07b76,0xa34949,0x632b2b
 

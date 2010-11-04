@@ -1,13 +1,20 @@
 Prerequisites :
 
-You need a recent version of SDL (I use SDL-1.1.5). 
+You need a recent version of SDL (I use SDL-1.2). 
 The 1.0 serie don't work, sorry.
 
-Installation :
+Installation : 
+./configure
+make
+make install
 
-Just do make, it should work (I hope :)
-If you dont want opengl mode comment the line
-GL_MODE = 1 in the Makefile
+if you want to compile with a debuger
+
+./configure --with-debuger=yes
+make
+make install
+
+Save/Load state change sine last version certainly old save don't work 
 
 Use :
 
@@ -24,7 +31,9 @@ option:
 -r            : rumble on
 -o            : opengl renderer
 -O WxH        : same as o, but with WxH resolution (instead of double size)
-
+-y            : use constant cycle (cycle don't change according to nb sprite
+on a line)
+-g            : try to emulate gdma cycle
 
 Key :
 
@@ -34,11 +43,15 @@ W              : B       (on azerty kerboard)
 X              : A    
 
 F9             : fullscreen on/off
-Shift + F(1-8) : save state (experimental)
+Shift + F(1-8) : save state (experimental) 
 F(1-8)         : load state (experimental)
 F10            : show fps (work only with -a options)
 F11            : reset
 F12            : show key code
+
+KepPad 1-5: Change palette
+
+Palette must be define in your gngbrc file (see sample_gngbrc)
 
 Configuration :
 In the file $HOME/.gngb/gngbrc

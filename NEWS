@@ -1,0 +1,5 @@
+
+Now the configuration by 
+./configure
+make
+make install

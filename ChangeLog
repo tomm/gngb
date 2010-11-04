@@ -1,6 +1,18 @@
 
 WHAT'S NEW ?
 
+* Fix interrupt bug (stop halt when make_int and not when set_int)
+* Add -g option: try to emulate gdma cycle
+* New Load/Save state (old save don't work)
+* Add option -y (emulate with constante cycle in lcd emulation) 
+* Try to emulate VicViper Laser in parodius (option -y for better emulation)
+* Write the begining of a debuger with ncurses
+* Add ./configure script
+* Fix divid mode in Sgb support
+
+
+20010618
+
  * Try to implement sgb window mask
  * Fix GB_PAD read/write with SGB (PokeJaune and BMBERMAN work)
  * Fix RETI instruction (Magical Drop,Megaman5 work)

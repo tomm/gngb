@@ -1,0 +1,80 @@
+dnl Process this file with autoconf to produce a configure script.
+AC_INIT(src/cpu.c)
+AM_CONFIG_HEADER(config.h)
+AM_INIT_AUTOMAKE(gngb,20010807)
+
+CFLAGS="$CFLAGS"
+
+OUTPUT="Makefile src/Makefile"
+
+dnl Checks for programs.
+AC_PROG_CC
+
+dnl Checks for libraries.
+
+AC_CHECK_LIB(pthread, pthread_create,,AC_MSG_ERROR(SDL library needs pthread Library))
+
+AC_CHECK_PROG(SDL_CONFIG, sdl-config, yes,no)
+if test "$SDL_CONFIG" = yes ; then
+CFLAGS="$CFLAGS `sdl-config --cflags`";
+LIBS="$LIBS `sdl-config --libs`";
+AC_CHECK_LIB(SDL, SDL_Init,,AC_MSG_ERROR(can't find on your system SDL Library))
+fi
+
+dnl Checks for header files.
+AC_HEADER_DIRENT
+AC_HEADER_STDC
+AC_CHECK_HEADERS(fcntl.h sys/time.h unistd.h)
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_HEADER_TIME
+
+dnl Checks for library functions.
+AC_FUNC_VPRINTF
+AC_CHECK_FUNCS(gettimeofday mkdir socket strtol)
+
+dnl Opengl Mode
+
+AC_ARG_WITH(gl,[  --with-gl               enable opengl support], [], [with_gl=yes])
+
+if test "$with_gl" = yes ; then
+AC_CHECK_LIB(GL, glBegin,
+[CFLAGS="$CFLAGS -DSDL_GL";
+LIBS="$LIBS -lGL";]
+,with_gl=no)
+fi
+
+dnl Debuger
+
+AC_ARG_WITH(debuger,[  --with-debuger          add a debuger], [], [with_debuger=no])
+
+if test "$with_debuger" = yes; then 
+AC_CHECK_LIB(ncurses, newwin,
+[DEBUG_LIBS="$DEBUG_LIBS -lncurses";]
+,with_debuger=no)
+AC_CHECK_LIB(panel, new_panel,
+[DEBUG_LIBS="$DEBUG_LIBS -lpanel";]
+,with_debuger=no)
+AC_CHECK_LIB(form, new_form,
+[DEBUG_LIBS="$DEBUG_LIBS -lform";]
+,with_debuger=no)
+
+DEBUG_CFLAGS="-DDEBUG"
+
+AC_SUBST(DEBUG_CFLAGS)
+AC_SUBST(DEBUG_LIBS)
+
+fi
+
+AM_CONDITIONAL(MAKE_DEBUGER, test "$with_debuger" = yes)
+
+OPT="-O3  -mpentiumpro  -Wno-unused -funroll-loops -fstrength-reduce -ffast-math -malign-functions=2   -malign-jumps=2 -malign-loops=2 -fomit-frame-pointer -Wall -g"
+
+CFLAGS="$CFLAGS $OPT"
+
+AC_OUTPUT(Makefile src/Makefile src/gngb_debuger/Makefile)
+
+
+
+

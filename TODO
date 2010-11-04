@@ -6,3 +6,9 @@ Add serial support
 Add Mbc3 support
 Add sgb support
 Fix some interrupt bug
+Fix gdma cycle
+Fix gb pad
+
+/* ROM BUG TO FIX */
+
+* Micro Machine ( reset when game begin )
