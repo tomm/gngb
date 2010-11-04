@@ -169,3 +169,73 @@ int barath_skip_next_frame(int showfps)
 
   return barath_skip_this_frame();
 }
+
+uclock_t elapsed_clock(int init)
+{
+  static uclock_t init_sec = 0;
+  struct timeval tv;
+
+  if (init) init_sec=0;
+
+  gettimeofday(&tv, 0);
+  if (init_sec == 0) init_sec = tv.tv_sec;
+  // printf(" %d\n",(tv.tv_sec - init_sec) * 1000000 + tv.tv_usec);
+  return (tv.tv_sec - init_sec) * 1000000 + tv.tv_usec;
+}
+
+
+int frame_skip(int init) {
+  static uclock_t F=1000000/CPU_FPS;
+  uclock_t dt;
+  static uclock_t t=0,lt=0,sec=0;
+  static uclock_t f=1000000/CPU_FPS;
+  static int nbFrame=0;
+  static int skpFrm=0;
+  /*
+    if (init) 
+    dt=elapsed_clock(1);
+    else*/
+  lt=t;
+  t=elapsed_clock(0);
+  dt=t-lt;
+
+  if (dt>F*12)
+    dt=F*12;
+  /* 
+ nbFrame++;
+  if (t-sec>1000000) {
+    printf("%d\n",nbFrame);
+    sec=t;
+    nbFrame=0;
+  }
+  */
+
+  //printf("%d %d\n",dt,f);
+  /*
+  if (skpFrm>0) {
+    skpFrm--;
+    return 1;
+    }*/
+
+  if (dt<f) {
+    while(dt<f) {
+      // usleep(10);
+      //printf("Wait\n");
+      dt=elapsed_clock(0)-lt;
+      t=elapsed_clock(0);
+    }
+    f=F/*-(dt-f)*/;
+    return 0;
+  } else {
+    // printf("skip\n");
+    f=F-((dt-f)%F);
+    // printf("%d %d\n",F,f);
+    //skpFrm++;
+    return 1;
+  }   
+}
+
+
+
+
+

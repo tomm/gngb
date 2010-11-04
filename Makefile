@@ -21,8 +21,8 @@ LIBDIRS =  -L/usr/X11R6/lib
 DEBUG = -g 
 PROFILE = -pg -O3
 OPT = -O3  -mpentiumpro  -Wno-unused -funroll-loops -fstrength-reduce -ffast-math -malign-functions=2   -malign-jumps=2 -malign-loops=2 -fomit-frame-pointer -Wall -g
-OBJ = memory.o vram.o interrupt.o  cpu.o rom.o sound.o frame_skip.o main.o
-DOBJ = memory_dbg.o vram_dbg.o interrupt_dbg.o cpu_dbg.o rom_dbg.o sound_dbg.o frame_skip_dbg.o debuger.o log.o
+OBJ = memory.o vram.o interrupt.o  cpu.o rom.o sound.o serial.o frame_skip.o main.o 
+DOBJ = debuger/memory.o debuger/vram.o debuger/interrupt.o debuger/cpu.o debuger/rom.o debuger/sound.o debuger/serial.o debuger/frame_skip.o debuger/log.o debuger/debuger.o
 
 CFLAGS = $(OPT) -D_REENTRANT
 LIBS = -lSDL -lpthread  
@@ -31,43 +31,47 @@ all : gngb
 
 # GNGB
 
-%_dbg.o : %.c
+debuger/%.o : %.c
 	$(CC) -c $(CFLAGS) -DDEBUG $(INCDIRS)  $< -o $@
 
 %.o : %.c
 	$(CC) -c $(CFLAGS) $(INCDIRS)  $< -o $@
 
 cpu.c : cpu.h memory.h rom.h 
-memory.c : memory.h rom.h cpu.h vram.h joystick.h interrupt.h sound.h 
+memory.c : memory.h rom.h cpu.h vram.h interrupt.h sound.h 
 interrupt.c :interrupt.h memory.h cpu.h vram.h 
 rom.c : rom.h memory.h cpu.h 
 vram.c : vram.h memory.h rom.h 
 sound.c : sound.h memory.h cpu.h 
+serial.c : serial.h
 frame_skip.c : frame_skip.h  
 main.c : rom.h memory.h cpu.h vram.h interrupt.h sound.h 
 
+# DEBUGER
 
-debuger.o : debuger.c debuger.h 
-	$(CC) -c  `glib-config --cflags glib` `libglade-config --cflags gtk` $(CFLAGS) -DDEBUG debuger.c
+debuger/debuger.o : debuger/debuger.c debuger/debuger.h 
+	$(CC) -c  `glib-config --cflags glib` `libglade-config --cflags gtk` $(CFLAGS) -DDEBUG debuger/debuger.c -o  debuger/debuger.o
 
-log.o : log.c log.h
-	$(CC) -c $(CFLAGS) -DDEBUG log.c
+#log.o : log.c log.h
+#	$( CC ) -c $( CFLAGS ) -DDEBUG log.c
 
 gngb_debug.o : gngb_debug.c rom.h memory.h cpu.h vram.h interrupt.h 
-	gcc -c $(CFLAGS) gngb_debug.c
+	$(CC) -c $(CFLAGS) -DDEBUG $(INCDIRS)  $< -o $@
 
 debuger.c : debuger.h memory.h
 
 # PROGRAMME
 
-gngb_debug : $(OBJ) gngb_debug.o
-	gcc $(CFLAGS) $(OBJ) gngb_debug.o $(LIBS) -lreadline -lncurses -o gngb_debug
+gngb_debug : $(DOBJ) gngb_debug.o
+	gcc $(CFLAGS) $(DOBJ) gngb_debug.o $(LIBS) -lreadline -lncurses -o gngb_debug
 
 gngb : $(OBJ) 
 	gcc $(CFLAGS) $(OBJ) $(LIBS) -o gngb
 
 debuger :  $(DOBJ) 
-	gcc  $(DOBJ) $(LIBS) `glib-config --libs glib` `libglade-config --libs gtk` -o debuger
+	gcc  $(DOBJ)  $(LIBS) `glib-config --libs glib` `libglade-config --libs gtk` -o debuger/debuger
 
 clean : 
-	rm -f *.o *~
+	rm -f *.o *~ ; rm -f ./debuger/*.o ./debuger/*~
+
+

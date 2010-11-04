@@ -29,6 +29,7 @@ typedef struct {
   UINT8 sound;
   UINT8 normal_gb;
   UINT8 rumble_on;
+  UINT8 serial_on;
   UINT8 gb_done;
   UINT8 joy_no;
 }GNGB_CONF;
@@ -68,6 +69,8 @@ extern UINT8 ram_mask;
 // REGISTER
 
 #define GB_PAD (himem[0x60])
+#define SB (himem[0x61])
+#define SC (himem[0x62])
 #define DIVID (himem[0x64])
 #define TIME_COUNTER (himem[0x65])
 #define TIME_MOD (himem[0x66])
@@ -154,7 +157,7 @@ typedef struct {
   UINT8 type;
   UINT8 v;
   UINT16 src,dest;
-  UINT16 lg;
+  UINT32 lg;
   INT32 clk;
 }DMA_INFO;
 

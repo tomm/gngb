@@ -39,9 +39,17 @@ INT8 snd3_tbl_50[]={-30,-22,-15,-7,7,15,22,30};
 INT8 snd3_tbl_25[]={-15,-7,7,15};
 */
 INT8 vol_table[]={0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-INT8 snd3_tbl_100[]={-15,-13,-11,-9,-7,-5,-3,-1,1,3,5,7,9,11,13,14};
-INT8 snd3_tbl_50[]={-7,-5,-3,-1,1,3,5,7};
-INT8 snd3_tbl_25[]={-3,-1,1,3};
+INT8 snd3_tbl_100[]={-16,-15,-12,-10,-8,-6,-4,-2,2,4,6,8,10,12,14,16};
+INT8 snd3_tbl_50[]={-10,-8,-4,-2,2,4,8,10};
+INT8 snd3_tbl_25[]={-4,-2,2,4};
+
+UINT16 wduty[4][8] = 
+{
+  {0,0,-1,0,0,0,0,0 },
+  {0,-1,-1,0,0,0,0,0 },
+  {0,-1,-1,-1,-1,0,0,0 },
+  {0,0,0,-1,-1,-1,-1,-1 }
+};
 
 
 double freq_table[2048];
@@ -63,7 +71,7 @@ void write_sound_reg(UINT16 add,UINT8 val)
   // UINT32 snd_len =(UINT32)((float)get_nb_cycle()*(sample_rate/59.73)
   //			   /((gbcpu->mode== DOUBLE_SPEED)?140448.0:70224.0));
   UINT32 snd_len = (UINT32)((float)get_nb_cycle()*sample_rate/(float)((gbcpu->mode== DOUBLE_SPEED)?8388608.0:4194304.0));
-  
+  static float samp;
   // printf("%d\n",snd_len);
   if (snd_len) 
     update_gb_sound(snd_len<<1);
@@ -71,7 +79,7 @@ void write_sound_reg(UINT16 add,UINT8 val)
   if (add>=0xFF30 && add<=0xFF3F) { // Wave Pattern RAM
     if (!snd_m3.is_on) {
       snd_m3.wave[add-0xFF30]=val;
-      // printf("WaveRam Write\n");
+      // printf("WaveRam Write %x\n",add-0xFF30);
     }
     return;
   }
@@ -108,6 +116,7 @@ void write_sound_reg(UINT16 add,UINT8 val)
     snd_m1.swp_dir=(val&0x8)>>3;
     snd_m1.swp_shift=val&0x7;
     snd_m1.sample_sweep_time=(float)sample_rate*snd_m1.swp_time/128.0;
+    //    printf("sweep %d %d %d\n",snd_m1.swp_time,snd_m1.swp_dir,snd_m1.swp_shift);
     break;
   case 0xFF11 : // NR11
     snd_m1.duty=(val&0xC0)>>6;
@@ -125,16 +134,20 @@ void write_sound_reg(UINT16 add,UINT8 val)
   case 0xFF13 : // NR13
     snd_m1.freq_lo=val;
     snd_m1.freq=((UINT16)(snd_m1.freq_lo))|(((UINT16)(snd_m1.freq_hi))<<8); // update freq
-    snd_m1.sample=sample_rate*freq_table[snd_m1.freq];
-    snd_m1.sample_dut=(float)snd_m1.sample/wave_duty[snd_m1.duty];
+    //samp=snd_m1.sample;
+    snd_m1.sample=freq_table[snd_m1.freq];
+    snd_m1.sample_dut=snd_m1.sample/wave_duty[snd_m1.duty];
+    //snd_m1.cp=snd_m1.cp*snd_m1.sample/samp;
     break;
   case 0xFF14 : // NR14
     snd_m1.initial=(val&0x80)>>7;
     snd_m1.mode=(val&0x40)>>6;
     snd_m1.freq_hi=val&0x7;
     snd_m1.freq=((UINT16)(snd_m1.freq_lo))|(((UINT16)(snd_m1.freq_hi))<<8); // update freq
-    snd_m1.sample=(float)sample_rate*freq_table[snd_m1.freq];
+    //samp=snd_m1.sample;
+    snd_m1.sample=freq_table[snd_m1.freq];
     snd_m1.sample_dut=(float)snd_m1.sample/wave_duty[snd_m1.duty];
+    //snd_m1.cp=snd_m1.cp*snd_m1.sample/samp;
     break;
 
     /*--- SOUND MODE 2 ---*/
@@ -154,7 +167,9 @@ void write_sound_reg(UINT16 add,UINT8 val)
   case 0xFF18 : // NR23
     snd_m2.freq_lo=val;
     snd_m2.freq=((UINT16)(snd_m2.freq_lo))|(((UINT16)(snd_m2.freq_hi))<<8); // update freq
-    snd_m2.sample=sample_rate*freq_table[snd_m2.freq];
+    //samp=snd_m2.sample;
+    snd_m2.sample=freq_table[snd_m2.freq];
+    //snd_m2.cp=snd_m2.cp*snd_m2.sample/samp;
     snd_m2.sample_dut=(float)snd_m2.sample/wave_duty[snd_m2.duty];
     break;
   case 0xFF19 : // NR24
@@ -162,13 +177,16 @@ void write_sound_reg(UINT16 add,UINT8 val)
     snd_m2.mode=(val&0x40)>>6;
     snd_m2.freq_hi=val&0x7;
     snd_m2.freq=((UINT16)(snd_m2.freq_lo))|(((UINT16)(snd_m2.freq_hi))<<8); // update freq
-    snd_m2.sample=(float)sample_rate*freq_table[snd_m2.freq];
+    //samp=snd_m2.sample;
+    snd_m2.sample=freq_table[snd_m2.freq];
     snd_m2.sample_dut=(float)snd_m2.sample/wave_duty[snd_m2.duty];
-     break;
+    //snd_m2.cp=snd_m2.cp*snd_m2.sample/samp;
+    break;
 
     /*--- Sound Mode 3 ---*/
   case 0xFF1A : // NR30
     snd_m3.is_on=(val&0x80)>>7;
+    //    printf("snd3 on:%d\n",snd_m3.is_on);
     break;
   case 0xFF1B : // NR31
     snd_m3.len=val;
@@ -178,19 +196,25 @@ void write_sound_reg(UINT16 add,UINT8 val)
     break;
   case 0xFF1C : // NR32
     snd_m3.level=(val&0x60)>>5;
-    // printf("--level%d %x\n", snd_m3.level,val);
+    //     printf("--level%d %x\n", snd_m3.level,val);
     break;
   case 0xFF1D : // NR33
     snd_m3.freq_lo=val;
     snd_m3.freq=((UINT16)(snd_m3.freq_lo))|(((UINT16)(snd_m3.freq_hi))<<8);
-    snd_m3.sample=(float)sample_rate*freq_table_m3[snd_m3.freq];// *64.0;
+        samp=snd_m3.sample;
+    snd_m3.sample=freq_table_m3[snd_m3.freq]/32.0;// *64.0;
+    //    printf("sample %f\n",snd_m3.sample);
+        snd_m3.cp=snd_m3.cp* snd_m3.sample/samp;
     break;
   case 0xFF1E : // NR34
     snd_m3.initial=(val&0x80)>>7;
     snd_m3.mode=(val&0x40)>>6;
     snd_m3.freq_hi=val&0x7;
     snd_m3.freq=((UINT16)(snd_m3.freq_lo))|(((UINT16)(snd_m3.freq_hi))<<8);
-    snd_m3.sample=(float)sample_rate*freq_table_m3[snd_m3.freq];// *64.0;
+        samp=snd_m3.sample;
+    snd_m3.sample=freq_table_m3[snd_m3.freq]/32.0;// *64.0;
+    //    printf("sample %f\n",snd_m3.sample);
+        snd_m3.cp=snd_m3.cp* snd_m3.sample/samp;
     break;
 
     /*--- SOUND MODE 4 ---*/
@@ -256,6 +280,7 @@ UINT8 read_sound_reg(UINT16 add)
 
     /*--- SOUND MODE 3 ---*/
   case 0xFF1A : // NR30
+    // printf("read snd3 on\n");
     return snd_m3.is_on<<7;
   case 0xFF1B : // NR31
     return snd_m3.len;
@@ -307,8 +332,8 @@ void init_freq_table(void)
   long double y;
 
   for(i=0;i<2048;i++) {
-    freq_table[i]=1.0/HZ(i);
-    freq_table_m3[i]=1.0/HZ_M3(i);
+    freq_table[i]=sample_rate/HZ(i);
+    freq_table_m3[i]=sample_rate/HZ_M3(i);
   }
 
   for(i=0;i<256;i++) {
@@ -324,8 +349,9 @@ void init_freq_table(void)
 inline INT8 update_snd_m1(void)
 {
   static float cp=0;
+  static float samp;
   static int env=0;
-  static int sp=0;
+  static char sp=0;
   static int lp=0; 
   static int ep=0;
   static int fp=0;
@@ -337,7 +363,7 @@ inline INT8 update_snd_m1(void)
     env=snd_m1.env_start;
     cur_env_step=snd_m1.env_swp;
     cur_swp_shift=snd_m1.swp_shift;
-    cp=0;
+    snd_m1.cp=0;
     //    sp=0;
     lp=0;
     ep=0;
@@ -349,7 +375,7 @@ inline INT8 update_snd_m1(void)
     env=snd_m1.env_start;
     cur_env_step=snd_m1.env_swp;
     cur_swp_shift=snd_m1.swp_shift;
-    cp=0;
+    snd_m1.cp=0;
     //    sp=0;
     ep=0;
     fp=0;
@@ -368,15 +394,17 @@ inline INT8 update_snd_m1(void)
     fp++;
     if (fp>snd_m1.sample_sweep_time) {
       fp=0;
+      //samp=snd_m1.sample;
       if (snd_m1.swp_dir==1) {
-	snd_m1.freq= snd_m1.freq - (float)snd_m1.freq/(float)(1<<(snd_m1.swp_shift));
-	snd_m1.sample=sample_rate*freq_table[snd_m1.freq];
-	snd_m1.sample_dut=(float)snd_m1.sample/wave_duty[snd_m1.duty];
+	snd_m1.freq -= snd_m1.freq>>snd_m1.swp_shift;
+	snd_m1.sample=freq_table[snd_m1.freq];
+	snd_m1.sample_dut=snd_m1.sample/wave_duty[snd_m1.duty];
       } else {
-	snd_m1.freq= snd_m1.freq + (float)snd_m1.freq/(float)(1<<(snd_m1.swp_shift));
-	snd_m1.sample=sample_rate*freq_table[snd_m1.freq];
-	snd_m1.sample_dut=(float)snd_m1.sample/wave_duty[snd_m1.duty];
+	snd_m1.freq += snd_m1.freq>>snd_m1.swp_shift;
+	snd_m1.sample=freq_table[snd_m1.freq];
+	snd_m1.sample_dut=snd_m1.sample/wave_duty[snd_m1.duty];
       }
+      //snd_m1.cp=snd_m1.cp*snd_m1.sample/samp;
       if (snd_m1.freq==0)
 	snd_m1.freq=0;
 
@@ -411,29 +439,35 @@ inline INT8 update_snd_m1(void)
   /* clipping */
   if (env>15) env=15;
   if (env<0) env=0;
+  /*  
+  sp=wduty[snd_m1.duty][((int)(snd_m1.cp/(snd_m1.sample/8.0)))&0x7];
+  snd_m1.cp+=1;
+  return vol_table[env]&sp;
+  */
 
-  if (cp+1.0>snd_m1.sample) {
+   
+  if (snd_m1.cp+1.0>snd_m1.sample) {
     sp=1;//1-sp;
-    // printf("- %f\n",cp);
-    cp=(cp+1.0)-snd_m1.sample;
-  } else if (cp+1.0>snd_m1.sample_dut && sp==1) {
+    // printf("- %f\n",snd_m1.cp);
+    snd_m1.cp=(snd_m1.cp+1.0)-snd_m1.sample;
+  } else if (snd_m1.cp+1.0>snd_m1.sample_dut && sp==1) {
     sp=0;//1-sp;
-    // printf("%f\n",cp);
-     cp+=1.0;// cp-snd_m1.sample_dut;
+    // printf("%f\n",snd_m1.cp);
+     snd_m1.cp+=1.0;// snd_m1.cp-snd_m1.sample_dut;
   } else
-    cp+=1.0;
-
+    snd_m1.cp+=1.0;
+  
   if (sp)
     return -vol_table[env];
   else
     return vol_table[env];
-
+  
 
 }
 
 inline INT8 update_snd_m2(void)
 {
-  static float cp=0;
+  //  static float cp=0;
   static int env=0;
   static int sp=0;
   static int lp=0; 
@@ -444,7 +478,7 @@ inline INT8 update_snd_m2(void)
     snd_m2.initial=0;
     env=snd_m2.env_start;
     cur_env_step=snd_m2.env_swp;
-    cp=0;
+    snd_m2.cp=0;
     //    sp=0;
     lp=0;
     ep=0;
@@ -454,7 +488,7 @@ inline INT8 update_snd_m2(void)
     snd_m2.env_changed=0;
     env=snd_m2.env_start;
     cur_env_step=snd_m2.env_swp;
-    cp=0;
+    snd_m2.cp=0;
     //    sp=0;
     ep=0;
   }
@@ -493,15 +527,20 @@ inline INT8 update_snd_m2(void)
   /* clipping */
   if (env>15) env=15;
   if (env<0) env=0;
-
-  if (cp+1.0>snd_m2.sample) {
+  /*
+  sp=wduty[snd_m2.duty][((int)(snd_m2.cp/(snd_m2.sample/8.0)))&0x7];
+  snd_m2.cp+=1;
+  return vol_table[env]&sp;
+  */
+  
+  if (snd_m2.cp+1.0>snd_m2.sample) {
     sp=1;//1-sp;
-    cp=(cp+1.0)-snd_m2.sample;
-  } else if (cp+1.0>snd_m2.sample_dut && sp==1) {
+    snd_m2.cp=(snd_m2.cp+1.0)-snd_m2.sample;
+  } else if (snd_m2.cp+1.0>snd_m2.sample_dut && sp==1) {
     sp=0;//1-sp;
-    cp+=1.0;
+    snd_m2.cp+=1.0;
   } else
-    cp+=1.0;
+    snd_m2.cp+=1.0;
 
   if (sp)
     return -vol_table[env];
@@ -513,24 +552,29 @@ inline INT8 update_snd_m2(void)
 
 inline INT8 update_snd_m3(void)
 {
-  static float cp=0;
+  // static float cp=0;
   static int lp=0;
   static int sp=0;
   static int val=0;
+  float j;
 
-  if (snd_m3.initial) {
-    snd_m3.initial=0;
-    cp=0;
-    sp=0;
-    lp=0;
-  }
+  if (snd_m3.sample==0)
+    return 0;
 
   if (!snd_m3.is_on) {
     snd_g.Sound3_On_Off=0;
     sp=0;
     lp=0;
-    cp=0;
+    snd_m3.cp=0;
     return 0;
+  }
+
+  if (snd_m3.initial) {
+    snd_m3.initial=0;
+    snd_m3.cp=0;
+    sp=0;
+    lp=0;
+    //    return 50;
   }
 
   if (snd_m3.mode==1) { // on doit gerer la durée
@@ -541,7 +585,7 @@ inline INT8 update_snd_m3(void)
       snd_g.Sound3_On_Off=0;
       sp=0;
       // lp=0;
-      cp=0;
+      snd_m3.cp=0;
       return 0;
       
     }
@@ -549,21 +593,39 @@ inline INT8 update_snd_m3(void)
 
 
   snd_g.Sound3_On_Off=1;
+  /*
+  if (snd_m3.cp+1.0>(float)(snd_m3.sample)) {
+    //   printf("snd_m3.cp:%d\n",snd_m3.cp);
+    snd_m3.cp=(snd_m3.cp+1.0)-(snd_m3.sample);
 
-  if (cp+1.0>(float)(snd_m3.sample/33.0)) {
-    //   printf("cp:%d\n",cp);
-    cp=(cp+1.0)-(snd_m3.sample/33.0);
-    sp++;
-    if (sp>32)
-      sp=0;
-    if (sp&0x1)
-      val=snd_m3.wave[sp>>1]&0xF;
-    else
-      val=(snd_m3.wave[sp>>1]&0xF0)>>4;
+    for (j=0;j<1.0;j+=snd_m3.sample) {
+      sp++;
+      if (sp>=32)
+	sp=0;
+      if (sp&0x1)
+	val=snd_m3.wave[sp>>1]&0xF;
+      else
+	val=(snd_m3.wave[sp>>1]&0xF0)>>4;
+    }
     // printf("val %x:%x,",val,snd_m3.wave[sp>>1]);
   } else
-    cp+=1.0;
+    snd_m3.cp+=1.0;
+  */
+  
+  sp=(int)(snd_m3.cp/snd_m3.sample)&0x1F;
+  snd_m3.cp+=1.0;
+  if (sp&0x1)
+    val=snd_m3.wave[sp>>1]&0xF;
+  else
+    val=(snd_m3.wave[sp>>1]&0xF0)>>4;
+  
 
+
+  /*  val -=8;
+  if (snd_m3.level) val <<= (3 - snd_m3.level);
+  else val=0;
+  return val;
+  */
   switch(snd_m3.level) {
   case 0: // mute
     return 0;
@@ -675,38 +737,29 @@ inline INT8 update_snd_m4(void)
   }
   
   if (cp+1.0>snd_m4.sample) {
+   if (snd_m4.sample<1.0) {
+      //printf("%f %f %f\n",cp,floor(1.0/snd_m4.sample)*snd_m4.sample,snd_m4.sample); 
+      cp=(cp+1.0)-((int)(1.0/snd_m4.sample)*snd_m4.sample);
+    }
+    else
+      cp=(cp+1.0)-snd_m4.sample;
+ 
+   //for (j=0;j<1.0;j+=snd_m4.sample) {
+   j=0;   do{
 
-    for (j=0;j<1.0;j+=snd_m4.sample) {
-      // if (snd_m4.sample<1.0) printf("%f %d\n",j,sp);
-      // rol=vol;
+   
       sp =(poly_counter&1);
-      /*
-      if (snd_m4.sample<1.0) {
-	if (sp) 
-	  {rol+=vol;rol/=2.0;}
-	else
-	  {rol-=vol;rol/=2.0;}
-      } else {
-	if (sp) 
-	  rol=vol;
-	else
-	  rol=-vol;
-	  }*/
+   
       if (snd_m4.poly&0x08)
 	poly_counter ^= (((poly_counter&0x1)^((poly_counter&0x2)>>1))<<7);
       else
 	poly_counter ^= (((poly_counter&0x1)^((poly_counter&0x2)>>1))<<15);
       
       poly_counter>>=1;
-    }
+   }while(++j<1.0/snd_m4.sample);
+   // printf("%f %f\n",j,1.0/snd_m4.sample);
     //cp=(cp)-snd_m4.sample;
     //   printf("%f %f %f\n",cp,1.0/snd_m4.sample,snd_m4.sample); 
-    if (snd_m4.sample<1.0) {
-      //printf("%f %f %f\n",cp,floor(1.0/snd_m4.sample)*snd_m4.sample,snd_m4.sample); 
-      cp=(cp+1.0)-((int)(1.0/snd_m4.sample)*snd_m4.sample);
-    }
-    else
-      cp=(cp+1.0)-snd_m4.sample;
  
   } else
     cp+=1.0;
@@ -762,38 +815,44 @@ void update_gb_sound(UINT32 snd_len)
   for(i=0;i<(snd_len>>1) && pl<playbuf+buf_size;i++) {
 
     l=r=0;
-
+    
     p=update_snd_m1();
     if (snd_g.Sound1_To_SO2) l=p;
     if (snd_g.Sound1_To_SO1) r=p;
 
-        
+          
     p=update_snd_m2();
     if (snd_g.Sound2_To_SO2) l+=p;
     if (snd_g.Sound2_To_SO1) r+=p;
     
-   
+    
     p=update_snd_m3();
   
+    
     if (snd_g.Sound3_To_SO2) l+=p;
     if (snd_g.Sound3_To_SO1) r+=p;
-
+    
     p=update_snd_m4();
     
     if (snd_g.Sound4_To_SO2) l+=p;
     if (snd_g.Sound4_To_SO1) r+=p;
-
+    
  
     /*
     l=l/(float)(8-snd_g.SO2_OutputLevel);
     r=r/(float)(8-snd_g.SO1_OutputLevel);
     */
+
+    
     l*=snd_g.SO2_OutputLevel;
     r*=snd_g.SO1_OutputLevel;
+    
+    
 
+    
     l=l>>3;
     r=r>>3;
-
+    
 
     if (l<-127) l=-127;
     if (l>127) l=127;

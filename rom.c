@@ -28,6 +28,15 @@
 #include "rom.h"
 #include "memory.h"
 #include "cpu.h"
+#include "interrupt.h"
+#include "vram.h"
+
+typedef enum {
+  CPU_SECTION,
+  LCDC_SECTION,
+  PAL_SECTION,
+  TIMER_SECTION
+}SECTION_TYPE;
 
 INT16 rom_type;
 UINT8 gameboy_type;
@@ -49,28 +58,6 @@ char *get_save_name(char *name) {
   
   a[i++]='s';
   a[i++]='v';
-  a[i++]=0;
-  return a;
-}
-
-char *get_snap_name(char *name) {
-  char *a;
-  int lg=strlen(name);
-  int l,r,i;
-
-  l=lg;
-  while(l>0 && name[l-1]!='/') l--;
-  r=lg;
-  while(r>l && name[r-1]!='.') r--;
-
-  a=(char *)malloc(sizeof(char)*(6+(r-l)));
-  i=0;
-  while(l<r) 
-    a[i++]=name[l++];
-  
-  a[i++]='s';
-  a[i++]='n';
-  a[i++]='a';
   a[i++]=0;
   return a;
 }
@@ -130,86 +117,6 @@ int save_ram(void) {
 
   for(i=0;i<nb_ram_page;i++)
     fwrite(ram_page[i],sizeof(UINT8),0x2000,stream);
-
-  fclose(stream);
-  return 0;
-}
-
-int save_snap(void) {
-  FILE *stream;
-  int i;
-  char dir[100];
-  char *a=getenv("HOME");
-  
-  dir[0]=0;
-  strcat(dir,a);
-  strcat(dir,"/.gngb/");
-  check_dir(dir);
-
-  strcat(dir,get_snap_name(rom_name));
-  stream=fopen(dir,"wb");
-  if (!stream) {
-    printf("Error while trying to write file %s \n",dir);
-    return 1;
-  }
-
-  for(i=0;i<nb_ram_page;i++)
-    fwrite(ram_page[i],sizeof(UINT8),0x2000,stream);
-
-  for(i=0;i<nb_vram_page;i++)
-    fwrite(vram_page[i],sizeof(UINT8),0x2000,stream);
-
-  for(i=0;i<nb_wram_page;i++)
-    fwrite(wram_page[i],sizeof(UINT8),0x1000,stream);
-
-  fwrite(oam_space,sizeof(UINT8),0xa0,stream);
-  fwrite(himem,sizeof(UINT8),0x160,stream);
-
-  fwrite(&active_rom_page,sizeof(UINT8),1,stream);
-  fwrite(&active_ram_page,sizeof(UINT8),1,stream);
-  fwrite(&active_vram_page,sizeof(UINT8),1,stream);
-  fwrite(&active_wram_page,sizeof(UINT8),1,stream);
-  fwrite(gbcpu,sizeof(GB_CPU),1,stream);
-
-  fclose(stream);
-  return 0;
-}
-
-int load_snap(void) {
-  FILE *stream;
-  int i;
-  char dir[100];
-  char *a=getenv("HOME");
-  
-  dir[0]=0;
-  strcat(dir,a);
-  strcat(dir,"/.gngb/");
-  check_dir(dir);
-
-  strcat(dir,get_snap_name(rom_name));
-  stream=fopen(dir,"rb");
-  if (!stream) {
-    printf("Error while trying to read file %s \n",dir);
-    return 1;
-  }
-
-  for(i=0;i<nb_ram_page;i++)
-    fread(ram_page[i],sizeof(UINT8),0x2000,stream);
-
-  for(i=0;i<nb_vram_page;i++)
-    fread(vram_page[i],sizeof(UINT8),0x2000,stream);
-
-  for(i=0;i<nb_wram_page;i++)
-    fread(wram_page[i],sizeof(UINT8),0x1000,stream);
-
-  fread(oam_space,sizeof(UINT8),0xa0,stream);
-  fread(himem,sizeof(UINT8),0x160,stream);
-
-  fread(&active_rom_page,sizeof(UINT8),1,stream);
-  fread(&active_ram_page,sizeof(UINT8),1,stream);
-  fread(&active_vram_page,sizeof(UINT8),1,stream);
-  fread(&active_wram_page,sizeof(UINT8),1,stream);
-  fread(gbcpu,sizeof(GB_CPU),1,stream);
 
   fclose(stream);
   return 0;
@@ -345,6 +252,378 @@ int open_rom(char *filename)
     else return 1;
   }
   return 1;
+}
+
+
+/* SAVE/LOAD State ( Experimental ) */
+
+char *get_snap_name(char *name,int n) {
+  char *a;
+  int lg=strlen(name);
+  int l,r,i;
+
+  l=lg;
+  while(l>0 && name[l-1]!='/') l--;
+  r=lg;
+  while(r>l && name[r-1]!='.') r--;
+
+  a=(char *)malloc(sizeof(char)*(6+(r-l)));
+  i=0;
+  while(l<r) 
+    a[i++]=name[l++];
+  
+  a[i++]='0';a[i++]='0';
+  switch(n) {
+  case 0:a[i++]='0';break;
+  case 1:a[i++]='1';break;
+  case 2:a[i++]='2';break;
+  case 3:a[i++]='3';break;
+  case 4:a[i++]='4';break;
+  case 5:a[i++]='5';break;
+  case 6:a[i++]='6';break;
+  case 7:a[i++]='7';break;
+  case 8:a[i++]='8';break;
+  }
+
+  a[i++]=0;
+  return a;
+}
+
+
+int save_snap(void) {
+  FILE *stream;
+  int i;
+  char dir[100];
+  char *a=getenv("HOME");
+  
+  dir[0]=0;
+  strcat(dir,a);
+  strcat(dir,"/.gngb/");
+  check_dir(dir);
+
+  strcat(dir,get_snap_name(rom_name,0));
+  stream=fopen(dir,"wb");
+  if (!stream) {
+    printf("Error while trying to write file %s \n",dir);
+    return 1;
+  }
+
+  for(i=0;i<nb_ram_page;i++)
+    fwrite(ram_page[i],sizeof(UINT8),0x2000,stream);
+
+  for(i=0;i<nb_vram_page;i++)
+    fwrite(vram_page[i],sizeof(UINT8),0x2000,stream);
+
+  for(i=0;i<nb_wram_page;i++)
+    fwrite(wram_page[i],sizeof(UINT8),0x1000,stream);
+
+  fwrite(oam_space,sizeof(UINT8),0xa0,stream);
+  fwrite(himem,sizeof(UINT8),0x160,stream);
+
+  fwrite(&active_rom_page,sizeof(UINT8),1,stream);
+  fwrite(&active_ram_page,sizeof(UINT8),1,stream);
+  fwrite(&active_vram_page,sizeof(UINT8),1,stream);
+  fwrite(&active_wram_page,sizeof(UINT8),1,stream);
+
+  // Section
+
+  fwrite(gbcpu,sizeof(GB_CPU),1,stream);
+  fwrite(gblcdc,sizeof(GBLCDC),1,stream);
+  // Write Pal
+  fwrite(pal_col_bck_gb,sizeof(UINT32),8*4,stream);
+  fwrite(pal_col_obj_gb,sizeof(UINT32),8*4,stream);
+  fwrite(pal_col_bck,sizeof(UINT32),8*4,stream);
+  fwrite(pal_col_obj,sizeof(UINT32),8*4,stream);
+  fwrite(pal_bck,sizeof(UINT32),8,stream);
+  fwrite(pal_obj0,sizeof(UINT32),8,stream);
+  fwrite(pal_obj1,sizeof(UINT32),8,stream);
+
+  fclose(stream);
+  return 0;
+}
+
+int load_snap(void) {
+  FILE *stream;
+  int i;
+  char dir[100];
+  char *a=getenv("HOME");
+  
+  dir[0]=0;
+  strcat(dir,a);
+  strcat(dir,"/.gngb/");
+  check_dir(dir);
+
+  strcat(dir,get_snap_name(rom_name,0));
+  stream=fopen(dir,"rb");
+  if (!stream) {
+    printf("Error while trying to read file %s \n",dir);
+    return 1;
+  }
+
+  for(i=0;i<nb_ram_page;i++)
+    fread(ram_page[i],sizeof(UINT8),0x2000,stream);
+
+  for(i=0;i<nb_vram_page;i++)
+    fread(vram_page[i],sizeof(UINT8),0x2000,stream);
+
+  for(i=0;i<nb_wram_page;i++)
+    fread(wram_page[i],sizeof(UINT8),0x1000,stream);
+
+  fread(oam_space,sizeof(UINT8),0xa0,stream);
+  fread(himem,sizeof(UINT8),0x160,stream);
+
+  fread(&active_rom_page,sizeof(UINT8),1,stream);
+  fread(&active_ram_page,sizeof(UINT8),1,stream);
+  fread(&active_vram_page,sizeof(UINT8),1,stream);
+  fread(&active_wram_page,sizeof(UINT8),1,stream);
+
+  // Section 
+
+  fread(gbcpu,sizeof(GB_CPU),1,stream);
+  fread(gblcdc,sizeof(GBLCDC),1,stream);
+  // Read Pal
+  fread(pal_col_bck_gb,sizeof(UINT32),8*4,stream);
+  fread(pal_col_obj_gb,sizeof(UINT32),8*4,stream);
+  fread(pal_col_bck,sizeof(UINT32),8*4,stream);
+  fread(pal_col_obj,sizeof(UINT32),8*4,stream);
+  fread(pal_bck,sizeof(UINT32),8,stream);
+  fread(pal_obj0,sizeof(UINT32),8,stream);
+  fread(pal_obj1,sizeof(UINT32),8,stream);
+  
+  fclose(stream);
+  return 0;
+}
+
+void write_cpu_info(FILE *stream) {
+  /* CPU INFO is
+     - REGISTER: 6 * UINT16  (id=1 af,bc,de,hl,sp,pc)
+     - IME: 1 * UINT8        (id=2) 
+     - STATE: 1 * UINT8      (id=3)
+     - MODE: 1 * UINT8       (id=4)
+     size = 6*2+1+1+1+4
+  */
+  
+  UINT8 t=CPU_SECTION;
+  UINT16 size=19;
+
+  // SECTION + size
+
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&size,sizeof(UINT16),1,stream);
+
+  // REGISTER
+
+  t=1;
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&gbcpu->af.w,sizeof(UINT16),1,stream);
+  fwrite(&gbcpu->bc.w,sizeof(UINT16),1,stream);
+  fwrite(&gbcpu->de.w,sizeof(UINT16),1,stream);
+  fwrite(&gbcpu->hl.w,sizeof(UINT16),1,stream);
+  fwrite(&gbcpu->sp.w,sizeof(UINT16),1,stream);
+  fwrite(&gbcpu->pc.w,sizeof(UINT16),1,stream);
+
+  // IME
+  
+  t=2;
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&gbcpu->int_flag,sizeof(UINT8),1,stream);
+
+  // STATE
+
+  t=3;
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&gbcpu->state,sizeof(UINT8),1,stream);
+
+  // MODE 
+  
+  t=4;
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&gbcpu->mode,sizeof(UINT8),1,stream);
+}
+
+int read_cpu_info(FILE *stream,int size) {
+  /* CPU INFO is defined by id
+     - id=1 => REGISTER: 6 * UINT16  (af,bc,de,hl,sp,pc)
+     - id=2 => IME: 1 * UINT8         
+     - id=3 => STATE: 1 * UINT8      
+     - id=4 => MODE: 1 * UINT8       
+  */
+  
+  long end=ftell(stream)+size;
+  UINT8 t;
+  while(ftell(stream)!=end) {
+    fread(&t,sizeof(UINT8),1,stream);
+    switch(t) {
+    case 1:
+      fread(&gbcpu->af.w,sizeof(UINT16),1,stream);
+      fread(&gbcpu->bc.w,sizeof(UINT16),1,stream);
+      fread(&gbcpu->de.w,sizeof(UINT16),1,stream);
+      fread(&gbcpu->hl.w,sizeof(UINT16),1,stream);
+      fread(&gbcpu->sp.w,sizeof(UINT16),1,stream);
+      fread(&gbcpu->pc.w,sizeof(UINT16),1,stream);
+      break;
+    case 2:
+      fread(&gbcpu->int_flag,sizeof(UINT8),1,stream);
+      break;
+    case 3:
+      fread(&gbcpu->state,sizeof(UINT8),1,stream);
+      break;
+    case 4:
+      fread(&gbcpu->mode,sizeof(UINT8),1,stream);
+      break;
+    default:return -1;
+    }
+  }
+  return 0;
+}
+
+void write_lcdc_info(FILE *stream) {
+  
+
+}
+
+int read_lcdc_info(FILE *stream,int size) {
+  return 0;
+}
+
+int save_state(int n) {
+  FILE *stream;
+  int i;
+  char dir[100];
+  char *a=getenv("HOME");
+  
+  dir[0]=0;
+  strcat(dir,a);
+  strcat(dir,"/.gngb/");
+  check_dir(dir);
+
+  strcat(dir,get_snap_name(rom_name,n));
+  stream=fopen(dir,"wb");
+  if (!stream) {
+    printf("Error while trying to write file %s \n",dir);
+    return 1;
+  }
+
+  /* We write all ram vram wram page oam and himem */
+
+  for(i=0;i<nb_ram_page;i++)
+    fwrite(ram_page[i],sizeof(UINT8),0x2000,stream);
+
+  for(i=0;i<nb_vram_page;i++)
+    fwrite(vram_page[i],sizeof(UINT8),0x2000,stream);
+
+  for(i=0;i<nb_wram_page;i++)
+    fwrite(wram_page[i],sizeof(UINT8),0x1000,stream);
+
+  fwrite(oam_space,sizeof(UINT8),0xa0,stream);
+  fwrite(himem,sizeof(UINT8),0x160,stream);
+
+  fwrite(&active_rom_page,sizeof(UINT16),1,stream);
+  fwrite(&active_ram_page,sizeof(UINT16),1,stream);
+  fwrite(&active_vram_page,sizeof(UINT16),1,stream);
+  fwrite(&active_wram_page,sizeof(UINT16),1,stream);
+
+  /* now we write a couple of (section id,size) */
+  
+  write_cpu_info(stream);
+  /*write_lcdc_info(stream);
+    write_pal_info(stream);
+    write_timer_info(stream);*/
+
+  /*
+    fwrite(gbcpu,sizeof(GB_CPU),1,stream);
+    fwrite(gblcdc,sizeof(GBLCDC),1,stream);
+    
+    fwrite(pal_col_bck_gb,sizeof(UINT32),8*4,stream);
+    fwrite(pal_col_obj_gb,sizeof(UINT32),8*4,stream);
+    fwrite(pal_col_bck,sizeof(UINT32),8*4,stream);
+    fwrite(pal_col_obj,sizeof(UINT32),8*4,stream);
+    fwrite(pal_bck,sizeof(UINT32),8,stream);
+    fwrite(pal_obj0,sizeof(UINT32),8,stream);
+    fwrite(pal_obj1,sizeof(UINT32),8,stream);
+  */
+  
+  fclose(stream);
+  return 0;
+}
+
+int load_state(int n) {
+  FILE *stream;
+  int i;
+  char dir[100];
+  char *a=getenv("HOME");
+  UINT8 section_id;
+  UINT16 size;
+  long end;
+
+  dir[0]=0;
+  strcat(dir,a);
+  strcat(dir,"/.gngb/");
+  check_dir(dir);
+
+  strcat(dir,get_snap_name(rom_name,n));
+  stream=fopen(dir,"rb");
+  if (!stream) {
+    printf("Error while trying to read file %s \n",dir);
+    return -1;
+  }
+
+  fseek(stream,0,SEEK_END);
+  end=ftell(stream);
+  fseek(stream,0,SEEK_SET);
+
+  for(i=0;i<nb_ram_page;i++)
+    fread(ram_page[i],sizeof(UINT8),0x2000,stream);
+
+  for(i=0;i<nb_vram_page;i++)
+    fread(vram_page[i],sizeof(UINT8),0x2000,stream);
+
+  for(i=0;i<nb_wram_page;i++)
+    fread(wram_page[i],sizeof(UINT8),0x1000,stream);
+
+  fread(oam_space,sizeof(UINT8),0xa0,stream);
+  fread(himem,sizeof(UINT8),0x160,stream);
+
+  fread(&active_rom_page,sizeof(UINT16),1,stream);
+  fread(&active_ram_page,sizeof(UINT16),1,stream);
+  fread(&active_vram_page,sizeof(UINT16),1,stream);
+  fread(&active_wram_page,sizeof(UINT16),1,stream);
+
+  /* now we read a couple of (section id,size) */
+
+  while(ftell(stream)!=end) {
+
+    fread(&section_id,sizeof(UINT8),1,stream);
+    fread(&size,sizeof(UINT16),1,stream);
+    printf("section %d size %d \n",section_id,size);
+    switch(section_id) {
+    case CPU_SECTION:
+      if (read_cpu_info(stream,size)<0) {
+	fclose(stream);
+	printf("Error while reading file %s \n",dir);
+	return -1;
+      }
+      break;
+    }
+  }
+	
+
+  /*
+    // Section 
+    fread(gbcpu,sizeof(GB_CPU),1,stream);
+    fread(gblcdc,sizeof(GBLCDC),1,stream);
+    // Read Pal
+    fread(pal_col_bck_gb,sizeof(UINT32),8*4,stream);
+    fread(pal_col_obj_gb,sizeof(UINT32),8*4,stream);
+    fread(pal_col_bck,sizeof(UINT32),8*4,stream);
+    fread(pal_col_obj,sizeof(UINT32),8*4,stream);
+    fread(pal_bck,sizeof(UINT32),8,stream);
+    fread(pal_obj0,sizeof(UINT32),8,stream);
+    fread(pal_obj1,sizeof(UINT32),8,stream);
+  */
+
+  fclose(stream);
+  return 0;
 }
 
 

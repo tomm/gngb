@@ -2,11 +2,11 @@
 #include <glib.h>
 #include <glade/glade.h>
 #include "debuger.h"
-#include "cpu.h"
-#include "vram.h"
-#include "memory.h"
-#include "rom.h"
-#include "interrupt.h"
+#include "../cpu.h"
+#include "../vram.h"
+#include "../memory.h"
+#include "../rom.h"
+#include "../interrupt.h"
 
 #define REG_AF_ENTRY (app.cpu_info.reg_AF_entry)
 #define REG_BC_ENTRY (app.cpu_info.reg_BC_entry)
@@ -184,6 +184,7 @@ void draw_tiles_bk(void) {
       }
     }
   }
+  
   if (nb_vram_page>1) {
     buf=vram_page[1];
     x=y=2;
@@ -202,24 +203,48 @@ void draw_tiles_bk(void) {
 }
 
 void draw_back_all(void) {
+  int i,j,x,y;
+  UINT8 *tb,*att_tb,*tp,p;
+  INT16 no_tile,att;
   
+  if (nb_vram_page>1) {
+    if (LCDCCONT&0x08) {// select Tile Map
+      tb=&vram_page[0][0x1c00];
+      att_tb=&vram_page[1][0x1c00];
+    } else {
+      tb=&vram_page[0][0x1800];
+      att_tb=&vram_page[1][0x1800];
+    }
+    x=y=0;
+    for(j=0;j<32;j++) 
+      for(i=0;i<32;i++) {
+	no_tile=*tb++;
+	att=*att_tb++;
+	p=att&0x07;
+	if (!(LCDCCONT&0x10)) no_tile=256+(signed char)no_tile;
+	tp=&vram_page[(att&0x08)>>3][(no_tile<<4)];
+	draw_tile(GTK_PREVIEW(app.buf_info.back_preview),i*8,j*8,tp,
+		  pal_col_bck[p]);
+      }
+  }  
 }
 
 /*************** Memory ****************************/
 
-void print_mem(GtkCList *clist,UINT8 *buf,UINT16 begin,UINT16 size) {
+void print_mem(GtkCList *clist,UINT8 *buf,UINT16 begin,INT16 size) {
   char *text[17];
-  int i;
+  int i,n;
 
   gtk_clist_freeze(clist);
-  gtk_clist_clear(clist);
-  
+  if (buf!=wram_page[active_wram_page]) gtk_clist_clear(clist);
+  n=0;
   while(size>0) {
     text[0]=g_strdup_printf("%04x",begin);
     for(i=0;i<16;i++)
-      text[i+1]=g_strdup_printf("%02x",mem_read(begin++));
+      text[i+1]=g_strdup_printf("%02x",buf[n++]);
     gtk_clist_append(clist,text);
     size-=16;
+    begin+=16;
   }
   gtk_clist_columns_autosize(clist);
   gtk_clist_thaw(clist);
@@ -449,6 +474,8 @@ void init_app(void) {
 						       "tile_bk0_preview");
    app.buf_info.tiles_bk1_preview=glade_xml_get_widget(app.xml_main,
 						       "tile_bk1_preview");
+   app.buf_info.back_preview=glade_xml_get_widget(app.xml_main,
+						  "back_preview");
    app.buf_info.pal0=app.buf_info.pal1=pal_bck;
 
    /* MEM INFO */
@@ -459,6 +486,9 @@ void init_app(void) {
    app.mem_info.ram_clist=glade_xml_get_widget(app.xml_main,"ram_clist");
    app.mem_info.vram_clist=glade_xml_get_widget(app.xml_main,"vram_clist");
    app.mem_info.wram_clist=glade_xml_get_widget(app.xml_main,"wram_clist");
+   app.mem_info.oam_clist=glade_xml_get_widget(app.xml_main,"oam_clist");
+   app.mem_info.himem_clist=glade_xml_get_widget(app.xml_main,"himem_clist");
+   
    app.mem_info.nb_rom_page_label=glade_xml_get_widget(app.xml_main,"nb_rom_page_label");
    app.mem_info.nb_ram_page_label=glade_xml_get_widget(app.xml_main,"nb_ram_page_label");
    app.mem_info.nb_vram_page_label=glade_xml_get_widget(app.xml_main,"nb_vram_page_label");
@@ -514,7 +544,7 @@ void update_cpu_info(void) {
   gtk_entry_set_text(GTK_ENTRY(REG_DE_ENTRY),c);
   sprintf(c,"%04x",gbcpu->pc.w);
   gtk_entry_set_text(GTK_ENTRY(REG_PC_ENTRY),c);
-  sprintf(c,"%04x",gbcpu->sp.w);
+  sprintf(c,"%04x [%02x%02x]",gbcpu->sp.w,mem_read(gbcpu->sp.w+1),mem_read(gbcpu->sp.w));
   gtk_entry_set_text(GTK_ENTRY(REG_SP_ENTRY),c);  
   
   str[0]=0;
@@ -581,7 +611,7 @@ void update_lcdc_info(void) {
   gtk_label_set_text(GTK_LABEL(app.lcdc_info.lcdccont_label),str);
   sprintf(str,"%02x",LCDCSTAT);
   gtk_label_set_text(GTK_LABEL(app.lcdc_info.lcdcstat_label),str);
-  sprintf(str,"%d",lcdc_cycle);
+  sprintf(str,"%d",gblcdc->cycle_todo);
   gtk_label_set_text(GTK_LABEL(app.lcdc_info.lcdccycle_label),str);
 }
 
@@ -597,6 +627,7 @@ void update_buf_info(void) {
   switch(app.buf_info.page) {
   case 0:break;
   case 1:draw_tiles_bk();break;
+  case 2:draw_back_all();break;
   }
 }
 
@@ -625,12 +656,19 @@ void update_mem_info(void) {
     gtk_entry_set_text(GTK_ENTRY(app.mem_info.active_ram_entry),g_strdup_printf("%d",active_ram_page));
     break;  
   case 4:
-    if (nb_wram_page>0)
-      print_mem(GTK_CLIST(app.mem_info.wram_clist),wram_page[active_wram_page],0xc000,0x2000);
+    if (nb_wram_page>0) {
+      print_mem(GTK_CLIST(app.mem_info.wram_clist),wram_page[0],0xc000,0x1000);
+      print_mem(GTK_CLIST(app.mem_info.wram_clist),wram_page[active_wram_page],0xd000,0x1000);
+    }
     gtk_label_set_text(GTK_LABEL(app.mem_info.nb_wram_page_label),g_strdup_printf("%d",nb_wram_page));
     gtk_entry_set_text(GTK_ENTRY(app.mem_info.active_wram_entry),g_strdup_printf("%d",active_wram_page));
-    break;   
-    
+    break;
+  case 5:
+    print_mem(GTK_CLIST(app.mem_info.oam_clist),oam_space,0xfe00,0x100);
+    break;
+  case 6:
+    print_mem(GTK_CLIST(app.mem_info.himem_clist),himem,0xff00,0xff);
+    break;    
   }
 }
 
@@ -646,8 +684,12 @@ void clear_memory(void) {
 
 void run(void) {
   if (is_breakpoint(gbcpu->pc.w)) update_gb_one();
-  while((!conf.gb_done) && (!is_breakpoint(gbcpu->pc.w))) 
+  while((!conf.gb_done) && (!is_breakpoint(gbcpu->pc.w))) {
+    if (gbcpu->hl.w==0x2ff) {
+      conf.gb_done=1;
+    }
     update_gb_one();
+  }
   conf.gb_done=0;
   update_all();
 }
@@ -706,7 +748,8 @@ int main(int argc,char **argv) {
   open_log();
 
   init_tab_op();
- 
+
+  gblcdc_init();
   gbcpu_init();
   init_vram(0);
 

@@ -6,7 +6,6 @@ The 1.0 serie don't work, sorry.
 Installation :
 
 Just do make, it should work (I hope :)
-Edit the Makefile if you want joystick support.
 
 Use :
 

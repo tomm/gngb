@@ -3,7 +3,7 @@
 
 #include <gtk/gtk.h>
 #include <glade/glade.h>
-#include "global.h"
+#include "../global.h"
 
 typedef struct {
   GtkWidget *reg_AF_entry;
@@ -42,6 +42,7 @@ typedef struct {
 typedef struct {
   GtkWidget *tiles_bk0_preview;  
   GtkWidget *tiles_bk1_preview;
+  GtkWidget *back_preview;
   UINT16 *pal0,*pal1;
   int page;
 }BUF_INFO;
@@ -52,6 +53,8 @@ typedef struct {
   GtkWidget *ram_clist;
   GtkWidget *vram_clist;
   GtkWidget *wram_clist;
+  GtkWidget *oam_clist;
+  GtkWidget *himem_clist;
   
   GtkWidget *nb_rom_page_label;
   GtkWidget *nb_vram_page_label;

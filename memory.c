@@ -27,13 +27,15 @@
 #include "interrupt.h"
 #include "frame_skip.h"
 #include "sound.h"
+#include "serial.h"
 
 #ifdef DEBUG
-#include "log.h"
+#include "debuger/log.h"
 #endif
 
 INT32 *joy_axis;
 UINT32 joy_but=0;
+UINT8 joy_num_axe=0;
 
 UINT8 key[256];
 UINT8 gb_pad_code[8]={98,104,100,102,53,52,36,62};
@@ -91,7 +93,7 @@ void select_default(UINT16 adr,UINT8 v)
 
 void mbc1_select_page(UINT16 adr,UINT8 v)
 {
-  UINT8 bank=v/*&0x1f*/;
+  UINT8 bank=v&0x1f;
   if (bank<1) bank=1;
   active_rom_page=bank;
 #ifdef DEBUG
@@ -126,12 +128,12 @@ void mbc5_select_page(UINT16 adr,UINT8 v)
 {
   UINT16 bank;
   if (adr>=0x2000 && adr<0x3000)
-    mbc5_lower=v&rom_mask;
+    mbc5_lower=v;//&rom_mask;
   if (adr>=0x3000 && adr<0x4000 && nb_rom_page>=256) {
     mbc5_upper=v&0x01;
   }
   bank=mbc5_lower+((mbc5_upper)?256:0);
-  active_rom_page=bank&rom_mask;
+  active_rom_page=bank;//&rom_mask;
 #ifdef DEBUG
   put_log2("mbc5 select page %d\n",active_rom_page);
 #endif
@@ -148,10 +150,12 @@ void init_gb_memory(int nb_axe)
 
   dma_info.type=NO_DMA;
 
+  /* to work */
   if (nb_axe<2) nb_axe=2;
   joy_axis=(INT32 *)malloc(sizeof(INT32)*nb_axe);
   memset(joy_axis,0,sizeof(INT32)*nb_axe);
-  
+  joy_num_axe=nb_axe;
+
   if (rom_type&MBC1) select_rom_page=mbc1_select_page;
   else if (rom_type&MBC2) select_rom_page=mbc2_select_page;
   else if (rom_type&MBC3) select_rom_page=mbc3_select_page;
@@ -191,7 +195,7 @@ void free_mem_page(UINT8 **page,UINT16 nb_page)
 
 inline void do_hdma(void) {
   int i;
-  
+
   for(i=0;i<16;i++)
     mem_write(dma_info.dest++,mem_read(dma_info.src++));
 
@@ -199,13 +203,14 @@ inline void do_hdma(void) {
   HDMA_CTRL2=(dma_info.src&0xf0);
   HDMA_CTRL3=(dma_info.dest&0xff00)>>8;
   HDMA_CTRL4=(dma_info.dest&0xf0);
-
+  
   HDMA_CTRL5--;
   if (HDMA_CTRL5==0xff) dma_info.type=NO_DMA;
 }
 
 inline void do_gdma(void) {
   int i;
+  
   for(i=0;i<dma_info.lg;i++)
     mem_write(dma_info.dest++,mem_read(dma_info.src++));
   HDMA_CTRL1=(dma_info.src&0xff00)>>8;
@@ -219,36 +224,42 @@ inline void do_gdma(void) {
 
 inline void hdma_request(UINT8 v)
 {
-  if (LCDCCONT&0x80) {
+  /* FIXME : control are necesary ( i think ) */
+  //if (LCDCCONT&0x80) {
     dma_info.v=v;
-    dma_info.src=(HDMA_CTRL1<<8)|(HDMA_CTRL2&0xf0);
-    dma_info.dest=(HDMA_CTRL3<<8)|(HDMA_CTRL4&0xf0)|0x8000;
+    /*dma_info.src=(HDMA_CTRL1<<8)|(HDMA_CTRL2&0xf0);
+    dma_info.dest=(HDMA_CTRL3<<8)|(HDMA_CTRL4&0xf0)|0x8000;*/
+    dma_info.src=((HDMA_CTRL1<<4)|(HDMA_CTRL2>>4))<<4;
+    dma_info.dest=((((HDMA_CTRL3&31)|0x80)<<4)|(HDMA_CTRL4>>4))<<4;
     dma_info.lg=((v&0x7f)+1)<<4;
-    
     HDMA_CTRL5=v&0x7f;
     dma_info.type=HDMA;
-  } else dma_info.type=NO_DMA;
+    if ((LCDCSTAT&0x03)==0x00) do_hdma();
+    /*} else  {
+      dma_info.v=v;
+      dma_info.src=(HDMA_CTRL1<<8)|(HDMA_CTRL2&0xf0);
+      dma_info.dest=(HDMA_CTRL3<<8)|(HDMA_CTRL4&0xf0)|0x8000;
+      dma_info.lg=((v&0x7f)+1)<<4;
+      HDMA_CTRL5=0xff;
+      dma_info.type=NO_DMA;
+      do_gdma();
+      }*/
 }
 
 inline void gdma_request(UINT8 v)
 {
   dma_info.v=v;
-  dma_info.src=(HDMA_CTRL1<<8)|(HDMA_CTRL2&0xf0);
-  dma_info.dest=(HDMA_CTRL3<<8)|(HDMA_CTRL4&0xf0)|0x8000;
+  /*dma_info.src=(HDMA_CTRL1<<8)|(HDMA_CTRL2&0xf0);
+    dma_info.dest=(HDMA_CTRL3<<8)|(HDMA_CTRL4&0xf0)|0x8000;*/
+  dma_info.src=((HDMA_CTRL1<<4)|(HDMA_CTRL2>>4))<<4;
+  dma_info.dest=((((HDMA_CTRL3&31)|0x80)<<4)|(HDMA_CTRL4>>4))<<4;
   dma_info.lg=((v&0x7f)+1)<<4;
-  
-  if (!(LCDCCONT&0x80)  || (CURLINE>=0x90)) {
-    //printf("gdma\n");
-    dma_info.type=GDMA;
-    do_gdma();
-  } else {
-    dma_info.type=NO_DMA;
-    HDMA_CTRL5=0xff;
-  }
-  
-  /* if (!(LCDCCONT&0x80)) do_gdma();
-  else if ((LCDCSTAT&0x03)==0x01) do_gdma();
-  else dma_info.type=GDMA_STAND;*/
+
+  /* FIXME : control are necesary ( i think ) */
+  //  if ((!(LCDCCONT&0x80))  || ((LCDCSTAT&0x01)==0x01)) {
+  do_gdma();
+  /*} else {
+    dma_info.type=NO_DMA;*/   
 }
 
 
@@ -256,14 +267,15 @@ inline void do_dma(UINT8 v)
 {
   UINT16 a=v<<8;
   UINT8 bank;
- 
+  int i;
+
   DMA=v;
 
-  if (a>=0xfea0 && a<0xffff)
+  if (a>=0xfea0 && a<0xffff) 
     memcpy(oam_space,&himem[a-0xfea0],0xa0);
- 
+  
   if (a>=0xe000 && a<0xfe00) a-=0x2000;  // echo mem
-
+  
   bank=(a&0xf000)>>12;
   switch(bank) {
   case 0x00:
@@ -280,12 +292,17 @@ inline void do_dma(UINT8 v)
   case 0x0b:memcpy(oam_space,&ram_page[active_ram_page][a-0xa000],0xa0);return;
   case 0x0c:memcpy(oam_space,&wram_page[0][a-0xc000],0xa0);return;
   case 0x0d:memcpy(oam_space,&wram_page[active_wram_page][a-0xd000],0xa0);return; 
+  default:
+    for(i=0;i<0xa0;i++)
+      oam_space[i]=mem_read(a+i);
+    break;
   }
 }
 
 inline UINT8 mem_read_ff(UINT16 adr)
 {
   if (adr==0xff00) {
+    if (GB_PAD==0xff) return 0xff;
      update_gb_pad();
     if (GB_PAD&0x10) GB_PAD=((~(gb_pad&0x0f))&0xdf);
     else if (GB_PAD&0x20) GB_PAD=((~(gb_pad>>4))&0xef);
@@ -346,34 +363,32 @@ inline UINT8 mem_read(UINT16 adr)
 
 inline void write2lcdccont(UINT8 v)
 {
-  //  static UINT8 temp;
-  
-  //printf("write to lcdccont %0.2x \n",v);
-  //  printf("%02x\n",v);
+
   if ((LCDCCONT&0x80) && (!(v&0x80))) {  // LCDC go to off
-    lcdc_mode=HBLANK_PER;
+    gblcdc->mode=HBLANK_PER;
     LCDCSTAT=(LCDCSTAT&0xfc);
     CURLINE=0;
     dma_info.type=NO_DMA;
     HDMA_CTRL5=0xff;
-    //clear_screen();
   }
   
-  if ((!(LCDCCONT&0x80)) && (v&0x80)) {
+  if ((!(LCDCCONT&0x80)) && (v&0x80)) { // LCDC go to on
     /*if (dma_info.type==HDMA_STAND) {
       dma_info.type=HDMA;
-      do_hdma();
+      HDMA_CTRL5=dma_info.v&0x7f;
+      //do_hdma();
       }*/
-    if (conf.autofs) barath_skip_next_frame(0);
+    gblcdc->mode=OAM_PER;
+    LCDCSTAT=(LCDCSTAT&0xfc)|0x02;
+    gblcdc->cycle_todo=gblcdc->mode2cycle;
+    CURLINE=0;
   }
-   
   LCDCCONT=v;
 }
 
 inline void mem_write_ff(UINT16 adr,UINT8 v) {
   UINT16 a;
   UINT8 c,p;
-
 
   if (gameboy_type&COLOR_GAMEBOY) {
     if (adr==0xff4d) {
@@ -445,7 +460,7 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
     }
 
     if (adr==0xff70) {
-      active_wram_page=v&0x07;
+      active_wram_page=(v&0x07);
       if (!active_wram_page) active_wram_page=1;
       WRAM_BANK=active_wram_page;
       return;
@@ -453,33 +468,9 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
   } // end COLOR_GAMEBOY
 
   // Update sound if necessary
-  /*
- if (adr==0xFF24) {
-    UINT32 snd_len =(UINT32)((float)get_nb_cycle()*(sample_rate/59.73)
-			   /((gbcpu->mode== DOUBLE_SPEED)?140448.0:70224.0));
-    
-    if (snd_len) 
-      update_gb_sound(snd_len<<1);
-  
-    snd_g.SO1_OutputLevel=v&0x7;
-    snd_g.SO2_OutputLevel=(v&0x70)>>4;
-    snd_g.Vin_SO1=(v&0x8)>>3;
-    snd_g.Vin_SO2=(v&0x80)>>7;
-    return;
-  }
-  */
   if (adr>=0xff10 && adr<=0xff3f && conf.sound) {
     write_sound_reg(adr,v);
     return;
-    // printf("Sample rate:%f\n",sample_rate/59.73);
-    /*
-    snd_len = (UINT32) ((float)get_nb_cycle()*(sample_rate/59.73)/((gbcpu->mode== DOUBLE_SPEED)?140448.0:70224.0));
-   
-    if (snd_len) 
-    
-      update_gb_sound(snd_len<<1);
-    */
-    
   }
 
   switch(adr) {
@@ -487,11 +478,25 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
     if (v==0x30) GB_PAD=0xff;
     else GB_PAD=v;
     break;
+    /* EXPERIMENTAL */
+  case 0xff01:
+    SB=v;
+    break;
+  case 0xff02:
+    if (conf.serial_on) {
+      if ((v&0x81)==0x81) {
+	send_byte(SB);
+	//serial_cycle_todo=4096*2;
+      } 
+    } 
+    SC=v&0x7f;
+    break;
   case 0xff0f:
 #ifdef DEBUG
     put_log("write to INT_FLAG %02x\n",v);
 #endif
-    INT_FLAG=v&0x1f;break;
+    INT_FLAG=v&0x1f;
+    break;
   case 0xffff:
     INT_ENABLE=v&0x1f;
 #ifdef DEBUG
@@ -501,8 +506,6 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
   case 0xff04:DIVID=0;break;
   case 0xff07:
     if (v&4) {
-      UINT8 a;
-      
       switch(v&3) {
       case 0: timer_clk_inc=1024;break;
       case 1: timer_clk_inc=16;break;
@@ -515,9 +518,18 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
   case 0xff40:
     write2lcdccont(v);
     break;
-  case 0xff41:LCDCSTAT=(LCDCSTAT&0x07)|(v&0xf8);break;
-  case 0xff44:CURLINE=0;break;
-  case 0xff45:CMP_LINE=v;break;
+  case 0xff41:LCDCSTAT=(LCDCSTAT&0x07)|(v&0xf8);
+    break;
+  case 0xff44:CURLINE=0;
+    break;
+  case 0xff45:CMP_LINE=v;
+    if (CMP_LINE==CURLINE)
+      LCDCSTAT|=0x04;
+    else 
+      LCDCSTAT&=~0x04;
+    if (LCDCSTAT&0x40 && LCDCSTAT&0x04 && LCDCCONT&0x80 && LCDCSTAT&0x02) 
+      set_interrupt(LCDC_INT);
+    break;
   case 0xff46:      // DMA
     do_dma(v);
     break;
@@ -630,14 +642,16 @@ inline void update_key(void) {
     case SDL_KEYDOWN:
       key[event.key.keysym.scancode]=1;
       switch(event.key.keysym.scancode) {
-      case 9: conf.gb_done=1;break; // ESC
+      case 9: conf.gb_done=1;break;
 	/* FIXME : SaveSnap are experimental */
-      case 67:if (!save_snap()) printf("save snap done\n");break;
-      case 68:if (!load_snap()) printf("load snap done\n");break;
-      case 69:SDL_WM_ToggleFullScreen(screen);break;
+      case 67:if (!save_state(1)) printf("save snap done\n");break;
+      case 68:if (!load_state(1)) printf("load snap done\n");break;
+      case 69:switch_fullscreen();break;
+      case 70:rb_on=1;break;
       }
       break;
     case SDL_JOYAXISMOTION:
+      if (event.jaxis.axis>=joy_num_axe) return;
       joy_axis[event.jaxis.axis]=event.jaxis.value;
       break;
     case SDL_JOYBUTTONDOWN:

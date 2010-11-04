@@ -51,9 +51,7 @@ typedef struct {
   REG hl;
   REG sp;
   REG pc;
-  UINT16 cycle_todo;
-  UINT8 int_flag;
-  UINT8 int_occured;
+  UINT8 int_flag;        // IME
   UINT8 mode;
   UINT8 state;
 }GB_CPU;

@@ -25,6 +25,8 @@
 #include "rom.h"
 #include "vram.h"
 #include "interrupt.h"
+#include "serial.h"
+#include "frame_skip.h"
 
 #include "sound.h"
 #include <SDL/SDL.h>
@@ -41,6 +43,8 @@ void exit_gngb(void)
   close_vram();
   if (conf.sound)
     close_sound();
+  if (conf.serial_on) 
+    gbserial_close();
   
   exit(0);
 }
@@ -66,11 +70,12 @@ void check_option(int argc,char *argv[])
   conf.normal_gb=0;
   conf.autofs=0;
   conf.sound=0;
+  conf.serial_on=0;
   conf.joy_no=0;
   conf.fs=0;
   conf.gb_done=0;
   conf.rumble_on=0;
-  while((c=getopt(argc,argv,"rghasfj:"))!=EOF) {
+  while((c=getopt(argc,argv,"c:lrghasfj:"))!=EOF) {
     switch(c) {
     case 'g':conf.normal_gb=1;break;
     case 'a':conf.autofs=1;break;
@@ -78,6 +83,8 @@ void check_option(int argc,char *argv[])
     case 'j':conf.joy_no=atoi(optarg);break;
     case 'f':conf.fs=1;fullscr|=SDL_FULLSCREEN;break;
     case 'r':conf.rumble_on=1;break;  
+    case 'l':conf.serial_on=1;gbserial_init(1,NULL);break;
+    case 'c':conf.serial_on=1;gbserial_init(0,optarg);break;
     case 'h':print_help();break;
     }
   }
@@ -95,6 +102,7 @@ int main(int argc,char *argv[])
     exit_gngb();
   }
 
+  gblcdc_init();
   gbcpu_init();
   init_vram(fullscr);
 
@@ -110,7 +118,7 @@ int main(int argc,char *argv[])
 
   init_gb_memory(SDL_JoystickNumAxes(joy));
   if (conf.sound) init_sound();
-  
+
   while(!conf.gb_done) {
     update_gb();
   }

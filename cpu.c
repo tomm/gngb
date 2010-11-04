@@ -23,8 +23,12 @@
 #include "cpu.h"
 #include "memory.h"
 #include "interrupt.h"
+#include "serial.h"
 #include "frame_skip.h"
-#include "log.h"
+
+#ifdef DEBUG
+#include "debuger/log.h"
+#endif
 
 GB_CPU *gbcpu=0;
 
@@ -65,30 +69,16 @@ inline UINT8 get_byte(void)
 
 inline void push_r(REG *r)
 {
-  //  printf("push_r %x0.4",(r)->b.w);
   mem_write(--SP,(r)->b.h);
   mem_write(--SP,(r)->b.l);
-  /*
-  mem_write(--SP,(r)->b.l);
-  mem_write(--SP,(r)->b.h);
-  */
 }
 
 inline void pop_r(REG *r)
 {
-  
   (r)->b.l=mem_read(SP++);
   (r)->b.h=mem_read(SP++);
-
-  /*
-  (r)->b.h=mem_read(SP++);
-  (r)->b.l=mem_read(SP++);
-  */
 } 
 
-//#define GET_BYTE (gbcpu->base[PC++])
-//#define GET_WORD (((UINT16)gbcpu->base[a=(PC++)])+((UINT16)(gbcpu->base[b=(PC++)]<<8)))
-//#define GET_WORD ((GET_BYTE)|(GET_BYTE<<8))
 #define GET_BYTE get_byte()
 #define GET_WORD get_word()
 
@@ -96,11 +86,7 @@ inline void pop_r(REG *r)
 #define UNSET_FLAG(f) ((gbcpu->af.b.l)&=(f))
 #define IS_SET(f) ((gbcpu->af.b.l&(f)))
 
-//#define SUB_CYCLE(a) (gbcpu->cycle_todo+=((a)))
 #define SUB_CYCLE(a) return a
-
-/*#define PUSH_R(r) {mem_write(--SP,(r).b.h);mem_write(--SP,(r).b.l);}
-  #define POP_R(r) {(r).b.l=mem_read(SP++);(r).b.h=mem_read(SP++);}*/
 
 #define PUSH_R(r) (push_r(&r))
 #define POP_R(r) (pop_r(&r))
@@ -627,27 +613,17 @@ void gbcpu_init(void)
   gbcpu->de.w=0x00d8;
   gbcpu->sp.w=0xFFFE;
   gbcpu->pc.w=0x0100;
-  gbcpu->cycle_todo=0;
   gbcpu->mode=-1;
-  go2simple_speed();
   gbcpu->state=0;
-  gbcpu->int_occured=0;
+  gbcpu->int_flag=1;
+  gbcpu->mode=SIMPLE_SPEED;
 }
-/*
-inline UINT8 gbcpu_exec(UINT32 nb_cycle)
-{
-  gbcpu->cycle_todo=0;
-  for(;gbcpu->cycle_todo<nb_cycle;) {
-    gb_inst_tb[mem_read(PC++)].inst();
-    if (gbcpu->state==HALT_STATE) return 0;
-  }
-  return (gbcpu->cycle_todo-nb_cycle);
-}
- */
+
 // GAMEBOY OPERANDE 
 
 inline UINT8 unknown(void){
-  SUB_CYCLE(4);
+  //SUB_CYCLE(4);
+  return 0;
 }
 
 inline UINT8 nop(void){
@@ -903,8 +879,6 @@ inline UINT8 ld_h_n(void){
   SUB_CYCLE(8);
 }
 
-/* taken from gbe */
-
 inline UINT8 daa(void){
   UINT16  v=A;
 
@@ -1023,7 +997,7 @@ inline UINT8 dec_mem_hl(void){
   ((v)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   SET_FLAG(FLAG_N);
   mem_write(HL,v);
-  SUB_CYCLE(4);
+  SUB_CYCLE(12);
 }
 
 inline UINT8 ld_mem_hl_n(void){
@@ -1594,7 +1568,7 @@ inline UINT8 adc_a_mem_hl(void){
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
-  SUB_CYCLE(4);
+  SUB_CYCLE(8);
 }
 
 inline UINT8 adc_a_a(void){
@@ -2144,7 +2118,7 @@ inline UINT8 adc_a_n(void){
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
-  SUB_CYCLE(4);
+  SUB_CYCLE(8);
 }
 
 inline UINT8 rst_8h(void){
@@ -4302,162 +4276,126 @@ inline UINT8 gbcpu_exec_one(void)
 inline void update_gb(void) {
   static UINT8 a;
   static UINT32 divid_cycle;
-  //static INT16 lcdc_cycle;
   static UINT32 timer_cycle;
   static UINT32 key_cycle;
+  static INT16 serial_cycle;
   int v=0;
 
   while(!conf.gb_done) {
     v=0;
+
     if (gbcpu->state!=HALT_STATE) a=gbcpu_exec_one();
     else a=4;
+    
     nb_cycle+=a;
     divid_cycle+=a;
-
+    
     if (divid_cycle>256) {
       DIVID++;
       divid_cycle=0;
     }
-  
-  if (LCDCCONT&0x80) {
-    if (lcdc_cycle<=0) {
-      lcdc_cycle+=(lcdc_update()-a);
-      lcdc_mode_clk[lcdc_mode]=0;
-    } else {
-      lcdc_cycle-=(INT16)a;
-      lcdc_mode_clk[lcdc_mode]+=a;
-    }
-  } else lcdc_cycle=0;
-
-  if (TIME_CONTROL&0x04) {
-    timer_cycle+=a;
-    if (timer_cycle>=timer_clk_inc) {
-      timer_update();
-      timer_cycle=0;
-    }
-  }
-
-  if (gbcpu->state==HALT_STATE) halt_update();
-  if (INT_FLAG&VBLANK_INT) {
-    /*    int b=0;
-    do {
-      b+=gbcpu_exec_one();
-      nb_cycle+=b;
-      DIVID++;
-  
-      if (LCDCCONT&0x80) {
-	if (lcdc_cycle<=0) {
-	  // printf("%d %d \n",lcdc_mode,lcdc_mode_clk[lcdc_mode]);
-	  lcdc_cycle+=(lcdc_update()-b);
-	  lcdc_mode_clk[lcdc_mode]=0;
-	} else {
-	  lcdc_cycle-=(INT16)b;
-	  lcdc_mode_clk[lcdc_mode]+=b;
-	}
-      } else lcdc_cycle=0;
-
-      if (TIME_CONTROL&0x04) {
-	timer_cycle+=b;
-	if (timer_cycle>=timer_clk_inc) {
-	  timer_update();
-	  timer_cycle=0;
-	}
+    
+    if (LCDCCONT&0x80) {
+      gblcdc->cycle_todo-=a;
+      if (gblcdc->cycle_todo<=0) gblcdc->cycle_todo+=(lcdc_update());
+      //else gblcdc->cycle_todo-=a;
+    }// else gblcdc->cycle_todo=0;
+        
+    if (TIME_CONTROL&0x04) {
+      timer_cycle+=a;
+      if (timer_cycle>=timer_clk_inc) {
+	timer_update();
+	timer_cycle-=timer_clk_inc;
       }
+    }
+    
+    /* FIXME: serial is experimentale */
+    if (conf.serial_on/* && serial_cycle<0*/) {
+      int n;
+      //      serial_cycle=1024;
+      if ((n=recept_byte())>=0) {
+	if (!(SC&0x01)) send_byte(SB);
+	SB=(UINT8)n;
+	SC&=0x7f;
+	set_interrupt(SERIAL_INT);
+      }
+    } //else serial_cycle-=a;
+        
+    if (INT_FLAG&VBLANK_INT)  v=make_interrupt(VBLANK_INT);
+    if (INT_FLAG&LCDC_INT && !v) v=make_interrupt(LCDC_INT);
+    if (INT_FLAG&TIMEOWFL_INT && !v) v=make_interrupt(TIMEOWFL_INT);  
+    if (INT_FLAG&SERIAL_INT && !v) v=make_interrupt(SERIAL_INT); 
 
-    }while(b<1);
-    */
-    // gbcpu_exec_one();
-    v=make_interrupt(VBLANK_INT);
-  }
-  if (INT_FLAG&LCDC_INT && !v) v=make_interrupt(LCDC_INT);
-  if (INT_FLAG&TIMEOWFL_INT && !v) v=make_interrupt(TIMEOWFL_INT);  
-
-  key_cycle+=a;
-  if (key_cycle>=vblank_cycle) {
-    if (conf.autofs) skip_next_frame=barath_skip_next_frame(0);
-    update_key();
-    key_cycle=0;
-  }
+    key_cycle+=a;
+    if (key_cycle>=gblcdc->vblank_cycle) {
+      update_key();
+      key_cycle=0;
+    }
   }
 }
 
+#ifdef DEBUG
 inline void update_gb_one(void) {
   static UINT8 a;
-  //static INT16 lcdc_cycle;
+  static UINT32 divid_cycle;
   static UINT32 timer_cycle;
   static UINT32 key_cycle;
   int v=0;
 
-
-    v=0;
+  v=0;
+    
     if (gbcpu->state!=HALT_STATE) a=gbcpu_exec_one();
     else a=4;
+    
     nb_cycle+=a;
-    DIVID++;
-  
-  if (LCDCCONT&0x80) {
-    if (lcdc_cycle<=0) {
-      // printf("%d %d \n",lcdc_mode,lcdc_mode_clk[lcdc_mode]);
-      lcdc_cycle+=(lcdc_update()-a);
-      lcdc_mode_clk[lcdc_mode]=0;
-    } else {
-      lcdc_cycle-=(INT16)a;
-      lcdc_mode_clk[lcdc_mode]+=a;
-    }
-  } else lcdc_cycle=0;
-
-  if (TIME_CONTROL&0x04) {
-    timer_cycle+=a;
-    if (timer_cycle>=timer_clk_inc) {
-      timer_update();
-      timer_cycle=0;
-    }
-  }
-
-  if (gbcpu->state==HALT_STATE) halt_update();
-  
-  if (INT_FLAG&VBLANK_INT) {
-    /*
-    int b=0;
-    do {
-      b+=gbcpu_exec_one();
-      nb_cycle+=b;
+    divid_cycle+=a;
+    
+    if (divid_cycle>256) {
       DIVID++;
-  
-      if (LCDCCONT&0x80) {
-	if (lcdc_cycle<=0) {
-	  // printf("%d %d \n",lcdc_mode,lcdc_mode_clk[lcdc_mode]);
-	  lcdc_cycle+=(lcdc_update()-b);
-	  lcdc_mode_clk[lcdc_mode]=0;
-	} else {
-	  lcdc_cycle-=(INT16)b;
-	  lcdc_mode_clk[lcdc_mode]+=b;
-	}
-      } else lcdc_cycle=0;
-
-      if (TIME_CONTROL&0x04) {
-	timer_cycle+=b;
-	if (timer_cycle>=timer_clk_inc) {
-	  timer_update();
-	  timer_cycle=0;
-	}
+      divid_cycle=0;
+    }
+    
+    if (LCDCCONT&0x80) {
+      gblcdc->cycle_todo-=a;
+      if (gblcdc->cycle_todo<=0) gblcdc->cycle_todo+=(lcdc_update());
+      //else gblcdc->cycle_todo-=a;
+    }// else gblcdc->cycle_todo=0;
+        
+    if (TIME_CONTROL&0x04) {
+      timer_cycle+=a;
+      if (timer_cycle>=timer_clk_inc) {
+	timer_update();
+	timer_cycle-=timer_clk_inc;
       }
+    }
+    
+    /* FIXME: serial is experimentale */
+    if (conf.serial_on/* && serial_cycle<0*/) {
+      int n;
+      //      serial_cycle=1024;
+      if ((n=recept_byte())>=0) {
+	if (!(SC&0x01)) send_byte(SB);
+	SB=(UINT8)n;
+	SC&=0x7f;
+	set_interrupt(SERIAL_INT);
+      }
+    } //else serial_cycle-=a;
+    
+        
+    if (INT_FLAG&VBLANK_INT) v=make_interrupt(VBLANK_INT);
+    else if (INT_FLAG&LCDC_INT && !v) v=make_interrupt(LCDC_INT);
+    else if (INT_FLAG&TIMEOWFL_INT && !v) v=make_interrupt(TIMEOWFL_INT);  
+    else if (INT_FLAG&SERIAL_INT && !v) v=make_interrupt(SERIAL_INT); 
 
-      }while(b<1);*/
-    // printf("%d %04x\n",gbcpu_exec_one(),gbcpu->pc.w);
-    // lcdc_cycle+=gbcpu_exec_one();
-    v=make_interrupt(VBLANK_INT);
-  }
-  if (INT_FLAG&LCDC_INT && !v) v=make_interrupt(LCDC_INT);
-  if (INT_FLAG&TIMEOWFL_INT && !v) v=make_interrupt(TIMEOWFL_INT);  
-
-  key_cycle+=a;
-  if (key_cycle>=vblank_cycle) {
-    update_key();
-    key_cycle=0;
-  }
-
+    key_cycle+=a;
+    if (key_cycle>=gblcdc->vblank_cycle) {
+      update_key();
+      key_cycle=0;
+    } 
 }
+
+
+#endif
 
 #undef REG_AF
 #undef REG_BC

@@ -27,7 +27,7 @@
 #define SCREEN_Y 144
 #define BIT_PER_PIXEL 16
 
-INT8 rb_tab[]={0,-2,2,-2,2,0,0,0,0,0,0,0,0};
+INT8 rb_tab[]={0,0,-2,2,-2,2,0,0,0,0,0,0,0};
 UINT8 rb_shift=0;
 
 struct mask_shift tab_ms[8]={
@@ -40,7 +40,10 @@ struct mask_shift tab_ms[8]={
   { 0x02,1 },
   { 0x01,0 }};
 
-SDL_Surface *screen=NULL,*back=NULL;
+static SDL_Surface *gb_screen=NULL,*back=NULL;
+
+SDL_Rect dstR;
+SDL_Rect scrR;
 
 UINT16 grey[4];
 UINT16 pal_bck[4];
@@ -62,7 +65,7 @@ UINT8 (*draw_screen)(void);
 UINT8 draw_screen_col(void);
 UINT8 draw_screen_wb(void);
 
-/* take from VGBC (not VGB) a great emulator */
+/* take from VGBC (not VGB) */
 
 int GetValue(int min,int max,int v)
 {
@@ -129,10 +132,10 @@ void init_vram(UINT32 flag)
   }
   atexit(SDL_Quit);   
   
-  screen=SDL_SetVideoMode(SCREEN_X,SCREEN_Y,BIT_PER_PIXEL,SDL_HWSURFACE|flag);
-  back=SDL_CreateRGBSurface(SDL_HWSURFACE,SCREEN_X,SCREEN_Y,BIT_PER_PIXEL,
+  gb_screen=SDL_SetVideoMode(SCREEN_X,SCREEN_Y,BIT_PER_PIXEL,SDL_HWSURFACE|flag);
+  back=SDL_CreateRGBSurface(SDL_HWSURFACE,SCREEN_X,SCREEN_Y+1,BIT_PER_PIXEL,
 			    0xf800,0x7e0,0x1f,0x00);
-  if (screen==NULL) {
+  if (gb_screen==NULL) {
     printf("Couldn't set %dx%dx%d video mode: %s\n",
 	   SCREEN_X,SCREEN_Y,BIT_PER_PIXEL,SDL_GetError());
     exit(1);
@@ -151,6 +154,10 @@ void init_vram(UINT32 flag)
 
   if (gameboy_type&COLOR_GAMEBOY) draw_screen=draw_screen_col;
   else draw_screen=draw_screen_wb;
+}
+
+void switch_fullscreen(void) {
+  SDL_WM_ToggleFullScreen(gb_screen);
 }
 
 void close_vram(void)
@@ -278,8 +285,8 @@ inline void draw_obj_col(UINT16 *buf)
 inline void draw_back_col(UINT16 *buf)
 {
   UINT8 *tb,*tp,*att_tb;
-  int y,x,i;
-  int sx,sy;
+  UINT16 y,x,i;
+  UINT16 sx,sy;
   UINT8 bit0,bit1,c,p,att,xflip,yflip;
   INT16 no_tile;
  
@@ -401,7 +408,7 @@ inline void draw_back(UINT16 *buf)
 inline void draw_win_col(UINT16 *buf)
 {
   UINT8 *tb,*tp,*att_tb; // ,*tiles;
-  int y,x,i,sx;
+  UINT16 y,x,i,sx;
   INT16 no_tile;
   UINT8 bit0,bit1,c,p,att,xflip,yflip;
   
@@ -485,22 +492,22 @@ inline void draw_win(UINT16 *buf)
 UINT8 draw_screen_wb(void)
 {
   UINT16 *buf=(UINT16 *)back->pixels + CURLINE*SCREEN_X;
-  if (SDL_LockSurface(screen)<0) printf("can't lock surface\n");
+  if (SDL_MUSTLOCK(back) && SDL_LockSurface(back)<0) printf("can't lock surface\n");
   if (LCDCCONT&0x01) draw_back(buf);
   if (LCDCCONT&0x20) draw_win(buf);
   if (LCDCCONT&0x02) draw_obj(buf);
-  SDL_UnlockSurface(screen);
+  if (SDL_MUSTLOCK(back)) SDL_UnlockSurface(back);
   return 0;
 }
 
 UINT8 draw_screen_col(void) 
 {
   UINT16 *buf=(UINT16 *)back->pixels + CURLINE*SCREEN_X;
-  if (SDL_LockSurface(screen)<0) printf("can't lock surface\n");
+  if (SDL_MUSTLOCK(back) && SDL_LockSurface(back)<0) printf("can't lock surface\n");
   draw_back_col(buf);
   if (LCDCCONT&0x20) draw_win_col(buf);
   if (LCDCCONT&0x02) draw_obj_col(buf);
-  SDL_UnlockSurface(screen);
+  if (SDL_MUSTLOCK(back)) SDL_UnlockSurface(back);
   return 0;
 }
      
@@ -516,17 +523,20 @@ inline void clear_screen(void)
 
 inline void blit_screen(void)
 {
-  SDL_Rect scrR={0,0,SCREEN_X,SCREEN_Y};
-  SDL_Rect dstR={rb_tab[rb_shift],0,SCREEN_X-rb_tab[rb_shift],SCREEN_Y};
+  dstR.x=rb_tab[rb_shift]; dstR.y=rb_tab[rb_shift+1]; dstR.w=SCREEN_X/*-rb_tab[rb_shift]*/; dstR.h=SCREEN_Y;
+  scrR.x=0; scrR.y=0; scrR.w=SCREEN_X; scrR.h=SCREEN_Y;
+ 
   if (rb_on) {
     rb_shift++;
-    if (rb_shift>12) {
+    if (rb_shift>10) {
       rb_on=0;
       rb_shift=0;
     }
   }
-  SDL_BlitSurface(back,&scrR,screen,&dstR);
-  SDL_Flip(screen);
+
+  SDL_BlitSurface(back,&scrR,gb_screen,&dstR);
+  SDL_Flip(gb_screen);
+  
   if ((!(LCDCCONT&0x20) || !(LCDCCONT&0x01)) && (gameboy_type&NORMAL_GAMEBOY))
       clear_screen();
 }

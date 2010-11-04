@@ -59,6 +59,7 @@ typedef struct SoundM1
   float sample_sweep_time;
   float env_per_step;
   float sample_env_per_step;
+  float cp;
 }SoundM1;
 SoundM1 snd_m1;
 
@@ -89,6 +90,7 @@ typedef struct SoundM2
 
   float env_per_step;
   float sample_env_per_step;
+  float cp;
 }SoundM2;
 SoundM2 snd_m2;
 
@@ -116,7 +118,7 @@ typedef struct SoundM3
   UINT16 freq:11;    // freq_lo+(freq_hi<<8)
   float sample;     // Periode en samples
   UINT16 sample_len; // durée en samples
-
+  float cp;
 }SoundM3;
 SoundM3 snd_m3;
 

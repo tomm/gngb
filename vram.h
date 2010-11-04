@@ -30,8 +30,6 @@ struct mask_shift {
 
 extern struct mask_shift tab_ms[8];
 
-extern SDL_Surface *screen,*back;
-
 extern UINT16 grey[4];
 extern UINT16 pal_bck[4];
 extern UINT16 pal_obj0[4];
@@ -64,6 +62,7 @@ extern UINT8 (*draw_screen)(void);
 
 void init_vram(UINT32 flag);
 void close_vram(void);
+void switch_fullscreen(void);
 inline void blit_screen(void);
 void clear_screen(void);
 

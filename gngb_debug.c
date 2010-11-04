@@ -23,10 +23,7 @@
 #include "rom.h"
 #include "vram.h"
 #include "interrupt.h"
-
-#ifdef LINUX_JOYSTICK
-#include "joystick.h"
-#endif
+#include "serial.h"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -352,7 +349,7 @@ void redraw_buf(void)
 
 void next_inst(void)
 {
-  update_gb();
+  update_gb_one();
   aff_register();
 }
 
@@ -448,12 +445,20 @@ void check_option(int argc,char *argv[])
   conf.normal_gb=0;
   conf.autofs=0;
   conf.sound=0;
+  conf.serial_on=0;
+  conf.joy_no=0;
   conf.fs=0;
-  while((c=getopt(argc,argv,"gas"))!=EOF) {
+  conf.gb_done=0;
+  conf.rumble_on=0;
+  while((c=getopt(argc,argv,"c:lrghasfj:"))!=EOF) {
     switch(c) {
-      case 'g':conf.normal_gb=1;break;
-      case 'a':conf.autofs=1;break;
-      case 's':conf.sound=1;break;
+    case 'g':conf.normal_gb=1;break;
+    case 'a':conf.autofs=1;break;
+    case 's':conf.sound=1;break;
+    case 'j':conf.joy_no=atoi(optarg);break;
+    case 'r':conf.rumble_on=1;break;  
+    case 'l':conf.serial_on=1;gbserial_init(1,NULL);break;
+    case 'c':conf.serial_on=1;gbserial_init(0,optarg);break;
     }
   }
 } 
@@ -468,13 +473,10 @@ int main(int argc,char *argv[])
   if (optind>=argc) exit(1);
   if (open_rom(argv[optind])) exit(1);
 
+  gblcdc_init();
   gbcpu_init();
   init_vram(0);
-  init_gb_memory();
-
-#ifdef LINUX_JOYSTICK 
-  my_joy=install_joy(JOY_DEVICE0);
-#endif
+  init_gb_memory(0);
 
   init_tab_op();
 
@@ -502,10 +504,6 @@ int main(int argc,char *argv[])
   if (ram_page) free_mem_page(ram_page,nb_ram_page);
   if (vram_page) free_mem_page(vram_page,nb_vram_page);
   if (wram_page) free_mem_page(wram_page,nb_wram_page);
-
-#ifdef LINUX_JOYSTICK
-  remove_joy(my_joy);
-#endif
 
   close_vram();
   exit(0);
