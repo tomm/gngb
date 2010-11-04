@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src/cpu.c)
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(gngb,20060117)
+AM_INIT_AUTOMAKE(gngb,20060204)
 
 dnl Setup for automake
 
@@ -53,9 +53,9 @@ AC_SUBST(UNZIP_SRC)
 if test "$enablecompress_roms" = yes; then
 	AC_CHECK_HEADER(bzlib.h,AC_CHECK_LIB(bz2, BZ2_bzopen,,))
 	AC_CHECK_HEADER(zlib.h,AC_CHECK_LIB(z, gzopen,,))
-	UNZIP_SRC="unzip.c unzip.h"
+	#UNZIP_SRC="unzip.c unzip.h"
 	dnl LIBOBJS="$LIBOBJS unzip.o"
-	AC_LIBOBJ(unzip)
+	AC_LIBOBJ([unzip])
 else 
 	UNZIP_SRC=""
 fi	

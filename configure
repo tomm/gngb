@@ -1496,7 +1496,7 @@ fi
 
 PACKAGE=gngb
 
-VERSION=20060117
+VERSION=20060204
 
 if test "`cd $srcdir && pwd`" != "`pwd`" && test -f $srcdir/config.status; then
   { { echo "$as_me:$LINENO: error: source directory already configured; run \"make distclean\" there first" >&5
@@ -4953,7 +4953,7 @@ fi
 fi
 
 
-	UNZIP_SRC="unzip.c unzip.h"
+	#UNZIP_SRC="unzip.c unzip.h"
 		case $LIBOBJS in
     "unzip.$ac_objext"   | \
   *" unzip.$ac_objext"   | \

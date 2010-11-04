@@ -71,7 +71,7 @@ VERSION = @VERSION@
 
 bin_PROGRAMS = gngb 
 
-gngb_SOURCES = cpu.c cpu.h emu.c emu.h frame_skip.c frame_skip.h global.h interrupt.c interrupt.h main.c memory.c memory.h message.c message.h rom.c rom.h serial.c  serial.h sgb.c sgb.h sound.c sound.h tiny_font.h vram.c vram.h video_yuy2.c video_yuv.c video_yuv.h video_yv12.c video_std.c video_gl.c video_gl.h video_std.h menu.h menu.c menu_image.h fileio.h fileio.c save.h save.c @UNZIP_SRC@ 
+gngb_SOURCES = cpu.c cpu.h emu.c emu.h frame_skip.c frame_skip.h global.h interrupt.c interrupt.h main.c memory.c memory.h message.c message.h rom.c rom.h serial.c  serial.h sgb.c sgb.h sound.c sound.h tiny_font.h vram.c vram.h video_yuy2.c video_yuv.c video_yuv.h video_yv12.c video_std.c video_gl.c video_gl.h video_std.h menu.h menu.c menu_image.h fileio.h fileio.c save.h save.c unzip.c unzip.h # @UNZIP_SRC@ 
 
 #gngb_LDADD = @LIBOBJS@
 EXTRA_DIST = getopt.h
@@ -87,7 +87,7 @@ LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 gngb_OBJECTS =  cpu.o emu.o frame_skip.o interrupt.o main.o memory.o \
 message.o rom.o serial.o sgb.o sound.o vram.o video_yuy2.o video_yuv.o \
-video_yv12.o video_std.o video_gl.o menu.o fileio.o save.o
+video_yv12.o video_std.o video_gl.o menu.o fileio.o save.o unzip.o
 gngb_LDADD = $(LDADD)
 gngb_DEPENDENCIES = 
 gngb_LDFLAGS = 
@@ -208,6 +208,51 @@ distdir: $(DISTFILES)
 	    || cp -p $$d/$$file $(distdir)/$$file || :; \
 	  fi; \
 	done
+cpu.o: cpu.c rom.h global.h ../config.h cpu.h memory.h interrupt.h \
+	serial.h emu.h fileio.h
+emu.o: emu.c ../config.h getopt.h emu.h global.h fileio.h message.h \
+	rom.h vram.h serial.h memory.h cpu.h interrupt.h menu.h \
+	frame_skip.h sound.h sgb.h video_std.h save.h
+fileio.o: fileio.c ../config.h getopt.h fileio.h unzip.h
+frame_skip.o: frame_skip.c ../config.h getopt.h frame_skip.h message.h \
+	emu.h global.h fileio.h
+interrupt.o: interrupt.c interrupt.h global.h ../config.h frame_skip.h \
+	memory.h vram.h cpu.h emu.h fileio.h rom.h
+main.o: main.c ../config.h getopt.h global.h emu.h fileio.h memory.h \
+	cpu.h rom.h vram.h interrupt.h serial.h frame_skip.h sgb.h \
+	sound.h save.h
+memory.o: memory.c memory.h global.h ../config.h emu.h fileio.h cpu.h \
+	rom.h vram.h interrupt.h frame_skip.h sound.h serial.h \
+	message.h sgb.h
+menu.o: menu.c ../config.h memory.h global.h emu.h global.h fileio.h \
+	menu.h message.h vram.h video_std.h rom.h sound.h menu_image.h \
+	save.h
+message.o: message.c global.h ../config.h tiny_font.h message.h emu.h \
+	fileio.h menu.h video_std.h vram.h
+rom.o: rom.c ../config.h getopt.h rom.h global.h memory.h emu.h fileio.h \
+	cpu.h interrupt.h vram.h sound.h save.h
+save.o: save.c emu.h global.h ../config.h fileio.h rom.h memory.h vram.h \
+	interrupt.h cpu.h
+serial.o: serial.c ../config.h getopt.h serial.h global.h interrupt.h \
+	memory.h emu.h fileio.h
+sgb.o: sgb.c ../config.h memory.h global.h sgb.h vram.h rom.h emu.h \
+	fileio.h
+sound.o: sound.c ../config.h emu.h global.h fileio.h sound.h memory.h \
+	interrupt.h cpu.h
+unzip.o: unzip.c getopt.h unzip.h
+video_gl.o: video_gl.c global.h ../config.h memory.h vram.h message.h \
+	tiny_font.h emu.h fileio.h interrupt.h sgb.h video_std.h \
+	video_gl.h
+video_std.o: video_std.c global.h ../config.h memory.h vram.h message.h \
+	tiny_font.h emu.h fileio.h interrupt.h sgb.h video_std.h menu.h
+video_yuv.o: video_yuv.c ../config.h cpu.h global.h emu.h fileio.h \
+	vram.h video_yuv.h memory.h message.h
+video_yuy2.o: video_yuy2.c ../config.h global.h memory.h video_yuv.h \
+	vram.h video_std.h sgb.h message.h emu.h fileio.h interrupt.h
+video_yv12.o: video_yv12.c global.h ../config.h memory.h video_yuv.h \
+	vram.h video_std.h sgb.h message.h emu.h fileio.h interrupt.h
+vram.o: vram.c vram.h global.h ../config.h memory.h rom.h interrupt.h \
+	message.h emu.h fileio.h sgb.h video_std.h menu.h
 
 info-am:
 info: info-am
