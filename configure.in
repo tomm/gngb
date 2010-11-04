@@ -1,17 +1,20 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src/cpu.c)
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(gngb,20020819)
+AM_INIT_AUTOMAKE(gngb,20030509)
 
 dnl Setup for automake
 
+AC_LANG_C
 
-CFLAGS="$CFLAGS"
+MY_CFLAGS="$CFLAGS"
 
 OUTPUT="Makefile src/Makefile"
 
 dnl Checks for programs.
 AC_PROG_CC
+
+AC_C_BIGENDIAN
 
 dnl Checks for libraries.
 
@@ -21,7 +24,7 @@ AC_CHECK_PROG(SDL_CONFIG, sdl-config, yes,no)
 if test "$SDL_CONFIG" = yes ; then
 CFLAGS="$CFLAGS -DSDL_YUV `sdl-config --cflags`";
 LIBS="$LIBS `sdl-config --libs`";
-AC_CHECK_LIB(SDL, SDL_Init,,AC_MSG_ERROR(can't find on your system SDL Library))
+AC_CHECK_LIB(SDL, SDL_Init,,AC_MSG_ERROR(can't find SDL on your system))
 else 
 AC_MSG_ERROR(can't find sdl-config on your system);
 fi
@@ -29,7 +32,12 @@ fi
 dnl Checks for header files.
 AC_HEADER_DIRENT
 AC_HEADER_STDC
-AC_CHECK_HEADERS(fcntl.h sys/time.h unistd.h)
+AC_CHECK_HEADERS(fcntl.h sys/time.h unistd.h zlib.h)
+
+dnl Zlib ?
+
+AC_CHECK_HEADER(zlib.h,AC_CHECK_LIB(z, gzopen,[LIBS="$LIBS -lz";],AC_MSG_ERROR(can't find zlib on your system)))
+
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -54,49 +62,7 @@ CFLAGS="$CFLAGS -DSDL_GL ";]
 ,with_gl=no)
 fi
 
-dnl Debuger Gtk (new debuger)
 
-AC_ARG_WITH(debuger,[  --with-debuger          add a debuger (Gtk)], [], [with_debuger=no])
-
-if test "$with_debuger" = yes; then 
-DEBUG_CFLAGS="-DDEBUG"
-
-AC_CHECK_PROG(GTK_CONFIG, gtk-config, yes,no)
-if test "$GTK_CONFIG" = yes ; then
-DEBUG_CFLAGS="$DEBUG_CFLAGS `gtk-config --cflags`";
-DEBUG_LIBS="$DEBUG_LIBS `gtk-config --libs`";
-T_CFLAGS=$CFLAGS
-T_LIBS=$LIBS
-CFLAGS="$CFLAGS $DEBUG_FLAGS"
-LIBS="$LIBS $DEBUG_LIBS"
-AC_CHECK_LIB(gtk, gtk_init,,AC_MSG_ERROR(can't find on your system Gtk Library))
-CFLAGS=$T_CFLAGS
-LIBS=$T_LIBS
-else 
-AC_MSG_ERROR(can't find gtk-config on your system );
-fi
-
-AC_CHECK_PROG(GLIB_CONFIG, glib-config, yes,no)
-if test "$GLIB_CONFIG" = yes ; then
-DEBUG_CFLAGS="$DEBUG_CFLAGS `glib-config --cflags`";
-DEBUG_LIBS="$DEBUG_LIBS `glib-config --libs`";
-T_CFLAGS=$CFLAGS
-T_LIBS=$LIBS
-CFLAGS="$CFLAGS $DEBUG_FLAGS"
-LIBS="$LIBS $DEBUG_LIBS"
-AC_CHECK_LIB(glib, g_strdup,,AC_MSG_ERROR(can't find on your system GLib Library))
-CFLAGS=$T_CFLAGS
-LIBS=$T_LIBS
-else
-AC_MSG_ERROR(can't find glib-config on your system);
-fi
-
-AC_SUBST(DEBUG_CFLAGS)
-AC_SUBST(DEBUG_LIBS)
-fi
-
-
-AM_CONDITIONAL(MAKE_DEBUGER, test "$with_debuger" = yes)
 AM_CONDITIONAL(NATIVE_GETOPT_LONG, test "$GETOPT_LONG" = yes)
 
 dnl Proof Flag
@@ -108,6 +74,14 @@ CFLAGS="$CFLAGS -pg ";
 fi
 
 dnl Opt Flag
+
+dnl Force Big Endian
+
+AC_ARG_WITH(big_endian,[  --with-big-endian               Force Big Endian], [], [with_big_endian=no])
+
+if test "$with_big_endian" = yes ; then
+CFLAGS="$CFLAGS -DWORDS_BIGENDIAN ";
+fi
 
 dnl Arch
 
@@ -144,8 +118,8 @@ i686|i586|i486|i386) OPT="-O3  -Wno-unused -funroll-loops -fstrength-reduce \
                           -malign-loops=2 $ffp -Wall -g" ;;
 sun4u)               OPT="-O3  -Wno-unused -funroll-loops -fstrength-reduce \
                           -ffast-math -malign-functions=4 -malign-jumps=4 \
-                          -malign-loops=4 $ffp -Wall -g -DGNGB_BIG_ENDIAN" ;;
-no)                  OPT="-O3 -wall -g" ;;
+                          -malign-loops=4 $ffp -Wall -g " ;;
+no)                  OPT="-O3 -Wall -g" ;;
 esac
 
 case $sys_info in
@@ -155,7 +129,7 @@ esac
 CFLAGS="$CFLAGS $OPT"
 LIBS="$LIBS $LDOPT"
 
-AC_OUTPUT(Makefile src/Makefile src/gngb_debuger/Makefile )
+AC_OUTPUT(Makefile src/Makefile )
 
 
 

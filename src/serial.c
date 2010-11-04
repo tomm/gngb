@@ -146,18 +146,19 @@ void gbserial_init(int server_side,char *servername) {
     printf("Connection established\n");
   }
 
-  /*#ifndef GNGB_WIN32
+#ifndef GNGB_WIN32
   fcntl(dest_socket,F_SETFL,O_NONBLOCK);
 #else
   ioctlsocket(dest_socket,FIONBIO,&len);
-  #endif*/
-  thread=SDL_CreateThread(thread_fun,NULL);  
+#endif
+  //  thread=SDL_CreateThread(thread_fun,NULL);  
 
   gbserial.cycle_todo=0;
   gbserial.byte_wait=0;
+  gbserial.check=0;
 }
 
-void send_byte(Uint8 b) {
+void gbserial_send(Uint8 b) {
 #ifndef GNGB_WIN32
   write(dest_socket,&b,sizeof(Uint8));
 #else
@@ -168,19 +169,14 @@ void send_byte(Uint8 b) {
 #endif
 }
 
-Sint16 recept_byte(void) {
+Sint8 gbserial_receive(void) {
 #ifndef GNGB_WIN32
   Sint8 b;
   static Uint8 c[1000];
 
   if ((b=read(dest_socket,c,1000))<=0) return -1;
-  
-  //b=c;
-  /*while(read(dest_socket,&c,sizeof(Uint8))>0) b=c;    */
-  
-  return c[b-1];
-
-  return b;
+  else SB=c;
+  return 1;
 #else
   char c[1000];
   int e;
@@ -193,11 +189,31 @@ Sint16 recept_byte(void) {
 #endif
 }
 
+Uint8 gbserial_check(void) {
+#ifndef GNGB_WIN32
+  Uint8 b;
+  Uint8 c;
+  //  printf("Check\n");
+  SB=0xFF;
+  if ((b=read(dest_socket,&c,1))<=0) return 0;
+  //  printf("Check Ok %02x\n",c);
+  SB=c;
+  return 1;
+#else
+  Uint8 c;
+  int e;
+  SB=0xFF;
+  if ((e = recv(dest_socket,&c,1,0))<=0) return 0;
+  SB=c;
+  return 1;
+#endif
+}
+
 int thread_fun(void *data) {
   Sint8 n;
- 
+  printf("toto\n");
   while(!conf.gb_done) {
-    if (!gbserial.byte_wait && (n=recept_byte())>=0) {
+    if (!gbserial.byte_wait && (n=gbserial_receive())>=0) {
       gbserial.b=n;
       gbserial.byte_wait=1;
       /*if (!(SC&0x01)) send_byte(SB);

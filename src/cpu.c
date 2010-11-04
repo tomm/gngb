@@ -26,10 +26,6 @@
 #include "serial.h"
 #include "emu.h"
 
-#ifdef DEBUG
-#include "gngb_debuger/debuger.h"
-#endif
-
 GB_CPU *gbcpu=0;
 
 //extern Sint32 gdma_cycle;
@@ -655,10 +651,7 @@ void gbcpu_reset(void) {
 // GAMEBOY OPERANDE 
 
 __inline__ Uint8 unknown(void){
-#ifdef DEBUG
-  if (active_msg)
-    add_msg("unknow opcode");
-#endif
+  printf("unknow opcode");
   return 0;
 }
 
@@ -1422,9 +1415,6 @@ __inline__ Uint8 ld_mem_hl_l(void){
 
 __inline__ Uint8 halt(void){
   if (gbcpu->int_flag) {
-#ifdef DEBUG
-    add_cpu_msg("set halt \n");
-#endif
     gbcpu->state=HALT_STATE;
     gbcpu->pc.w--;
   } else {
@@ -2333,9 +2323,6 @@ __inline__ Uint8 ret_c(void){
 }
 
 __inline__ Uint8 reti(void){
-#ifdef DEBUG
-  add_cpu_msg("RETI\n");
-#endif 
   POP_R(REG_PC);
   //EI;
   gbcpu->int_flag=1;
@@ -2474,9 +2461,6 @@ __inline__ Uint8 ld_a_mem_c(void){
 }
 
 __inline__ Uint8 di(void){
-#ifdef DEBUG
-  add_cpu_msg("DI\n");
-#endif
   DI;
   SUB_CYCLE(4);
 }
@@ -2527,9 +2511,6 @@ __inline__ Uint8 ld_a_mem_nn(void){
 }
 
 __inline__ Uint8 ei(void){
-#ifdef DEBUG
-  add_cpu_msg("EI\n");
-#endif
   EI;
   SUB_CYCLE(4);
 }
@@ -4550,7 +4531,7 @@ __inline__ void rom_timer_inc(void) {
 
 __inline__ void update_gb(void) {
   static Uint32 divid_cycle;
-  static Uint32 key_cycle;
+  //static Uint32 key_cycle;
   //static Sint16 serial_cycle;
   int v=0;
   Uint8 a;
@@ -4627,23 +4608,31 @@ __inline__ void update_gb(void) {
 
     /* FIXME: serial is experimentale */
     if (conf.serial_on) {
+      if (gbserial.check && gbserial_check()) {
+	set_interrupt(SERIAL_INT);
+	gbserial.check=0;
+      }
+
       if (serial_cycle_todo>0) {
 	serial_cycle_todo-=a;
 	if (serial_cycle_todo<=0) {
-	  send_byte(SB);
-	  SB=recept_byte();
-	  SC&=0x7f;
-	  set_interrupt(SERIAL_INT);
-	  serial_cycle_todo=0;
+	  if (SC&0x01) {	/* Internal */
+	    SC&=0x7f;
+	    gbserial_check();
+	    set_interrupt(SERIAL_INT);
+	    serial_cycle_todo=0;
+	  } else {		/* External */
+	    SC&=0x7f;
+	    if (gbserial_check()) {
+	      set_interrupt(SERIAL_INT);
+	      serial_cycle_todo=0;
+	    } else gbserial.check=1;
+	  }	 
 	}
       }
     }
   }
-#ifndef DEBUG
   while(!conf.gb_done);
-#else
-  while(!conf.gb_done && continue_run());
-#endif
 }
 
 #undef REG_AF

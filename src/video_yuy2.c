@@ -28,10 +28,6 @@
 #include "emu.h"
 #include "interrupt.h"
 
-#ifdef DEBUG
-#include "gngb_debuger/debuger.h"
-#endif
-
 void init_video_yuy2(Uint32 flag)
 {
   yuv_flag=SDL_HWSURFACE|flag|SDL_RESIZABLE; /* YUV mode are resizable */

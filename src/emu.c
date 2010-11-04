@@ -41,6 +41,8 @@
 #include "frame_skip.h"
 #include "sound.h"
 #include "sgb.h"
+#include "video_std.h"
+#include "save.h"
 
 #define ABS(a) (((a)>=0)?(a):(-(a)))
 
@@ -49,7 +51,10 @@ Uint16 kmap[8]={SDLK_UP,SDLK_DOWN,SDLK_LEFT,SDLK_RIGHT,
 		SDLK_x,SDLK_w,SDLK_RETURN,SDLK_RSHIFT};
 Uint8 jmap[8]={1,1,0,0,3,2,0,1};
 
-// Configuration File
+Sint16 *joy_axis;
+Uint8 *joy_but;
+
+/* Configuration File */
 
 #define UINTEGER8  1
 #define UINTEGER16 2
@@ -131,6 +136,7 @@ static struct option long_options[] =
   {"gdma_cycle",0,NULL,'g'},
   {"no-gdma_cycle",0,&conf.gdma_cycle,0},
   {"joy",1,0,'j'},
+  {"no-joy",0,&conf.use_joy,0},
   {"version",0,NULL,'v'},
   {0, 0, 0, 0}
 };
@@ -180,6 +186,7 @@ void setup_default_conf(void) {
 
   conf.sound=0;
   conf.serial_on=0;
+  conf.use_joy=1;
   conf.joy_no=0;
   conf.fs=0;
   conf.gb_done=0;
@@ -200,6 +207,7 @@ void setup_default_conf(void) {
   conf.yuv_interline_int=0x2020; // intensité d'une interligne en yuv color ((int&0xff)<<8)|(int&0xff) (unused now)
   conf.res_w=160*2;
   conf.res_h=144*2;
+  conf.video_flag=0;
 
   conf.show_keycode=0;
   
@@ -209,6 +217,10 @@ void setup_default_conf(void) {
     conf.pal[i][2]=0x635030; //0x4208; // 7f7367
     conf.pal[i][3]=0x211A10; //0x0000; // 3f3933
   }
+
+  /* Movie */
+  conf.save_movie=0;
+  conf.play_movie=0;
 
 }
 
@@ -457,6 +469,7 @@ __inline__ void update_key(void) {
 	  update_all_pal();
 	}
 	break;
+	
       case SDLK_F8:
 	rb_on=1;
 	break;   
@@ -466,6 +479,13 @@ __inline__ void update_key(void) {
       case SDLK_F6:
 	pause=0;
 	break;	
+      case SDLK_F4:
+	if (conf.save_movie) end_save_movie();
+	else begin_save_movie();
+	break;
+      case SDLK_F5:
+	play_movie();
+	break;
       default:
 	break;
       }
@@ -486,7 +506,7 @@ void emu_init(void) {
   
   if (conf.gb_type&SUPER_GAMEBOY) sgb_init();
 
-  if(SDL_NumJoysticks()>0){
+  if(conf.use_joy && SDL_NumJoysticks()>0){
     sdl_joy=SDL_JoystickOpen(conf.joy_no);
     if(sdl_joy) {
       printf("Name: %s\n", SDL_JoystickName(conf.joy_no));
@@ -496,7 +516,13 @@ void emu_init(void) {
       joy_axis=(Sint16 *)malloc(sizeof(Sint16)*SDL_JoystickNumAxes(sdl_joy));
       joy_but=(Uint8 *)malloc(sizeof(Uint8)*SDL_JoystickNumButtons(sdl_joy));
       memset(joy_axis,0,sizeof(Sint16)*SDL_JoystickNumAxes(sdl_joy));
-      memset(joy_axis,0,sizeof(Uint8)*SDL_JoystickNumButtons(sdl_joy));
+      memset(joy_but,0,sizeof(Uint8)*SDL_JoystickNumButtons(sdl_joy));
+    } else {
+      joy_axis=(Sint16 *)malloc(sizeof(Sint16)*2);
+      joy_but=(Uint8 *)malloc(sizeof(Uint8)*4);
+      memset(joy_axis,0,sizeof(Sint16)*2);
+      memset(joy_but,0,sizeof(Uint8)*4);
+      memset(jmap,0,8);
     }
   };
 

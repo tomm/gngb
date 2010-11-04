@@ -59,14 +59,14 @@ SDL_Surface *radio_on,*radio_off,*toggle_on,*toggle_off,*arrow_up,*arrow_down;
 int action_save_state(MENU_ITEM *self)
 {
   int i=(int)self->user_data;
-  save_state(i);
+  save_state(NULL,i);
   return 2;
 }
 
 int action_load_state(MENU_ITEM *self)
 {
   int i=(int)self->user_data;
-  load_state(i);
+  load_state(NULL,i);
   return 2;
 }
 
@@ -182,6 +182,13 @@ int toggle_fps(MENU_ITEM *self)
   return 2;
 }
 
+int action_set_filter(MENU_ITEM *self)
+{
+  int p=(int)self->user_data;
+  set_filter(p);
+  return 2;
+}
+
 MENU save_state_menu={
   " Save state          ",
   NULL,
@@ -194,6 +201,11 @@ MENU load_state_menu={
   0,0,0,0
 };
 
+MENU filter_menu={
+  " Filter               ",
+  NULL,
+  0,0,0,0
+};
 
 MENU video_menu={
   " Video               ",
@@ -445,11 +457,30 @@ void init_menu(void){
     menu_push_back_item(&save_state_menu,item);
   }
 
+  /* Filter Menu */
+  item=new_menu_item("None",RADIO);
+  item->group=1;
+  item->radio=0;
+  item->user_data=(void*)0;
+  item->func=action_set_filter;
+  item->draw_type=DRAW_ALWAYS;
+  menu_push_back_item(&filter_menu,item);
+  for (i=1;i<=5;i++) {
+    snprintf(tmpbuf,254,"Filter %d",i);
+    item=new_menu_item(tmpbuf,RADIO);
+    item->group=1;
+    item->radio=i;
+    item->user_data=(void*)i;
+    item->func=action_set_filter;
+    item->draw_type=DRAW_ALWAYS;
+    menu_push_back_item(&filter_menu,item);
+  }
+
   /* video menu */
   item=new_menu_item("Fullscreen",TOGGLE);
   item->state=conf.fs;
   item->func=toggle_fullscreen;
-  menu_push_back_item(&video_menu,item);
+  menu_push_back_item(&video_menu,item);  
 
   if (conf.gb_type&COLOR_GAMEBOY) {
     item=new_menu_item("Color filter",TOGGLE);
@@ -469,6 +500,11 @@ void init_menu(void){
       menu_push_back_item(&video_menu,item);
     }
   }
+
+  item=new_menu_item("Filter          ...",ACTION);
+  item->user_data=(void*)&filter_menu;
+  item->func=action_loop_menu;
+  menu_push_back_item(&video_menu,item);
 
   /* frameskip menu */
   item=new_menu_item("Auto frameskip",TOGGLE);

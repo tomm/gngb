@@ -29,6 +29,10 @@
 #ifdef HAVE_DIRENT_H
 #include <dirent.h>
 #endif
+#ifdef HAVE_ZLIB_H
+#include <zlib.h>
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include "rom.h"
@@ -39,103 +43,13 @@
 #include "vram.h"
 #include "sound.h"
 #include "emu.h"
+#include "fileio.h"
+#include "save.h"
 
 #define FILENAME_LEN 1024
 
-typedef enum {
-  CPU_SECTION,
-  LCD_SECTION,
-  PAL_SECTION,
-  TIMER_SECTION,
-  DMA_SECTION,
-  RT_SECTION,
-}SECTION_TYPE;
-
-// Save & Load function
-
-int save_load_cpu_reg(FILE *stream,char op);
-int save_load_cpu_flag(FILE *stream,char op);
-int save_load_lcd_cycles(FILE *stream,char op);
-int save_load_lcd_info(FILE *stream,char op);
-int save_load_pal(FILE *stream,char op);
-int save_load_timer(FILE *stream,char op);
-int save_load_dma(FILE *stream,char op);
-int save_load_rt_reg(FILE *stream,char op);
-int save_load_rt_info(FILE *stream,char op);
-
-struct sub_section  {
-  Sint8 id;
-  Uint16 size;
-  int (*save_load_function)(FILE *stream,char op);
-}; 
-
-struct sub_section cpu_sub_section[]={
-  {0,6*2,save_load_cpu_reg},
-  {1,4,save_load_cpu_flag},
-  {-1,-1,NULL}};
-
-struct sub_section lcd_sub_section[]={
-  {0,3*2+4+1,save_load_lcd_cycles},
-  {1,3,save_load_lcd_info},
-  {-1,-1,NULL}};
-
-struct sub_section pal_sub_section[]={
-  {0,4*2*8*4+2*4+4,save_load_pal},
-  {-1,-1,NULL}};
-
-struct sub_section timer_sub_section[]={
-  {0,4+2,save_load_timer},
-  {-1,-1,NULL}};
-
-struct sub_section dma_sub_section[]={
-  {0,1+3*2+4,save_load_dma},
-  {-1,-1,NULL}};
-
-struct sub_section rt_sub_section[]={
-  {0,5,save_load_rt_reg},
-  {1,4,save_load_rt_info},
-  {-1,-1,NULL}};
-
-struct section {
-  Sint8 id;
-  struct sub_section *ss;
-} tab_section[]={
-  {CPU_SECTION,cpu_sub_section},
-  {LCD_SECTION,lcd_sub_section},
-  {PAL_SECTION,pal_sub_section},
-  {TIMER_SECTION,timer_sub_section},
-  {DMA_SECTION,dma_sub_section},
-  {RT_SECTION,rt_sub_section},
-  {-1,NULL}};    
-
 Sint16 rom_type=UNKNOW_TYPE;
 Uint8 rom_gb_type=UNKNOW;
-static SDL_Surface *savestate_bmp=NULL;
-
-
-char *get_name_without_ext(char *name) {
-  char *a;
-  int lg=strlen(name);
-  int l,r,i;
-
-  l=lg;
-#ifndef GNGB_WIN32
-  while(l>0 && name[l-1]!='/') l--;
-#else
-  while(l>0 && (name[l-1]!='\\')) l--;
-#endif
-
-  r=lg;
-  while(r>l && name[r-1]!='.') r--;
-
-  a=(char *)malloc(sizeof(char)*(5+(r-l)));
-  i=0;
-  while(l<r) 
-    a[i++]=name[l++];
-  
-  a[i-1]=0;
-  return a;
-}
 
 int check_dir(char *dir_name) {
 #ifdef GNGB_WIN32
@@ -158,164 +72,12 @@ int check_dir(char *dir_name) {
 #endif
 }
 
-void get_filename_ext(char *f,char *ext) {
-  /*  char *a=getenv("HOME");*/
-  char buf[8];
-  char *a=getenv("HOME");
-  if(a==NULL) {
-    buf[0] = '.';
-    buf[1] = 0;
-    a = buf;
-  }
-
-  f[0]=0;
-  strcat(f,a);
-  strcat(f,"/.gngb/");
-  check_dir(f);
-  strcat(f,rom_name);
-  strcat(f,ext);
-}
-
 void get_ext_nb(char *r,int n) {
   sprintf(r,".%03d",n);
 }
 
 void get_bmp_ext_nb(char *r,int n) {
   sprintf(r,"%03d.bmp",n);
-}
-
-
-int load_ram(void) {
-  FILE *stream;
-  int i;
-  char filename[FILENAME_LEN];
-
-  get_filename_ext(filename,".sv");
-  
-  if (!(stream=fopen(filename,"rb"))) {
-    fprintf(stderr,"Error while trying to read file %s \n",filename);
-    return 1;
-  }
-  
-  for(i=0;i<nb_ram_page;i++)
-    fread(ram_page[i],sizeof(Uint8),0x2000,stream);
-
-  fclose(stream);
-  return 0;
-}
-
-int save_ram(void) {
-  FILE *stream;
-  int i;
-  char filename[FILENAME_LEN];
-
- 
-  get_filename_ext(filename,".sv");
- 
-  if (!(stream=fopen(filename,"wb"))) {
-    fprintf(stderr,"Error while trying to write file %s \n",filename);
-    return 1;
-  }
-
-  for(i=0;i<nb_ram_page;i++)
-    fwrite(ram_page[i],sizeof(Uint8),0x2000,stream);
-
-  fclose(stream);
-  return 0;
-}
-
-int save_rom_timer(void) {
-  char filename[FILENAME_LEN];
-  FILE *stream;
-  int i;
-  
-  get_filename_ext(filename,".rt");
-
-  if (!(stream=fopen(filename,"wt"))) {
-    fprintf(stderr,"Error while trying to write file %s \n",filename);
-    return 1;
-  }
-  
-  for(i=0;i<5;i++) 
-    fprintf(stream,"%02x ",rom_timer->reg[i]);
-
-  fprintf(stream,"%ld",(long)time(NULL));
-
-  fclose(stream);
-  return 0;
-}
-
-int load_rom_timer(void) {
-  char filename[FILENAME_LEN];
-  FILE *stream;
-  int i;
-  long dt;
-
-  get_filename_ext(filename,".rt");
-
-  if (!(stream=fopen(filename,"rt"))) {
-    fprintf(stderr,"Error while trying to read file %s \n",filename);
-    return 1;
-  }
-
-  /* FIXME : must adjust the time still last time */
-  for(i=0;i<5;i++) {
-    int t;
-    fscanf(stream,"%02x",&t);
-    rom_timer->reg[i]=(Uint8)t;
-  }
-  fscanf(stream,"%ld",&dt);
-
-  {
-    int h,m,s,d,dd;
-    
-    dt=time(NULL)-dt;
-
-    s=(dt%60);
-    dt/=60;
-    
-    rom_timer->reg[0]+=s;
-    if (rom_timer->reg[0]>=60) {
-      rom_timer->reg[0]-=60;
-      rom_timer->reg[1]++;
-    }
- 
-    m=(dt%60);
-    dt/=60;
-    
-    rom_timer->reg[1]+=m;
-    if (rom_timer->reg[1]>=60) {
-      rom_timer->reg[1]-=60;
-      rom_timer->reg[2]++;
-    }
-  
-    h=(dt%24);
-    dt/=24;
-
-    rom_timer->reg[2]+=h;
-    if (rom_timer->reg[2]>=24) {
-      rom_timer->reg[2]-=24;
-      rom_timer->reg[3]++;
-      if (!rom_timer->reg[3])
-	dt++;
-    }
- 
-    d=dt;
-    dd=((rom_timer->reg[5]&0x01)<<9)|rom_timer->reg[4];
-    
-    dd+=dt;
-    if (dd>=365) {
-      dd=0;
-      rom_timer->reg[5]|=0x80;        // set carry
-    }
-
-    rom_timer->reg[4]=dd&0xff;
-    rom_timer->reg[5]=(rom_timer->reg[5]&0xfe)|((dd&0x100)>>9);
-
-  }
-
-  fclose(stream);
-  return 0;
 }
 
 void set_gameboy_type(void) {
@@ -342,7 +104,7 @@ void check_gameboy_type(void) {
 int open_rom(char *filename)
 {
   Uint8 gb_memory[32768];
-  FILE *stream;
+  GNGB_FILE * stream;
   int i;
 
   if (rom_page) free_mem_page(rom_page,nb_rom_page);
@@ -351,11 +113,16 @@ int open_rom(char *filename)
   if (wram_page) free_mem_page(wram_page,nb_wram_page);
   
   rom_page=ram_page=vram_page=wram_page=NULL;
+  
+  if ((stream=gngb_file_open(filename,"rb",UNKNOW_FILE_TYPE))) {
+    if (stream->type==ZIP_ARCH_FILE_TYPE) {
+      if (zip_file_open_next_rom(stream->stream)<0) return -1;
+    }
 
-  if ((stream=fopen(filename,"rb"))) {
     printf("Open file %s\n",filename);
     rom_name=get_name_without_ext(filename);
-    fread(gb_memory,sizeof(char),32768,stream);
+    printf("Rom Name %s\n",rom_name);
+    gngb_file_read(gb_memory,sizeof(char),32768,stream);
     printf("Name    : %.15s\n",gb_memory+0x134);
 
     if (gb_memory[0x0143]==0x80) {
@@ -421,7 +188,7 @@ int open_rom(char *filename)
 
     if (rom_type&MBC1 || rom_type&MBC2 || rom_type&MBC3 || rom_type&MBC5) {
       for(i=2;i<nb_rom_page;i++) 
-	fread(rom_page[i],sizeof(char),0x4000,stream);
+	gngb_file_read(rom_page[i],sizeof(char),0x4000,stream);
     }
 
     if (rom_type&TIMER) {
@@ -477,368 +244,12 @@ int open_rom(char *filename)
     case 0:printf("Country : Japanese \n");break;
     case 1:printf("Country : Non-Japanese \n");break;
     }
-    fclose(stream);
+    
+    gngb_file_close(stream);
 
     if (rom_type!=UNKNOW_TYPE) return 0;
     else return 1;
   }
   return 1;
-}
-
-
-/* SAVE/LOAD State ( Experimental ) */
-#if 0
-char *get_snap_name(char *name,int n) {
-  char *a;
-  int lg=strlen(name);
-  int l,r,i;
-
-  l=lg;
-  while(l>0 && name[l-1]!='/') l--;
-  r=lg;
-  while(r>l && name[r-1]!='.') r--;
-
-  a=(char *)malloc(sizeof(char)*(6+(r-l)));
-  i=0;
-  while(l<r) 
-    a[i++]=name[l++];
-  
-  if (n==-1) {
-    a[i++]='t';
-    a[i++]='m';
-    a[i++]='p';
-    a[i++]=0;
-    return a;
-  }
-
-  a[i++]='0';a[i++]='0';
-  switch(n) {
-  case 0:a[i++]='0';break;
-  case 1:a[i++]='1';break;
-  case 2:a[i++]='2';break;
-  case 3:a[i++]='3';break;
-  case 4:a[i++]='4';break;
-  case 5:a[i++]='5';break;
-  case 6:a[i++]='6';break;
-  case 7:a[i++]='7';break;
-  case 8:a[i++]='8';break;
-  }
-
-  a[i++]=0;
-  return a;
-}
-#endif
-
-/************ NEW SAVE AND LOAD STATE ******************/
-
-int save_load_cpu_reg(FILE *stream,char op) {
-  if (!op) { // write
-    fwrite(&gbcpu->af.w,sizeof(Uint16),1,stream);
-    fwrite(&gbcpu->bc.w,sizeof(Uint16),1,stream);
-    fwrite(&gbcpu->de.w,sizeof(Uint16),1,stream);
-    fwrite(&gbcpu->hl.w,sizeof(Uint16),1,stream);
-    fwrite(&gbcpu->sp.w,sizeof(Uint16),1,stream);
-    fwrite(&gbcpu->pc.w,sizeof(Uint16),1,stream);
-  } else { // read
-    //printf("read Cpu1\n");
-    fread(&gbcpu->af.w,sizeof(Uint16),1,stream);
-    fread(&gbcpu->bc.w,sizeof(Uint16),1,stream);
-    fread(&gbcpu->de.w,sizeof(Uint16),1,stream);
-    fread(&gbcpu->hl.w,sizeof(Uint16),1,stream);
-    fread(&gbcpu->sp.w,sizeof(Uint16),1,stream);
-    fread(&gbcpu->pc.w,sizeof(Uint16),1,stream);
-  }
-  return 0;
-}
-
-int save_load_cpu_flag(FILE *stream,char op) {
-  if (!op) { // write
-    fwrite(&gbcpu->int_flag,sizeof(Uint8),1,stream);
-    fwrite(&gbcpu->ei_flag,sizeof(Uint8),1,stream);
-    fwrite(&gbcpu->state,sizeof(Uint8),1,stream);
-    fwrite(&gbcpu->mode,sizeof(Uint8),1,stream);
-  } else { // read
-    //printf("read Cpu2\n");
-    fread(&gbcpu->int_flag,sizeof(Uint8),1,stream);
-    fread(&gbcpu->ei_flag,sizeof(Uint8),1,stream);
-    fread(&gbcpu->state,sizeof(Uint8),1,stream);
-    fread(&gbcpu->mode,sizeof(Uint8),1,stream);
-  }
-  return 0;
-}
-
-int save_load_lcd_cycles(FILE *stream,char op) {
-  if (!op) { // write 
-    fwrite(&gblcdc->cycle,sizeof(Sint16),1,stream);
-    fwrite(&gblcdc->mode1cycle,sizeof(Uint16),1,stream);
-    fwrite(&gblcdc->mode2cycle,sizeof(Uint16),1,stream);
-    fwrite(&gblcdc->vblank_cycle,sizeof(Uint32),1,stream);
-    fwrite(&gblcdc->timing,sizeof(Uint8),1,stream);
-  } else { // read 
-    //printf("read lcd1\n");
-    fread(&gblcdc->cycle,sizeof(Sint16),1,stream);
-    fread(&gblcdc->mode1cycle,sizeof(Uint16),1,stream);
-    fread(&gblcdc->mode2cycle,sizeof(Uint16),1,stream);
-    fread(&gblcdc->vblank_cycle,sizeof(Uint32),1,stream);
-    fread(&gblcdc->timing,sizeof(Uint8),1,stream);
-  }
-  return 0;
-}
-
-int save_load_lcd_info(FILE *stream,char op) {
-  if (!op) { // write 
-    fwrite(&gblcdc->mode,sizeof(Uint8),1,stream);
-    fwrite(&gblcdc->nb_spr,sizeof(Uint8),1,stream);
-    fwrite(&gblcdc->inc_line,sizeof(Uint8),1,stream);
-  } else { // read
-    //printf("read lcd2\n");
-    fread(&gblcdc->mode,sizeof(Uint8),1,stream);
-    fread(&gblcdc->nb_spr,sizeof(Uint8),1,stream);
-    fread(&gblcdc->inc_line,sizeof(Uint8),1,stream);
-  }
-  return 0;
-}
-
-int save_load_pal(FILE *stream,char op) {
-  if (!op) { // write 
-    fwrite(pal_col_bck_gb,sizeof(Uint16),8*4,stream);
-    fwrite(pal_col_obj_gb,sizeof(Uint16),8*4,stream);
-    fwrite(pal_col_bck,sizeof(Uint16),8*4,stream);
-    fwrite(pal_col_obj,sizeof(Uint16),8*4,stream);
-    fwrite(pal_bck,sizeof(Uint8),4,stream);
-    fwrite(pal_obj,sizeof(Uint8),2*4,stream);
-  } else { // read
-    //printf("read Pal\n");
-    fread(pal_col_bck_gb,sizeof(Uint16),8*4,stream);
-    fread(pal_col_obj_gb,sizeof(Uint16),8*4,stream);
-    fread(pal_col_bck,sizeof(Uint16),8*4,stream);
-    fread(pal_col_obj,sizeof(Uint16),8*4,stream);
-    fread(pal_bck,sizeof(Uint8),4,stream);
-    fread(pal_obj,sizeof(Uint8),2*4,stream);
-  }
-  return 0;
-}
-
-int save_load_timer(FILE *stream,char op) {
-  if (!op) { // write 
-    fwrite(&gbtimer->clk_inc,sizeof(Uint16),1,stream);
-    fwrite(&gbtimer->cycle,sizeof(Uint32),1,stream);
-  } else { // read
-    //printf("read timer\n");
-    fread(&gbtimer->clk_inc,sizeof(Uint16),1,stream);
-    fread(&gbtimer->cycle,sizeof(Uint32),1,stream);
-  }
-  return 0;
-}
-
-int save_load_dma(FILE *stream,char op) {
-  if (!op) { // write 
-    fwrite(&dma_info.type,sizeof(Uint8),1,stream);
-    fwrite(&dma_info.src,sizeof(Uint16),1,stream);
-    fwrite(&dma_info.dest,sizeof(Uint16),1,stream);
-    fwrite(&dma_info.lg,sizeof(Uint16),1,stream);
-    fwrite(&dma_info.gdma_cycle,sizeof(Uint32),1,stream);
-  } else { // read
-    //printf("read DMA\n");
-    fread(&dma_info.type,sizeof(Uint8),1,stream);
-    fread(&dma_info.src,sizeof(Uint16),1,stream);
-    fread(&dma_info.dest,sizeof(Uint16),1,stream);
-    fread(&dma_info.lg,sizeof(Uint16),1,stream);
-    fread(&dma_info.gdma_cycle,sizeof(Uint32),1,stream);
-  }
-  return 0;
-}
-
-int save_load_rt_reg(FILE *stream,char op) {
-  int t;
-  if (!op) { // write 
-    for(t=0;t<5;t++)
-      fwrite(&rom_timer->reg[t],sizeof(Uint8),1,stream);
-  } else { // read
-    for(t=0;t<5;t++)
-      fread(&rom_timer->reg[t],sizeof(Uint8),1,stream);
-  }
-  return 0;
-}
-
-int save_load_rt_info(FILE *stream,char op) {
-  if (!op) { // write 
-    fwrite(&rom_timer->cycle,sizeof(Uint16),1,stream);
-    fwrite(&rom_timer->reg_sel,sizeof(Uint8),1,stream);
-    fwrite(&rom_timer->latch,sizeof(Uint8),1,stream);
-  } else { // read
-    fread(&rom_timer->cycle,sizeof(Uint16),1,stream);
-    fread(&rom_timer->reg_sel,sizeof(Uint8),1,stream);
-    fread(&rom_timer->latch,sizeof(Uint8),1,stream);
-  }
-  return 0;
-}
-
-int load_section(FILE *stream,struct section *s,Uint16 size) {
-  long end=ftell(stream)+size;
-  Uint8 t;
-  int m;
-
-  /* m=how many sub section? */
-  for(m=0;s->ss[m].id!=-1;m++);
-  while(ftell(stream)<end) {
-    fread(&t,sizeof(Uint8),1,stream);
-    if (t<m) s->ss[t].save_load_function(stream,1);
-    else break;
-  }
-  if (ftell(stream)!=end) return -1;
-  return 0;
-}
-
-int save_section(FILE *stream,struct section *s) {
-  Uint16 size=0;
-  int i;
-
-  for(i=0;s->ss[i].id!=-1;i++,size++) {
-    size+=s->ss[i].size;
-  }
- 
-  fwrite(&s->id,sizeof(Sint8),1,stream);
-  fwrite(&size,sizeof(Uint16),1,stream);
-
-  for(i=0;s->ss[i].id!=-1;i++/*,size++*/) {
-    fwrite(&s->ss[i].id,sizeof(Uint8),1,stream);
-    s->ss[i].save_load_function(stream,0);
-  }  
-  return 0;
-}
-
-SDL_Surface* get_surface_of_save_state(int n)
-{
-  char filename[FILENAME_LEN];
-  char t[8];
-
-  if (savestate_bmp!=NULL)
-    SDL_FreeSurface(savestate_bmp);
-
-  get_bmp_ext_nb(t,n);
-  get_filename_ext(filename,t);
-
-  savestate_bmp=SDL_LoadBMP(filename);
-  return savestate_bmp;
-}
-
-int save_state(int n) {
-  FILE *stream;
-  int i;
-  char filename[FILENAME_LEN];
-  char t[8];
-
-
-  get_ext_nb(t,n);
-  get_filename_ext(filename,t);
-  if (!(stream=fopen(filename,"wb"))) {
-    fprintf(stderr,"Error while trying to write file %s \n",filename);
-    return 1;
-  }
-
-  // We write all the bank and the active page 
-
-  for(i=0;i<nb_ram_page;i++)
-    fwrite(ram_page[i],sizeof(Uint8),0x2000,stream);
-
-  for(i=0;i<nb_vram_page;i++)
-    fwrite(vram_page[i],sizeof(Uint8),0x2000,stream);
-
-  for(i=0;i<nb_wram_page;i++)
-    fwrite(wram_page[i],sizeof(Uint8),0x1000,stream);
-
-  fwrite(oam_space,sizeof(Uint8),0xa0,stream);
-  fwrite(himem,sizeof(Uint8),0x160,stream);
-
-  fwrite(&active_rom_page,sizeof(Uint16),1,stream);
-  fwrite(&active_ram_page,sizeof(Uint16),1,stream);
-  fwrite(&active_vram_page,sizeof(Uint16),1,stream);
-  fwrite(&active_wram_page,sizeof(Uint16),1,stream);
-
-  // now we write a couple of (section id,size) 
-
-  for(i=0;tab_section[i].id!=-1;i++)
-    if (tab_section[i].id!=RT_SECTION) save_section(stream,&tab_section[i]);
-
-  //if (rom_type&TIMER) write_rt_info(stream);
-
-  if (rom_type&TIMER) save_section(stream,&tab_section[RT_SECTION]);
-    
-  fclose(stream);
-  
-  filename[0]=0;
-  get_bmp_ext_nb(t,n);
-  get_filename_ext(filename,t);
-  SDL_SaveBMP(get_mini_screenshot(),filename);
-
-  return 0;
-}
-
-int load_state(int n) {
-  FILE *stream;
-  int i;
-  char filename[FILENAME_LEN];
-  char t[5];
-  Uint8 section_id;
-  Uint16 size;
-  long end,last,begin;
-
-
-  get_ext_nb(t,n);
-  get_filename_ext(filename,t);
-
-  if (!(stream=fopen(filename,"rb"))) {
-    fprintf(stderr,"Error while trying to read file %s \n",filename);
-    return -1;
-  }
-  begin=ftell(stream);
-  fseek(stream,0,SEEK_END);
-  end=ftell(stream);
-  fseek(stream,0,SEEK_SET);
-
-  // If the load crash we must restore current state
-  //  save_state(-1);
- 
-  // we read all the bank and the active page 
-  //printf("read page \n");
-
-  for(i=0;i<nb_ram_page;i++)
-    fread(ram_page[i],sizeof(Uint8),0x2000,stream);
-  
-  for(i=0;i<nb_vram_page;i++)
-    fread(vram_page[i],sizeof(Uint8),0x2000,stream);
-  
-  for(i=0;i<nb_wram_page;i++)
-    fread(wram_page[i],sizeof(Uint8),0x1000,stream);
-
-  fread(oam_space,sizeof(Uint8),0xa0,stream);
-  fread(himem,sizeof(Uint8),0x160,stream);
-
-  fread(&active_rom_page,sizeof(Uint16),1,stream);
-  fread(&active_ram_page,sizeof(Uint16),1,stream);
-  fread(&active_vram_page,sizeof(Uint16),1,stream);
-  fread(&active_wram_page,sizeof(Uint16),1,stream);
-
-  // now we read a couple of (section id,size) 
-  while(ftell(stream)<end) {
-    fread(&section_id,sizeof(Uint8),1,stream);
-    fread(&size,sizeof(Uint16),1,stream);
-    last=ftell(stream);
-    if ((load_section(stream,&tab_section[section_id],size)<0))  
-      goto read_error;
-
-  }
-  
-  fclose(stream);
-  if (conf.sound) 
-    update_sound_reg();
-  return 0;
-
- read_error:  
-  fclose(stream);
-  //  load_state(-1);
-  fprintf(stderr,"Error while reading file %s \n",filename);
-  return -1;
 }
 

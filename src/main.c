@@ -42,6 +42,7 @@
 #include "sgb.h"
 //#include "optargs.h"
 #include "sound.h"
+#include "save.h"
 
 
 extern SDL_Joystick *sdl_joy;
@@ -65,13 +66,13 @@ int main(int argc,char *argv[])
   if(optind >= argc)
     print_help();
   
+  printf("toto\n");
   if (open_rom(argv[optind])) {
     fprintf(stderr,"Error while trying to read file %s \n",argv[optind]);
     exit(1);
   }
 
   emu_init();
-
   update_gb();
     
   if (rom_type&BATTERY) {

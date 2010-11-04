@@ -43,7 +43,7 @@ void init_rgb2yuv_table(void)
     rgb2yuv[i].y=(y<<8)|y;
     rgb2yuv[i].u=u;
     rgb2yuv[i].v=v;
-#ifndef GNGB_BIG_ENDIAN
+#ifndef WORDS_BIGENDIAN
     rgb2yuv[i].yuy2=(u<<24)|(y<<16)|(v<<8)|y;
 #else
     rgb2yuv[i].yuy2=(y<<24)|(v<<16)|(y<<8)|u;

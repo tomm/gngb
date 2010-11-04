@@ -27,10 +27,6 @@
 #include "emu.h"
 #include "interrupt.h"
 
-#ifdef DEBUG
-#include "gngb_debuger/debuger.h"
-#endif
-
 
 void init_video_yv12(Uint32 flag)
 {

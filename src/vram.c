@@ -28,11 +28,6 @@
 #include "menu.h"
 #include <SDL.h>
 
-
-#ifdef DEBUG
-#include "gngb_debuger/debuger.h"
-#endif
-
 SDL_Surface *gb_screen=NULL;
 
 
@@ -206,6 +201,7 @@ void init_vram(Uint32 flag)
 
   init_message();
 
+  conf.video_flag=flag;
   cur_mode->init(flag);
 
   back=SDL_CreateRGBSurface(SDL_SWSURFACE,SCREEN_X,SCREEN_Y+1,BIT_PER_PIXEL,

@@ -36,6 +36,8 @@ void draw_screen_wb_std(void);
 void draw_screen_col_std(void);
 void clear_screen_std(void);
 
+void set_filter(int filter);
+
 __inline__ void draw_back_sgb_std(Uint16 *buf);
 __inline__ void draw_win_sgb_std(Uint16 *buf);
 __inline__ void draw_spr_sgb_std(Uint16 *buf,GB_SPRITE *sp);

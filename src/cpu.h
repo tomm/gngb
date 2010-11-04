@@ -21,6 +21,7 @@
 #define _CPU_H
 
 #include "global.h"
+#include <config.h>
 
 #define FLAG_Z 0x80
 #define FLAG_N 0x40
@@ -35,7 +36,7 @@
 #define UNSET_FLAG(f) ((gbcpu->af.b.l)&=(f))
 #define IS_SET(f) ((gbcpu->af.b.l&(f)))
 
-#ifdef GNGB_BIG_ENDIAN
+#ifdef WORDS_BIGENDIAN
 
 typedef union {
 	Uint16 w;

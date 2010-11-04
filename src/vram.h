@@ -23,18 +23,6 @@
 #include "global.h"
 #include <SDL.h>
 
-/*
-#ifdef SDL_GL
-#include <GL/gl.h>
-
-#endif
-*/
-
-#ifdef DEBUG
-#define DEBUG_SCR_X 300
-#define DEBUG_SCR_Y 300
-#endif
-
 #define SCREEN_X 160
 #define SCREEN_Y 144
 #define BIT_PER_PIXEL 16

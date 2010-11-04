@@ -26,16 +26,13 @@
 #include "emu.h"
 #include "rom.h"
 
-#ifdef DEBUG
-#include "gngb_debuger/debuger.h"
-#endif
-
-#define DELAY_CYCLE 72
+#define DELAY_CYCLE 24
 
 static const Uint16 lcd_cycle_tab[2][5]={{204,456,80,172,80},              /* GB */
 					 {204*2,456*2,80*2,172*2,80*2}}; /* CGB */
 
 Uint32 nb_cycle=0;
+Uint32 key_cycle=0;
 Uint8 vram_init_pal=0;
 
 Uint32 get_nb_cycle(void)
@@ -47,23 +44,6 @@ Uint32 get_nb_cycle(void)
   return t;
 }
 
-
-#ifdef DEBUG
-
-__inline__ void set_interrupt(Uint8 n) {
-  INT_FLAG|=n;
-  add_int_msg("set int %d CURLINE %02x CMPLINE %02x INT_ENABLE %02x\n",
-	    n,CURLINE,CMP_LINE,INT_ENABLE);
-}
-
-__inline__ void unset_interrupt(Uint8 n) {
-  INT_FLAG&=(~n);
-  add_int_msg("unset int %d CURLINE %02x CMPLINE %02x INT_ENABLE %02x\n",
-	      n,CURLINE,CMP_LINE,INT_ENABLE);
-}
-
-#endif
-
 __inline__ Uint8 make_interrupt(Uint8 n) {
 
   if ((INT_ENABLE&n) && (gbcpu->int_flag)) {
@@ -72,10 +52,6 @@ __inline__ Uint8 make_interrupt(Uint8 n) {
       gbcpu->pc.w++;
     } 
     
-#ifdef DEBUG
-    add_int_msg("make int %d CURLINE %02x CMP_LINE %02x INT_ENABLE %02x\n",n,CURLINE,CMP_LINE,INT_ENABLE);
-#endif
-
     INT_FLAG&=(~n);
     gbcpu->int_flag=0;
     push_stack_word(gbcpu->pc.w);
@@ -168,11 +144,7 @@ Uint16 gblcdc_update(void)  // LCDC is on
   if (CURLINE==0x90 && (gblcdc->mode==OAM_PER || gblcdc->mode==BEGIN_OAM_PER)) {
     if (!conf.delay_int) {
       gblcdc->mode=VBLANK_PER;
-#ifdef DEBUG
-      if (vblank_int_enable) set_interrupt(VBLANK_INT);
-#else
       set_interrupt(VBLANK_INT);
-#endif
     } else gblcdc->mode=LINE_90_BEGIN;
   }
 
@@ -198,11 +170,7 @@ Uint16 gblcdc_update(void)  // LCDC is on
   
   switch(gblcdc->mode) {
   case HBLANK_PER:       // HBLANK
-#ifdef DEBUG
-    if (lcd_hblank_int_enable && LCDCSTAT&0x08) set_interrupt(LCDC_INT);
-#else
     if (LCDCSTAT&0x08) set_interrupt(LCDC_INT);
-#endif
     if (!skip_next_frame) draw_screen();
     ret=lcd_cycle_tab[gblcdc->timing][0];
     if (1/*!conf.delay_int*/) gblcdc->mode=OAM_PER;
@@ -220,19 +188,11 @@ Uint16 gblcdc_update(void)  // LCDC is on
     break;
   case LINE_90_END:
     gblcdc->inc_line=1;
-#ifdef DEBUG
-    if (lcd_vblank_int_enable && LCDCSTAT&0x10) set_interrupt(LCDC_INT);
-#else
     if (LCDCSTAT&0x10) set_interrupt(LCDC_INT);
-#endif
     ret=lcd_cycle_tab[gblcdc->timing][1]-DELAY_CYCLE-8;
     LCDCSTAT|=0x01;
     gblcdc->mode=VBLANK_PER;
-#ifdef DEBUG
-    if (vblank_int_enable) set_interrupt(VBLANK_INT);
-#else
     set_interrupt(VBLANK_INT);
-#endif
     break;
   case LINE_99:
     LCDCSTAT|=0x01;
@@ -242,21 +202,13 @@ Uint16 gblcdc_update(void)  // LCDC is on
     break;
   case END_VBLANK_PER:
     LCDCSTAT|=0x01;
-#ifdef DEBUG
-    if (lcd_lyc_int_enable && LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
-#else
     if (LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
-#endif
     ret=lcd_cycle_tab[gblcdc->timing][1]-lcd_cycle_tab[gblcdc->timing][4];
     gblcdc->inc_line=0;
     break;
   case VBLANK_PER:       // VBLANK
     /* FIXME => water.gbc */
-#ifdef DEBUG
-    if (lcd_lyc_int_enable && LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
-#else
     if (LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
-#endif
     LCDCSTAT|=0x01;
     ret=lcd_cycle_tab[gblcdc->timing][1];
     gblcdc->inc_line=1;
@@ -273,17 +225,8 @@ Uint16 gblcdc_update(void)  // LCDC is on
     LCDCSTAT|=0x02;
     gblcdc->inc_line=0;
     /* FIXME: Pinball Deluxe */
-#ifdef DEBUG
-    if (lcd_oam_int_enable && LCDCSTAT&0x20) set_interrupt(LCDC_INT);
-#else
     if (LCDCSTAT&0x20) set_interrupt(LCDC_INT);
-#endif
-
-#ifdef DEBUG
-    if (lcd_lyc_int_enable && LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
-#else
     if (LCDCSTAT&0x40 && LCDCSTAT&0x04)  set_interrupt(LCDC_INT);
-#endif
 
     ret=lcd_cycle_tab[gblcdc->timing][2];
     /*if (conf.delay_int) ret-=DELAY_CYCLE;*/
@@ -311,6 +254,124 @@ Uint16 gblcdc_update(void)  // LCDC is on
 
   return ret;
 }
+
+
+/* gblcdc_update2: Try new implementation don't Work for the moment */
+
+void gblcdc_set_on2(void) {
+  gblcdc->win_curline=0;
+  LCDCCONT|=0x80;
+  vram_init_pal=1;
+  clear_screen();
+  reset_frame_skip();
+  
+  LCDCSTAT=(LCDCSTAT&0xf8)|0x02;
+  CURLINE=0x00;
+  gblcdc->nb_spr=get_nb_spr();
+  gblcdc->cycle=lcd_cycle_tab[gblcdc->timing][2];
+}
+
+Uint16 gblcdc_update2(void) {
+  int x;
+  static Uint8 delay_vblank_int;
+  if (!(LCDCCONT&0x80)) return 0;
+
+  switch(LCDCSTAT&0x03) {
+  case 0x00:
+    if (CURLINE==0x8F) {
+      /* Go to VBlank Mode */
+      CURLINE++;
+      LCDCSTAT=(LCDCSTAT&0xf8)|0x01;
+      /* FIXME: Check LYC irq */
+      /*      if (CURLINE==CMP_LINE) LCDCSTAT|=0x04;
+	      if (LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);*/
+      if (LCDCSTAT&0x10) set_interrupt(LCDC_INT);
+      if (gbcpu->state&HALT_STATE) {
+	set_interrupt(VBLANK_INT);
+	return lcd_cycle_tab[gblcdc->timing][1];
+      } 
+      delay_vblank_int=1;
+      return DELAY_CYCLE;
+    } else {
+      /* Go to Oam Mode */
+      LCDCSTAT=(LCDCSTAT&0xf8)|0x02;
+      CURLINE++;
+      gblcdc->nb_spr=get_nb_spr();
+      if (CURLINE==CMP_LINE) LCDCSTAT|=0x04;
+      if (LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
+      if (LCDCSTAT&0x20) set_interrupt(LCDC_INT);
+      return lcd_cycle_tab[gblcdc->timing][2];
+    }   
+    break;
+
+  case 0x01:
+    if (delay_vblank_int) {
+      delay_vblank_int=0;
+      set_interrupt(VBLANK_INT);
+      return lcd_cycle_tab[gblcdc->timing][1]-DELAY_CYCLE;
+    }
+    
+    if (CURLINE==0x00) {
+      /* Go to Oam Mode */
+      blit_screen();
+      LCDCSTAT=(LCDCSTAT&0xf8)|0x02;
+      gblcdc->nb_spr=get_nb_spr();
+      /*      if (CURLINE==CMP_LINE) LCDCSTAT|=0x04;
+	      if (LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);*/
+      if (LCDCSTAT&0x20) set_interrupt(LCDC_INT);
+      return lcd_cycle_tab[gblcdc->timing][2];
+    } 
+    
+    if (CURLINE<0x98) {
+      /* Go to VBlank Mode */
+      CURLINE++;      
+      LCDCSTAT=(LCDCSTAT&0xf8)|0x01;
+      /* FIXME: Check LYC irq */
+      return lcd_cycle_tab[gblcdc->timing][1];
+    } 
+    
+    if (CURLINE==0x98) {
+      CURLINE++;      
+      LCDCSTAT=(LCDCSTAT&0xf8)|0x01;
+      return lcd_cycle_tab[gblcdc->timing][4];
+    }
+
+    if (CURLINE==0x99) {
+      CURLINE=0x00;
+      LCDCSTAT=(LCDCSTAT&0xf8)|0x01;
+      /* FIXME: Check LYC irq */
+      if (CURLINE==CMP_LINE) LCDCSTAT|=0x04;
+      if (LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
+      return (lcd_cycle_tab[gblcdc->timing][1]-lcd_cycle_tab[gblcdc->timing][4]);
+    }    
+    break;
+
+  case 0x02:
+    LCDCSTAT=(LCDCSTAT&0xfc)|0x03;
+    gblcdc->mode3cycle=lcd_cycle_tab[gblcdc->timing][3];
+    gblcdc->vram_factor=160.0/(double)(gblcdc->mode3cycle);
+    if (vram_init_pal) {
+      for(x=0;x<160;x++)
+	gblcdc->vram_pal_line[x]=pal_bck;
+      pal_bck[0]=BGPAL&3;
+      pal_bck[1]=(BGPAL>>2)&3;
+      pal_bck[2]=(BGPAL>>4)&3;
+      pal_bck[3]=(BGPAL>>6)&3;
+      vram_init_pal=0;
+    }
+    return lcd_cycle_tab[gblcdc->timing][3];
+    break;
+  case 0x03:
+    draw_screen();
+    /* Go to HBlank Mode */
+    LCDCSTAT=(LCDCSTAT&0xfc);
+    if (dma_info.type==HDMA) do_hdma();
+    if (LCDCSTAT&0x08) set_interrupt(LCDC_INT);
+    return lcd_cycle_tab[gblcdc->timing][0];
+    break;
+  } 
+}
+
 
 /* FIXME */
 void gblcdc_addcycle(Sint32 c) {
@@ -347,11 +408,7 @@ void gbtimer_update(void)
   TIME_COUNTER++;
   if (TIME_COUNTER==0x00) {
     TIME_COUNTER=TIME_MOD;
-#ifdef DEBUG
-    if (timer_int_enable) set_interrupt(TIMEOWFL_INT); 
-#else
     set_interrupt(TIMEOWFL_INT); 
-#endif
   }
 }
 
@@ -360,8 +417,5 @@ __inline__ void halt_update(void) // gbcpu->state=HALT_STATE
   if (INT_FLAG&INT_ENABLE) {
     gbcpu->state=0;
     gbcpu->pc.w++;
-#ifdef DEBUG
-    add_int_msg("stop halt 1\n");
-#endif
   }
 }

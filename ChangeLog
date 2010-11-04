@@ -1,6 +1,19 @@
 
 WHAT'S NEW ?
 
+Only few change due to a lack of time :(
+	
+* Abandon du debuger
+* Opem Zip File for Roms: zlib now mandatory
+* comfigure.in: wall -> Wall for unknow system
+	
+200302220 (Not Released)
+	
+* Do not use macro GNGB_BIG_ENDIAN
+* Use zlib if we can for roms
+	
+2002..
+	
 * Clean few code
 * Fix window current_line (only increment when window is on) (Fix PGAEuropean
     PowerPuff Girl)

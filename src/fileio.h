@@ -16,27 +16,29 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. 
  */
 
-#ifndef SERIAL_H
-#define SERIAL_H
+#ifndef FILEIO_H
+#define FILEIO_H
 
-#include "global.h"
+#include <sys/stat.h>
+#include <sys/types.h>
 
-struct {
-  Sint16 cycle_todo;
-  Uint8 b;
-  Uint8 byte_wait;
-  Uint8 check;
-}gbserial;
+#define UNKNOW_FILE_TYPE -1
+#define ZIP_ARCH_FILE_TYPE 1
+#define GZIP_FILE_TYPE 2
+#define GB_ROM_FILE_TYPE 3
+#define NORMAL_FILE_TYPE 4
 
-Sint16 serial_cycle_todo;
-Sint8 gblisten;
+typedef struct _gngb_file {
+  char type;
+  char *stream;
+}GNGB_FILE;
 
-void gbserial_init(int server_side,char *servername);
-void gbserial_close(void);
-void gbserial_send(Uint8 b);
-Sint8 gbserial_receive(void);
-Uint8 gbserial_check(void);
+GNGB_FILE *gngb_file_open(char *filename,char *mode,char type);
+int gngb_file_close(GNGB_FILE *f);
+int gngb_file_read(void *ptr, size_t size, size_t nmemb,GNGB_FILE *f);
+int gngb_file_write(const void *ptr, size_t size, size_t nmemb,GNGB_FILE *f);
+int gngb_file_seek(GNGB_FILE *f, long offset, int whence);
+int gngb_file_eof(GNGB_FILE *f);
 
 #endif
-
 

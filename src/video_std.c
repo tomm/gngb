@@ -28,10 +28,6 @@
 #include "video_std.h"
 #include "menu.h"
 
-#ifdef DEBUG
-#include "gngb_debuger/debuger.h"
-#endif
-
 static Uint32 std_flag;
 SDL_Surface *back=NULL;
 
@@ -52,6 +48,7 @@ static __inline__ Uint16 color_blend(Uint16 A,Uint16 B,Uint16 C,Uint16 D)
 }
 */
 
+//#define FILTER_S2X (random&1?(A==D?A:(B==C?B:A)):A)
 #define FILTER_S2X (A==D?A:(B==C?B:A))
 
 
@@ -138,8 +135,13 @@ int blit_std_with_filter_s2x(SDL_Surface *src,SDL_Rect *srcrect,SDL_Surface *dst
   Uint16 col;
   Uint16 t;
   
+  
   static Uint8 rumble=0;
   static Uint8 rb_time=0;
+
+
+
+
   if (rb_on) {
     rumble=2-rumble;
     bufs+=rumble;
@@ -249,7 +251,6 @@ int blit_std_with_filter_s2x(SDL_Surface *src,SDL_Rect *srcrect,SDL_Surface *dst
     }
     nbufd[i<<1]=A;
     nbufd[(i<<1)+1]=A;
-    
   }
   return 0;
 }
@@ -383,6 +384,39 @@ int blit_std_with_mblur(SDL_Surface *src,SDL_Rect *srcrect,SDL_Surface *dst,SDL_
   SDL_BlitSurface(src,srcrect,dst,dstrect);
   return 0;
 }
+
+void set_filter(int filter) {
+  conf.filter=filter;
+  conf.fs=0;
+  if (conf.gb_type&SUPER_GAMEBOY)
+    gb_screen=SDL_SetVideoMode(SGB_WIDTH,SGB_HEIGHT,
+			       BIT_PER_PIXEL,std_flag);
+  else {
+    if (conf.filter) {
+      if (conf.filter==5) {
+	gb_screen=SDL_SetVideoMode(SCREEN_X,SCREEN_Y,
+				   BIT_PER_PIXEL,std_flag);
+      }
+      else
+	gb_screen=SDL_SetVideoMode(SCREEN_X*2,SCREEN_Y*2,
+				   BIT_PER_PIXEL,std_flag);
+      SDL_FillRect(gb_screen,NULL,0);
+    }
+    else
+      gb_screen=SDL_SetVideoMode(SCREEN_X,SCREEN_Y,
+				 BIT_PER_PIXEL,std_flag); 
+  }
+
+  switch (conf.filter) {
+  case 1:  filtered_blit=blit_std_with_scanline;break;
+  case 2:  filtered_blit=blit_std_with_scanline50;break;
+  case 3:  filtered_blit=blit_std_with_filter_smooth;break;
+  case 4:  filtered_blit=blit_std_with_filter_s2x;break;
+  case 5:  filtered_blit=blit_std_with_mblur;break;
+  default: filtered_blit=SDL_BlitSurface;break;
+  }
+}
+
 void blit_screen_default_std(void) {
  
   if (rb_on) {
@@ -605,7 +639,7 @@ __inline__ void draw_win_std(Uint16 *buf)
 	back_col[x+sx][CURLINE]=c;
       }
     }
-    gblcdc->win_curline=gblcdc->win_curline++;
+    gblcdc->win_curline++;
   }  
 }
 
@@ -780,7 +814,7 @@ __inline__ void draw_win_col_std(Uint16 *buf)
 	else back_col[x+sx][CURLINE]=0x80+c;	    
       }
     }
-    gblcdc->win_curline=gblcdc->win_curline++;
+    gblcdc->win_curline++;
   }  
 }
 
@@ -866,7 +900,7 @@ __inline__ void draw_win_sgb_std(Uint16 *buf)
 	back_col[x+sx][CURLINE]=c;
       }
     }
-    gblcdc->win_curline++;
+    win_curline++;
   }  
 }
 
@@ -909,15 +943,11 @@ void draw_screen_wb_std(void)
 {
   Uint16 *buf=(Uint16 *)back->pixels + CURLINE*(back->pitch>>1);
   if (SDL_MUSTLOCK(back) && SDL_LockSurface(back)<0) printf("can't lock surface\n");
-#ifndef DEBUG
+
   if (LCDCCONT&0x01) draw_back_std(buf);
   if (LCDCCONT&0x20) draw_win_std(buf);
   if (LCDCCONT&0x02) draw_obj_std(buf);
-#else
-  if (active_back && LCDCCONT&0x01) draw_back_std(buf);
-  if (active_win && LCDCCONT&0x20) draw_win_std(buf);
-  if (active_obj && LCDCCONT&0x02) draw_obj_std(buf);
-#endif
+
   if (SDL_MUSTLOCK(back)) SDL_UnlockSurface(back);
 }
 
@@ -925,15 +955,10 @@ void draw_screen_col_std(void)
 {
   Uint16 *buf=(Uint16 *)back->pixels + CURLINE*(back->pitch>>1);
   if (SDL_MUSTLOCK(back) && SDL_LockSurface(back)<0) printf("can't lock surface\n");
-#ifndef DEBUG
   draw_back_col_std(buf);
   if (LCDCCONT&0x20) draw_win_col_std(buf);
   if (LCDCCONT&0x02) draw_obj_col_std(buf);
-#else
-  if (active_back) draw_back_col_std(buf);
-  if (active_win &&  LCDCCONT&0x20) draw_win_col_std(buf);
-  if (active_obj && LCDCCONT&0x02) draw_obj_col_std(buf);
-#endif
+
   if (SDL_MUSTLOCK(back)) SDL_UnlockSurface(back);
 }
 
@@ -941,17 +966,12 @@ void draw_screen_sgb_std(void)
 {
   Uint16 *buf=(Uint16 *)back->pixels + CURLINE*(back->pitch>>1);
   if (SDL_MUSTLOCK(back) && SDL_LockSurface(back)<0) printf("can't lock surface\n");
-#ifndef DEBUG
+
   if (LCDCCONT&0x01) draw_back_sgb_std(buf);
   if (LCDCCONT&0x20) draw_win_sgb_std(buf);
   /* FIXME */
   if (LCDCCONT&0x02) draw_obj_sgb_std(buf);
-#else
-  if (active_back && LCDCCONT&0x01) draw_back_sgb_std(buf);
-  if (active_win &&  LCDCCONT&0x20) draw_win_sgb_std(buf);
-  /* FIXME */
-  if (active_obj &&  LCDCCONT&0x02) draw_obj_sgb_std(buf);
-#endif
+
   if (SDL_MUSTLOCK(back)) SDL_UnlockSurface(back);
 }
 

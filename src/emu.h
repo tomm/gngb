@@ -21,6 +21,8 @@
 
 #include "global.h"
 #include <SDL_keysym.h>
+#include <stdlib.h>
+#include "fileio.h"
 
 // GAMEBOY TYPE
 
@@ -42,9 +44,11 @@ typedef struct {
   int serial_on;
   int gb_done;
   int joy_no;
+  int use_joy;
   int gl;
   int yuv;
   int yuv_type;
+  int video_flag;
   int filter;
   int delay_int;
   int show_fps;
@@ -55,6 +59,8 @@ typedef struct {
   int gb_type;
   int const_cycle;
   int gdma_cycle;
+  int save_movie;
+  int play_movie;
   Sint32 pal[5][4];
 }GNGB_CONF;
 
@@ -63,8 +69,8 @@ GNGB_CONF conf;
 SDL_Joystick *sdl_joy;
 
 Uint16 key[SDLK_LAST];
-Sint16 *joy_axis;
-Uint8 *joy_but;
+extern Sint16 *joy_axis;
+extern Uint8 *joy_but;
 
 #define PAD_UP 0
 #define PAD_DOWN 1
@@ -77,6 +83,23 @@ Uint8 *joy_but;
 
 extern Uint8 jmap[8];
 extern Uint16 kmap[8];
+
+/* Movie */
+
+typedef struct _pad_save {
+  Uint8 pad;
+  struct _pad_save *next;
+}PAD_SAVE;
+
+typedef struct _gngb_movie {
+  char name[256];
+  int len;
+  GNGB_FILE *stream;
+  PAD_SAVE *first_pad;
+  PAD_SAVE *last_pad;
+}GNGB_MOVIE;
+
+extern GNGB_MOVIE gngb_movie;
 
 void print_help(void);
 

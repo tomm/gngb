@@ -21,6 +21,7 @@
 #define _ROM_H
 
 #include "global.h"
+#include <stdlib.h>
 
 /* rom type definition */
 #define UNKNOW_TYPE    0x00
@@ -54,13 +55,9 @@ typedef struct {
 ROM_TIMER *rom_timer;
 
 int open_rom(char *filename);
-int save_ram(void);
-int load_ram(void);
-int save_rom_timer(void);
-int load_rom_timer(void);
-
-SDL_Surface* get_surface_of_save_state(int n);
-int save_state(int n);
-int load_state(int n);
 
 #endif
+
+
+
+

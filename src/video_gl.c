@@ -15,10 +15,6 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 
-#ifdef DEBUG
-#include "gngb_debuger/debuger.h"
-#endif
-
 static Uint32 gl_flag;
 #define FONTBUF_GL_W 128
 #define FONTBUF_GL_H 128

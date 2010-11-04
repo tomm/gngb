@@ -25,11 +25,6 @@
 #include "vram.h"
 #include "emu.h"
 
-
-#ifdef DEBUG
-#include "gngb_debuger/debuger.h"
-#endif
-
 #define SGB_CMD_END() {sgb.cmd=0xff;sgb.nb_pack=-1;}
 #define SGB_COLOR(c) ((((c)&0x7C00)>>10)|(((c)&0x3E0)<<1)|(((c)&0x1F)<<11))
 
@@ -92,8 +87,6 @@ __inline__ void sgb_tiles_pat_transfer(void) {
 
 __inline__ void sgb_tiles_map_transfer(void) {
   int i;
-
-  // printf("LCDCSTAT: %02x LCDCCONT: %02x SCR: %02x %02x WIN: %02x %02x LY: %02x LYC: %02x\n",LCDCSTAT,LCDCCONT,SCRX,SCRY,WINX,WINY,CURLINE,CMP_LINE);
 
   for(i=0;i<32*32;i++) {
     /* FIXME: dkl2 et conker => 0x1000 */
@@ -545,9 +538,6 @@ void sgb_exec_cmd(void) {
       printf("%02x ",sgb.pack[i]);
       putchar('\n');
     */
-#ifdef DEBUG  
-    add_sgb_msg("sgb:%02x nb:%d pack:\n",sgb.pack[0]>>3,sgb.pack[0]&0x07);
-#endif
     sgb.cmd=sgb.pack[0]>>3;
   }   
 

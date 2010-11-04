@@ -32,10 +32,6 @@
 #include "message.h"
 #include "sgb.h"
 
-#ifdef DEBUG
-#include "gngb_debuger/debuger.h"
-#endif
-
 static Uint8 gb_pad;
 
 Uint8 rom_mask;
@@ -247,9 +243,6 @@ void mbc5_select_page(Uint16 adr,Uint8 v)
 }
 
 
-
-     
-
 void gbmemory_init(void)
 {
   //gbmemory_reset();
@@ -441,8 +434,6 @@ void push_stack_word(Uint16 v)
   mem_write_fast(gbcpu->sp.w,h);
   --gbcpu->sp.w;
   mem_write_fast(gbcpu->sp.w,l);
-  /*mem_write(--gbcpu->sp.w,h);
-    mem_write(--gbcpu->sp.w,l);*/
 }
 
 Uint8 **alloc_mem_page(Uint16 nb_page,Uint32 size)
@@ -654,6 +645,14 @@ __inline__ Uint8 mem_read_ff(Uint16 adr)
     //return GB_PAD;
   }
 
+  /*  if (adr==0xff01 && conf.serial_on) {
+    Sint8 a=gbserial_check();
+    if (a>=0) SB=a;
+    else SB=0xff;
+    return SB;
+    } else return SB;*/
+   
+
   if (conf.gb_type&COLOR_GAMEBOY) {
     if (adr==0xff4d) {
       if (gbcpu->mode==DOUBLE_SPEED) return CPU_SPEED|0x80;
@@ -674,15 +673,6 @@ __inline__ Uint8 mem_read_ff(Uint16 adr)
   }
 
   if (adr>=0xff10 && adr<=0xff3f && conf.sound) return read_sound_reg(adr);
-  
-#ifdef DEBUG
-  if (adr==0xff40) add_mem_msg("read LCDCCONT %02x\n",LCDCCONT);
-  if (adr==0xff41) add_mem_msg("read LCDCSTAT %02x\n",LCDCSTAT);
-  if (adr==0xff0f) add_mem_msg("read INT_FLAG %02x\n",INT_FLAG);
-  if (adr==0xffff) add_mem_msg("read INT_ENABLE %02x\n",INT_ENABLE);
-  if (adr==0xff45) add_mem_msg("read CMP_LINE %02x\n",CMP_LINE);
-#endif
-
   return himem[adr-0xfea0];
 }
 
@@ -742,17 +732,49 @@ Uint8 mem_read_default(Uint16 adr)
 
 __inline__ void update_gb_pad(void) {
   gb_pad=0;
-  
-  if ((joy_but[jmap[PAD_START]]) || (key[kmap[PAD_START]])) gb_pad|=0x08; /* Start */
-  if ((joy_but[jmap[PAD_SELECT]]) || (key[kmap[PAD_SELECT]])) gb_pad|=0x04; /* Select */
-  if ((joy_but[jmap[PAD_A]]) || (key[kmap[PAD_A]])) gb_pad|=0x01; /* A */
-  if ((joy_but[jmap[PAD_B]]) || (key[kmap[PAD_B]])) gb_pad|=0x02; /* B */
-  
-  if ((joy_axis[jmap[PAD_LEFT]]<-1000) || (key[kmap[PAD_LEFT]])) gb_pad|=0x20;
-  if ((joy_axis[jmap[PAD_RIGHT]]>1000) || (key[kmap[PAD_RIGHT]])) gb_pad|=0x10;
-  if ((joy_axis[jmap[PAD_UP]]<-1000) ||  (key[kmap[PAD_UP]])) gb_pad|=0x40;
-  if ((joy_axis[jmap[PAD_DOWN]]>1000) || (key[kmap[PAD_DOWN]])) gb_pad|=0x80;
-  
+  if (!conf.play_movie) {
+
+    if (conf.use_joy) {
+      if ((joy_but[jmap[PAD_START]]) || (key[kmap[PAD_START]])) gb_pad|=0x08; /* Start */
+      if ((joy_but[jmap[PAD_SELECT]]) || (key[kmap[PAD_SELECT]])) gb_pad|=0x04; /* Select */
+      if ((joy_but[jmap[PAD_A]]) || (key[kmap[PAD_A]])) gb_pad|=0x01; /* A */
+      if ((joy_but[jmap[PAD_B]]) || (key[kmap[PAD_B]])) gb_pad|=0x02; /* B */
+
+      if ((joy_axis[jmap[PAD_LEFT]]<-10000) || (key[kmap[PAD_LEFT]])) gb_pad|=0x20;
+      if ((joy_axis[jmap[PAD_RIGHT]]>10000) || (key[kmap[PAD_RIGHT]])) gb_pad|=0x10;
+      if ((joy_axis[jmap[PAD_UP]]<-10000) ||  (key[kmap[PAD_UP]])) gb_pad|=0x40;
+      if ((joy_axis[jmap[PAD_DOWN]]>10000) || (key[kmap[PAD_DOWN]])) gb_pad|=0x80;
+    } else {
+
+      //      if (!joy_but) {
+      if (key[kmap[PAD_START]]) gb_pad|=0x08; /* Start */
+      if (key[kmap[PAD_SELECT]]) gb_pad|=0x04; /* Select */
+      if (key[kmap[PAD_A]]) gb_pad|=0x01; /* A */
+      if (key[kmap[PAD_B]]) gb_pad|=0x02; /* B */
+      //  } else {
+      //      if ((joy_but[jmap[PAD_START]]) || (key[kmap[PAD_START]])) gb_pad|=0x08; /* Start */
+      //      if ((joy_but[jmap[PAD_SELECT]]) || (key[kmap[PAD_SELECT]])) gb_pad|=0x04; /* Select */
+      //      if ((joy_but[jmap[PAD_A]]) || (key[kmap[PAD_A]])) gb_pad|=0x01; /* A */
+      //      if ((joy_but[jmap[PAD_B]]) || (key[kmap[PAD_B]])) gb_pad|=0x02; /* B */
+      //    }
+    
+      //    if (!joy_axis) {
+      if (key[kmap[PAD_LEFT]]) gb_pad|=0x20;
+      if (key[kmap[PAD_RIGHT]]) gb_pad|=0x10;
+      if (key[kmap[PAD_UP]]) gb_pad|=0x40;
+      if (key[kmap[PAD_DOWN]]) gb_pad|=0x80;
+      //} else {
+      //if ((joy_axis[jmap[PAD_LEFT]]<-1000) || (key[kmap[PAD_LEFT]])) gb_pad|=0x20;
+      //if ((joy_axis[jmap[PAD_RIGHT]]>1000) || (key[kmap[PAD_RIGHT]])) gb_pad|=0x10;
+      //if ((joy_axis[jmap[PAD_UP]]<-1000) ||  (key[kmap[PAD_UP]])) gb_pad|=0x40;
+      //if ((joy_axis[jmap[PAD_DOWN]]>1000) || (key[kmap[PAD_DOWN]])) gb_pad|=0x80;
+      //}
+    }
+    
+    if (conf.save_movie) movie_add_pad(gb_pad);
+  } else {
+    gb_pad=movie_get_next_pad();
+  }
 }
 
 extern Uint8 win_line;
@@ -760,9 +782,6 @@ extern Uint8 win_line;
 __inline__ void write2lcdccont(Uint8 v)
 {
   if ((LCDCCONT&0x80) && (!(v&0x80))) {  // LCDC go to off
-#ifdef DEBUG
-    add_mem_msg("LCDC got to off \n");
-#endif
     gblcdc->mode=HBLANK_PER;
     LCDCSTAT=(LCDCSTAT&0xfc);
     CURLINE=0;
@@ -775,9 +794,6 @@ __inline__ void write2lcdccont(Uint8 v)
   }
     
   if ((!(LCDCCONT&0x80)) && (v&0x80)) { // LCDC go to on
-#ifdef DEBUG
-    add_mem_msg("LCDC got to on \n");
-#endif
     gblcdc_set_on();
   }
   LCDCCONT=v;
@@ -915,23 +931,36 @@ __inline__ void mem_write_ff(Uint16 adr,Uint8 v) {
       if ((v&0x81)==0x81) {
 	SB=0xff;
 	SC=v&0x7f;
-#ifdef DEBUG
-	if (link_int_enable) set_interrupt(SERIAL_INT);
-#else
 	set_interrupt(SERIAL_INT);
-#endif
       }
     } else {
-      if ((v&0x81)==0x81) {
-	send_byte(SB);
+      //   printf("Write %02x\n",v);
+      /* Start Tranfer ? */
+      if ((v&0x80)==0x80) {
+	if ((v&0x01)==0x01) {	/* Internal Clock  */
+	  gbserial_send(SB);
+	  serial_cycle_todo=4096;
+	} else {
+	  gbserial_send(SB);	/* External Clock */
+	  gbserial.check=1;
+	  //serial_cycle_todo=4096;
+	  //	  gbserial_send(SB);
+	}
+      } else {
+	SB=0xff;
+	gbserial.check=0;
+      }
+
+      /*if ((v&0x81)==0x81) {
+	gbserial_send(SB);
 	serial_cycle_todo=4096;
-      } //else serial_cycle_todo=500;
+	} */
       SC=v;
     }
 
     /*    if (conf.serial_on) {
       if ((v&0x81)==0x81) {
-	send_byte(SB);
+	gbserial_send(SB);
 	//serial_cycle_todo=4096*2;
       } 
     } 
@@ -941,30 +970,18 @@ __inline__ void mem_write_ff(Uint16 adr,Uint8 v) {
   case 0xff0f:
     unset_interrupt(((INT_FLAG)^(v&0x1f))^(v&0x1f));
     if (v&0x1f) set_interrupt(v&0x1f);
-#ifdef DEBUG
-    add_mem_msg("write %02x to INT_FLAG %02x\n",v,INT_FLAG);
-#endif
     break;
   case 0xffff:
     INT_ENABLE=v&0x1f;
-#ifdef DEBUG
-    add_mem_msg("write %02x to INT_ENABLE %02x\n",v,INT_ENABLE);
-#endif
     break;
   case 0xff04:DIVID=0;break;
   case 0xff05:
     TIME_COUNTER=v;
     /* FIXME */
     gbtimer->cycle=0;
-#ifdef DEBUG
-    add_mem_msg("write %02x to TIMER_COUNTER, %02x:TIMER_CONTROLE, %02x:TIME_MOD\n",v,TIME_CONTROL,TIME_MOD);
-#endif
     break;
   case 0xff06:
     TIME_MOD=v;
-#ifdef DEBUG
-    add_mem_msg("write %02x to TIMER_MOD\n",v);
-#endif
     break;
   case 0xff07:
     if (v&4) {
@@ -982,74 +999,51 @@ __inline__ void mem_write_ff(Uint16 adr,Uint8 v) {
       else gbtimer->cycle=gbtimer->clk_inc;*/
     //    if ((v&0x04) && !(TIME_CONTROL&0x04)) gbtimer->cycle=0;
     TIME_CONTROL=v;
-#ifdef DEBUG
-    add_mem_msg("write %02x to TIMER_CONTROLER\n",v);
-#endif
     break;
   case 0xff40:
     write2lcdccont(v);
-#ifdef DEBUG
-    add_mem_msg("write %02x to LCDCCONT %02x\n",v,LCDCCONT);
-#endif   
     break;
   case 0xff41:
     /* Emulate Normal Gameboy Bug (fix Legend Of Zerd) */
     if (!(conf.gb_type&COLOR_GAMEBOY)) {
-#ifdef DEBUG
-      //if (!(LCDCSTAT&0x03) || (LCDCSTAT&0x03)==0x01) set_interrupt(LCDC_INT);
-      if (!(LCDCSTAT&0x02)) 
-	set_interrupt(LCDC_INT);
-      add_int_msg("Emulate gmb lcdcstat write bug\n");
-#else
       //if (!(LCDCSTAT&0x03) || (LCDCSTAT&0x03)==0x01) set_interrupt(LCDC_INT);
       if (!(LCDCSTAT&0x02)) 
 	/* FIXME: Stat write bug */
 	set_interrupt(LCDC_INT);
-#endif
       //if ((v&0x20) && (!(LCDCSTAT&0x20)) && (LCDCSTAT&0x02)) set_interrupt(LCDC_INT);
+      
       LCDCSTAT=(LCDCSTAT&0x07)|(v&0x78);
-    } else LCDCSTAT=(LCDCSTAT&0x07)|(v&0x78);    
-#ifdef DEBUG
-    add_mem_msg("Write %02x to LCDCSTAT %02x\n",v,LCDCSTAT);
-#endif  
+      if (CURLINE<0x91 && CURLINE==CMP_LINE) {
+	LCDCSTAT|=0x04;
+	if (LCDCSTAT&0x40 && LCDCCONT&0x80) set_interrupt(LCDC_INT);
+      }
+    } else {
+      /*FIXME: LCDCSTAT write */
+      LCDCSTAT=(LCDCSTAT&0x07)|(v&0x78);    
+      if (CURLINE<0x91 && CURLINE==CMP_LINE) {
+	LCDCSTAT|=0x04;
+	if (LCDCSTAT&0x40 && LCDCCONT&0x80) set_interrupt(LCDC_INT);
+      }
+    }
     break;
   case 0xff44:
-#ifdef DEBUG
-    add_mem_msg("Write to CURLINE %02x \n",v);
-#endif
     CURLINE=0;
     if (LCDCCONT&0x80) gblcdc_set_on();
     break;
   case 0xff45:CMP_LINE=v;
-#ifdef DEBUG
-    add_mem_msg("Write %02x to CMPLINE\n",v);
-#endif   
     /* FIXME */
     if (CURLINE==CMP_LINE) LCDCSTAT|=0x04;
     else LCDCSTAT&=~0x04;
-    /*#ifdef DEBUG
-    if (lcd_lyc_int_enable && LCDCCONT&0x80 && LCDCSTAT&0x40 && LCDCSTAT&0x04 && (LCDCSTAT&0x02)==0x02) {
-      set_interrupt(LCDC_INT);
-      add_int_msg("Write To Cmp Line and set lyc int\n");
-    }
-    #else*/
     if (LCDCCONT&0x80 && LCDCSTAT&0x40 && LCDCSTAT&0x04 && (LCDCSTAT&0x02)==0x02) 
       set_interrupt(LCDC_INT);
-    //#endif
     break;
   case 0xff46:      // DMA
     do_dma(v);
     break;
   case 0xff47:
-#ifdef DEBUG
-    add_mem_msg("set bck_pal %02x\n",v);
-#endif
     gb_set_pal_bck(v);
     break;
   case 0xff48:
-#ifdef DEBUG
-    add_mem_msg("set obj_pal0 %02x\n",v);
-#endif  
     OBJ0PAL=v;
     pal_obj[0][0]=OBJ0PAL&3;
     pal_obj[0][1]=(OBJ0PAL>>2)&3;
@@ -1057,9 +1051,6 @@ __inline__ void mem_write_ff(Uint16 adr,Uint8 v) {
     pal_obj[0][3]=(OBJ0PAL>>6)&3;
     break;
   case 0xff49:
-#ifdef DEBUG
-    add_mem_msg("set obj_pal1 %02x\n",v);
-#endif
     OBJ1PAL=v;
     pal_obj[1][0]=OBJ1PAL&3;
     pal_obj[1][1]=(OBJ1PAL>>2)&3;

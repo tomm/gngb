@@ -38,6 +38,7 @@
 #define SERIAL_INT 0x08
 
 extern Uint32 nb_cycle;
+extern Uint32 key_cycle;
 
 #define GBLCDC_ADD_CYCLE(n) { \
       gblcdc->cycle-=(n); \
@@ -109,13 +110,8 @@ void go2double_speed(void);
 void go2simple_speed(void);
 Uint32 get_nb_cycle(void);
 
-#ifdef DEBUG
-void set_interrupt(Uint8 n);
-void unset_interrupt(Uint8 n);
-#else 
 #define set_interrupt(n) ((INT_FLAG|=(n)))
 #define unset_interrupt(n) ((INT_FLAG&=(~(n))))
-#endif
 
 Uint8 make_interrupt(Uint8 n);
 
