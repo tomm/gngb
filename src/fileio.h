@@ -22,12 +22,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#define UNKNOW_FILE_TYPE -1
-#define ZIP_ARCH_FILE_TYPE 1
-#define GZIP_FILE_TYPE 2
-#define BZIP_FILE_TYPE 3
-#define GB_ROM_FILE_TYPE 4
-#define NORMAL_FILE_TYPE 5
+#define UNKNOW_FILE_TYPE (char)(-1)
+#define ZIP_ARCH_FILE_TYPE (char)(1)
+#define GZIP_FILE_TYPE (char)(2)
+#define BZIP_FILE_TYPE (char)(3)
+#define GB_ROM_FILE_TYPE (char)(4)
+#define NORMAL_FILE_TYPE (char)(5)
 
 typedef struct _gngb_file {
   char type;

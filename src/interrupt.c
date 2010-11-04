@@ -132,7 +132,10 @@ Uint16 gblcdc_update(void)  // LCDC is on
   Uint8 skip_this_frame;
   int x;
 
+
   if (!(LCDCCONT&0x80)) return 0;
+
+
 
   if (gblcdc->inc_line) {
     CURLINE++;

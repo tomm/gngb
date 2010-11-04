@@ -636,11 +636,11 @@ void gbcpu_reset(void) {
   else if (conf.gb_type&NORMAL_GAMEBOY || conf.gb_type&SUPER_GAMEBOY) 
     gbcpu->af.w=0x01B0;
     
-  gbcpu->bc.w=0x0013;
-  gbcpu->hl.w=0x014d;
-  gbcpu->de.w=0x00d8;
-  gbcpu->sp.w=0xFFFE;
-  gbcpu->pc.w=0x0100;
+  gbcpu->bc.w=(Uint16)0x0013;
+  gbcpu->hl.w=(Uint16)0x014d;
+  gbcpu->de.w=(Uint16)0x00d8;
+  gbcpu->sp.w=(Uint16)0xFFFE;
+  gbcpu->pc.w=(Uint16)0x0100;
   gbcpu->mode=0;
   gbcpu->state=0;
   gbcpu->int_flag=0;
@@ -819,7 +819,7 @@ __inline__ Uint8 rla(void){
 }
 
 __inline__ Uint8 jr_disp(void){
-  PC+=(Sint8)GET_BYTE;
+  PC=((Sint8)GET_BYTE)+PC;
   SUB_CYCLE(12);
 }
 
@@ -880,7 +880,7 @@ __inline__ Uint8 jr_nz_disp(void){
     PC++;
     SUB_CYCLE(8);
   } else {
-    PC+=(Sint8)GET_BYTE;
+    PC=((Sint8)GET_BYTE)+PC;
     SUB_CYCLE(12);
   }
 }
@@ -945,7 +945,7 @@ __inline__ Uint8 daa(void){
 
 __inline__ Uint8 jr_z_disp(void){
   if (IS_SET(FLAG_Z)) {
-    PC+=(Sint8)GET_BYTE;
+    PC=((Sint8)GET_BYTE)+PC;
     SUB_CYCLE(12);
   } else {
     PC++;
@@ -1008,7 +1008,7 @@ __inline__ Uint8 jr_nc_disp(void){
     PC++;
     SUB_CYCLE(8);
   } else {
-    PC+=(Sint8)GET_BYTE;
+    PC=((Sint8)GET_BYTE)+PC;
     SUB_CYCLE(12);
   }
 }
@@ -1071,7 +1071,7 @@ __inline__ Uint8 scf(void){
 
 __inline__ Uint8 jr_c_disp(void){
   if (IS_SET(FLAG_C)) {
-    PC+=(Sint8)GET_BYTE;
+    PC=((Sint8)GET_BYTE)+PC;
     SUB_CYCLE(12);
   } else {
     PC++;
@@ -4544,10 +4544,10 @@ __inline__ void cpu_run(void) {
 
     /*FIXME: GDMA and interrupt */
     if (dma_info.type!=GDMA) {
-      if (INT_FLAG&VBLANK_INT)  v=make_interrupt(VBLANK_INT);
-      if (INT_FLAG&LCDC_INT && !v) v=make_interrupt(LCDC_INT);
-      if (INT_FLAG&TIMEOWFL_INT && !v) v=make_interrupt(TIMEOWFL_INT); 
-      if (INT_FLAG&SERIAL_INT && !v) v=make_interrupt(SERIAL_INT); 
+	    if (INT_FLAG&VBLANK_INT)  {v=make_interrupt(VBLANK_INT);}
+	    if ((INT_FLAG&LCDC_INT) && (!v)) {v=make_interrupt(LCDC_INT);}
+	    if ((INT_FLAG&TIMEOWFL_INT) && (!v)) {v=make_interrupt(TIMEOWFL_INT); }
+	    if ((INT_FLAG&SERIAL_INT) && (!v)) {v=make_interrupt(SERIAL_INT); }
     }
 
     //if (v) a+=24;
@@ -4564,8 +4564,9 @@ __inline__ void cpu_run(void) {
       /*gblcdc_addcycle(gdma_cycle);
 	}*/
       
-      if (gbcpu->state!=HALT_STATE) 
-	a=gbcpu_exec_one();
+	    if (gbcpu->state!=HALT_STATE) {
+		    a=gbcpu_exec_one();
+	    }
       else a=4;
       
     }

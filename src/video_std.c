@@ -986,7 +986,7 @@ void clear_screen_std(void)
       //SDL_FillRect(gb_screen,NULL,grey[0]);
     }   
   }
-  //SDL_Flip(gb_screen);
+  SDL_Flip(gb_screen);
 }
 
 VIDEO_MODE video_std={

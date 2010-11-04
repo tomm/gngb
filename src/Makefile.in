@@ -1,6 +1,6 @@
-# Makefile.in generated automatically by automake 1.4-p4 from Makefile.am
+# Makefile.in generated automatically by automake 1.4-p6 from Makefile.am
 
-# Copyright (C) 1994, 1995-8, 1999 Free Software Foundation, Inc.
+# Copyright (C) 1994, 1995-8, 1999, 2001 Free Software Foundation, Inc.
 # This Makefile.in is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
 # with or without modifications, as long as this notice is preserved.
@@ -57,8 +57,12 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
+host_alias = @host_alias@
+host_triplet = @host@
 CC = @CC@
-LIBOBJS = @LIBOBJS@
+HAVE_LIB = @HAVE_LIB@
+LIB = @LIB@
+LTLIB = @LTLIB@
 MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 SDL_CONFIG = @SDL_CONFIG@
@@ -69,7 +73,7 @@ bin_PROGRAMS = gngb
 
 gngb_SOURCES = cpu.c cpu.h emu.c emu.h frame_skip.c frame_skip.h global.h interrupt.c interrupt.h main.c memory.c memory.h message.c message.h rom.c rom.h serial.c  serial.h sgb.c sgb.h sound.c sound.h tiny_font.h vram.c vram.h video_yuy2.c video_yuv.c video_yuv.h video_yv12.c video_std.c video_gl.c video_gl.h video_std.h menu.h menu.c menu_image.h fileio.h fileio.c save.h save.c @UNZIP_SRC@ 
 
-gngb_LDADD = @LIBOBJS@
+#gngb_LDADD = @LIBOBJS@
 EXTRA_DIST = getopt.h
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = ../config.h
@@ -84,13 +88,14 @@ LIBS = @LIBS@
 gngb_OBJECTS =  cpu.o emu.o frame_skip.o interrupt.o main.o memory.o \
 message.o rom.o serial.o sgb.o sound.o vram.o video_yuy2.o video_yuv.o \
 video_yv12.o video_std.o video_gl.o menu.o fileio.o save.o
-gngb_DEPENDENCIES =  @LIBOBJS@
+gngb_LDADD = $(LDADD)
+gngb_DEPENDENCIES = 
 gngb_LDFLAGS = 
 CFLAGS = @CFLAGS@
 COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
-DIST_COMMON =  Makefile.am Makefile.in getopt.c getopt1.c unzip.c
+DIST_COMMON =  Makefile.am Makefile.in
 
 
 DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
@@ -177,7 +182,7 @@ TAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) $(LISP)
 	  awk '    { files[$$0] = 1; } \
 	       END { for (i in files) print i; }'`; \
 	test -z "$(ETAGS_ARGS)$$unique$(LISP)$$tags" \
-	  || (cd $(srcdir) && etags $(ETAGS_ARGS) $$tags  $$unique $(LISP) -o $$here/TAGS)
+	  || (cd $(srcdir) && etags -o $$here/TAGS $(ETAGS_ARGS) $$tags  $$unique $(LISP))
 
 mostlyclean-tags:
 
@@ -203,6 +208,7 @@ distdir: $(DISTFILES)
 	    || cp -p $$d/$$file $(distdir)/$$file || :; \
 	  fi; \
 	done
+
 info-am:
 info: info-am
 dvi-am:

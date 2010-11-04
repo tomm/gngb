@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src/cpu.c)
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(gngb,20040115)
+AM_INIT_AUTOMAKE(gngb,20060117)
 
 dnl Setup for automake
 
@@ -39,11 +39,12 @@ AC_C_CONST
 AC_HEADER_TIME
 
 dnl Checks for library functions.
-AC_SUBST(LIBOBJS)
+dnl AC_SUBST(LIBOBJS)
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS(gettimeofday sleep mkdir socket strtol)
 dnl AC_CHECK_FUNCS(getopt_long ,[GETOPT_LONG=yes , [LIBOBJS="$LIBOBJS getopt.o getopt1.o"]])
-AC_CHECK_FUNCS(getopt_long , , [LIBOBJS="$LIBOBJS getopt.o getopt1.o"])
+dnl AC_CHECK_FUNCS(getopt_long , , [LIBOBJS="$LIBOBJS getopt.o getopt1.o"])
+AC_CHECK_FUNCS(getopt_long , , [ AC_LIBOBJ(getopt) AC_LIBOBJ(getopt1) ])
 
 #Compress Roms
 AC_ARG_ENABLE(compress_roms,[  --disable-compress-roms      disable compress roms support], [enablecompress_roms=$enableval], [enablecompress_roms=yes])
@@ -53,7 +54,8 @@ if test "$enablecompress_roms" = yes; then
 	AC_CHECK_HEADER(bzlib.h,AC_CHECK_LIB(bz2, BZ2_bzopen,,))
 	AC_CHECK_HEADER(zlib.h,AC_CHECK_LIB(z, gzopen,,))
 	UNZIP_SRC="unzip.c unzip.h"
-	LIBOBJS="$LIBOBJS unzip.o"
+	dnl LIBOBJS="$LIBOBJS unzip.o"
+	AC_LIBOBJ(unzip)
 else 
 	UNZIP_SRC=""
 fi	

@@ -1,6 +1,10 @@
 
 WHAT'S NEW ?
 
+20060117
+* Fix gcc4.0 bug.
+	
+	
 * Julien Delange make a patch to fix build problem on some architecture
 
 20030809	
