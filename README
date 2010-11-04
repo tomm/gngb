@@ -1,0 +1,20 @@
+Prerequisites :
+
+You need a recent version of SDL (I use SDL-1.1.5). 
+The 1.0 serie don't work, sorry.
+
+Installation :
+
+Just do make, it should work (I hope :)
+Edit the Makefile if you want joystick support.
+
+Use :
+
+gngb [option] game 
+option:
+h : show this help
+a : auto frame skip
+g : force normal gameboy
+f : fullscreen
+s : sound on
+
