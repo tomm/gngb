@@ -58,14 +58,17 @@
 /* Define if you have the <unistd.h> header file.  */
 #undef HAVE_UNISTD_H
 
-/* Define if you have the <zlib.h> header file.  */
-#undef HAVE_ZLIB_H
-
 /* Define if you have the SDL library (-lSDL).  */
 #undef HAVE_LIBSDL
 
+/* Define if you have the bz2 library (-lbz2).  */
+#undef HAVE_LIBBZ2
+
 /* Define if you have the pthread library (-lpthread).  */
 #undef HAVE_LIBPTHREAD
+
+/* Define if you have the z library (-lz).  */
+#undef HAVE_LIBZ
 
 /* Name of package */
 #undef PACKAGE

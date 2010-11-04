@@ -322,6 +322,10 @@ void gbmemory_reset(void) {
   /* FIXME: SGB value != */
   NR52=0xf1;
 
+  /*for(i=0xFF30;i<0xFF3f;i++) {
+    mem_write_ff(i,(i%8));
+  }*/
+
   LCDCCONT=0x91;
   CURLINE=0x00;
   CMP_LINE=0x00;
@@ -934,28 +938,33 @@ __inline__ void mem_write_ff(Uint16 adr,Uint8 v) {
 	set_interrupt(SERIAL_INT);
       }
     } else {
-      //   printf("Write %02x\n",v);
       /* Start Tranfer ? */
+      // printf("Write %02x\n",v);
       if ((v&0x80)==0x80) {
 	if ((v&0x01)==0x01) {	/* Internal Clock  */
-	  gbserial_send(SB);
+	  gbserial_write(SB);
+	  printf("Server write %02x\n",SB);
 	  serial_cycle_todo=4096;
+	  //serial_cycle_todo=4096/2;
+	  //serial_cycle_todo=1024;
 	} else {
-	  gbserial_send(SB);	/* External Clock */
-	  gbserial.check=1;
+	  gbserial.wait=1;
+	  // gbserial_send(SB);	/* External Clock */
+	  //gbserial.check=1;
 	  //serial_cycle_todo=4096;
 	  //	  gbserial_send(SB);
 	}
+	SC=(v&0x81);
       } else {
-	SB=0xff;
-	gbserial.check=0;
+	//SB=0xff;
+	//gbserial.check=0;
       }
 
       /*if ((v&0x81)==0x81) {
 	gbserial_send(SB);
 	serial_cycle_todo=4096;
 	} */
-      SC=v;
+      SC=(v&0x81);
     }
 
     /*    if (conf.serial_on) {
@@ -1220,8 +1229,6 @@ void mem_write_f000_ffff_default(Uint16 adr,Uint8 v) {
 void mem_write_default(Uint16 adr,Uint8 v) 
 {
   Uint8 bk;
-
-  printf("PC: %04x: Write Default %02x at %04x\n",gbcpu->pc.w,v,adr);
 
   if (adr>=0xfe00 && adr<0xfea0) {
     oam_space[adr-0xfe00]=v;

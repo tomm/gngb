@@ -66,14 +66,13 @@ int main(int argc,char *argv[])
   if(optind >= argc)
     print_help();
   
-  printf("toto\n");
   if (open_rom(argv[optind])) {
     fprintf(stderr,"Error while trying to read file %s \n",argv[optind]);
     exit(1);
   }
 
   emu_init();
-  update_gb();
+  cpu_run();
     
   if (rom_type&BATTERY) {
     save_ram();

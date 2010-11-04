@@ -39,6 +39,7 @@ extern Uint16 Filter[32768];
 Uint16 sgb_border_pal[64];
 Uint16 sgb_scpal[512][4];   // 512 pallete of 4 color
 Uint8 sgb_ATF[45][90];
+Uint sgb_buffer[4160];
 
 static Uint8 sgb_flag=0;
 
@@ -72,10 +73,8 @@ void sgb_init(void) {
 
 __inline__ void sgb_tiles_pat_transfer(void) {
   //char type=sgb.pack[1]>>2;
-  Uint8 range=sgb.pack[1]&0x03;
+  Uint8 range=sgb.pack[1]&0x01;
   Uint8 *src,*dst;
-
-  //  printf("LCDCSTAT: %02x LCDCCONT: %02x SCR: %02x %02x WIN: %02x %02x LY: %02x LYC: %02x\n",LCDCSTAT,LCDCCONT,SCRX,SCRY,WINX,WINY,CURLINE,CMP_LINE);
 
   //  printf("Pack %02x\n",sgb.pack[1]);
   src=&vram_page[0][0x800];
@@ -87,6 +86,8 @@ __inline__ void sgb_tiles_pat_transfer(void) {
 
 __inline__ void sgb_tiles_map_transfer(void) {
   int i;
+
+  printf("%02x\n",LCDCCONT);
 
   for(i=0;i<32*32;i++) {
     /* FIXME: dkl2 et conker => 0x1000 */
@@ -511,6 +512,7 @@ __inline__ void sgb_window_mask(void) {
 
   /* je ne sais pas si c'est ca */
   /* apres quelque test: apparement nan :( */
+  printf("LCDCSTAT: %02x LCDCCONT: %02x SCR: %02x %02x WIN: %02x %02x LY: %02x LYC: %02x\n",LCDCSTAT,LCDCCONT,SCRX,SCRY,WINX,WINY,CURLINE,CMP_LINE);
   switch(sgb.pack[1]&0x03) {
   case 0x00:sgb_mask=0;break;
   case 0x01:  // i dint know what it do
@@ -529,17 +531,19 @@ __inline__ void sgb_window_mask(void) {
 }
 
 void sgb_exec_cmd(void) {
+
   
   if (sgb.cmd==0xff) {
     int i;
-    /*
-      printf("sgb:%02x nb:%d pack: ",sgb.pack[0]>>3,sgb.pack[0]&0x07);
-      for(i=0;i<SGB_PACKSIZE;i++)
+    
+    printf("sgb:%02x nb:%d pack: ",sgb.pack[0]>>3,sgb.pack[0]&0x07);
+    for(i=0;i<SGB_PACKSIZE;i++)
       printf("%02x ",sgb.pack[i]);
-      putchar('\n');
-    */
+    putchar('\n');
+    
     sgb.cmd=sgb.pack[0]>>3;
   }   
+  //  printf("LCDCSTAT: %02x LCDCCONT: %02x SCR: %02x %02x WIN: %02x %02x LY: %02x LYC: %02x\n",LCDCSTAT,LCDCCONT,SCRX,SCRY,WINX,WINY,CURLINE,CMP_LINE);
 
   switch(sgb.cmd) {
   case 0x11:

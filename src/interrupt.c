@@ -255,10 +255,141 @@ Uint16 gblcdc_update(void)  // LCDC is on
   return ret;
 }
 
+/* New Implemantation og gblcdc_updtate */
+
+Uint16 gblcdc_update2(void)  // LCDC is on
+{
+  Uint16 ret=0;
+  Uint8 skip_this_frame;
+  int x;
+
+  if (!(LCDCCONT&0x80)) return 0;
+
+  if (CURLINE==0x00 && gblcdc->mode==END_VBLANK_PER) {
+    //    LCDCSTAT&=0xf8;
+    skip_this_frame=skip_next_frame;
+    if (!skip_this_frame) blit_screen();
+    skip_next_frame=frame_skip(0);
+    gblcdc->mode=OAM_PER;
+    gblcdc->win_curline=0;
+  }
+
+  if (gblcdc->mode==LINE_99) {
+    CURLINE=0x00;
+    LCDCSTAT&=0xf8;
+    if (CURLINE==CMP_LINE)  LCDCSTAT|=0x04;
+    if (LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
+    gblcdc->mode=END_VBLANK_PER;    
+  }
+
+  if (gblcdc->inc_line) {
+    CURLINE++;
+
+    if (CURLINE==0x90) {
+      if (gbcpu->state==HALT_STATE) {
+	set_interrupt(VBLANK_INT);
+	gblcdc->mode=VBLANK_PER;
+      } else gblcdc->mode=LINE_90_BEGIN;
+    }
+
+    if (CURLINE==0x99) gblcdc->mode=LINE_99;
+    
+    LCDCSTAT&=0xf8;
+    if (CURLINE==CMP_LINE)  LCDCSTAT|=0x04;
+    if (LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
+  }
+  
+  
+  switch(gblcdc->mode) {
+  case HBLANK_PER:       // HBLANK
+    if (LCDCSTAT&0x08) set_interrupt(LCDC_INT);
+    if (!skip_next_frame) draw_screen();
+    ret=lcd_cycle_tab[gblcdc->timing][0];
+    gblcdc->mode=OAM_PER;
+    if (dma_info.type==HDMA) do_hdma();
+    gblcdc->inc_line=1;
+    LCDCSTAT&=0xfc;
+    break;
+  case LINE_90_BEGIN:
+    gblcdc->inc_line=0;
+    LCDCSTAT|=0x01;
+    //if (LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
+    ret=DELAY_CYCLE;
+    gblcdc->mode=LINE_90_END;
+    break;
+  case LINE_90_END:
+    gblcdc->inc_line=1;
+    if (LCDCSTAT&0x10) set_interrupt(LCDC_INT);
+    ret=lcd_cycle_tab[gblcdc->timing][1]-DELAY_CYCLE-8;
+    LCDCSTAT|=0x01;
+    gblcdc->mode=VBLANK_PER;
+    set_interrupt(VBLANK_INT);
+    break;
+  case LINE_99:
+    LCDCSTAT|=0x01;
+    /* FIXME: Line 99 Timing */
+    ret=lcd_cycle_tab[gblcdc->timing][4];
+    gblcdc->inc_line=0;
+    break;
+  case END_VBLANK_PER:
+    LCDCSTAT|=0x01;
+    //if (LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
+    ret=lcd_cycle_tab[gblcdc->timing][1]-lcd_cycle_tab[gblcdc->timing][4];
+    gblcdc->inc_line=0;
+    break;
+  case VBLANK_PER:       // VBLANK
+    /* FIXME => water.gbc */
+    //if (LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
+    LCDCSTAT|=0x01;
+    ret=lcd_cycle_tab[gblcdc->timing][1];
+    gblcdc->inc_line=1;
+    break;
+  case BEGIN_OAM_PER:
+    LCDCSTAT|=0x02;
+    gblcdc->inc_line=0;
+    gblcdc->mode=OAM_PER;
+    ret=DELAY_CYCLE;
+    ret=24;
+    //if (LCDCSTAT&0x40 && LCDCSTAT&0x04)  set_interrupt(LCDC_INT);
+    break;
+   case OAM_PER:       // OAM 
+    LCDCSTAT|=0x02;
+    gblcdc->inc_line=0;
+    /* FIXME: Pinball Deluxe */
+    if (LCDCSTAT&0x20) set_interrupt(LCDC_INT);
+    //if (LCDCSTAT&0x40 && LCDCSTAT&0x04)  set_interrupt(LCDC_INT);
+
+    ret=lcd_cycle_tab[gblcdc->timing][2];
+    /*if (conf.delay_int) ret-=DELAY_CYCLE;*/
+    gblcdc->mode=VRAM_PER;
+    gblcdc->nb_spr=get_nb_spr();
+    break;
+  case VRAM_PER:       // VRAM
+    LCDCSTAT|=0x03;
+    ret=lcd_cycle_tab[gblcdc->timing][3];
+    gblcdc->mode=HBLANK_PER;
+    /* FIXME */
+    gblcdc->mode3cycle=ret;
+    gblcdc->vram_factor=160.0/(double)(gblcdc->mode3cycle);
+    if (vram_init_pal) {
+      for(x=0;x<160;x++)
+	gblcdc->vram_pal_line[x]=pal_bck;
+      pal_bck[0]=BGPAL&3;
+      pal_bck[1]=(BGPAL>>2)&3;
+      pal_bck[2]=(BGPAL>>4)&3;
+      pal_bck[3]=(BGPAL>>6)&3;
+      vram_init_pal=0;
+    }
+    break;
+  }
+
+  return ret;
+}
+
 
 /* gblcdc_update2: Try new implementation don't Work for the moment */
 
-void gblcdc_set_on2(void) {
+void gblcdc_set_on3(void) {
   gblcdc->win_curline=0;
   LCDCCONT|=0x80;
   vram_init_pal=1;
@@ -271,7 +402,7 @@ void gblcdc_set_on2(void) {
   gblcdc->cycle=lcd_cycle_tab[gblcdc->timing][2];
 }
 
-Uint16 gblcdc_update2(void) {
+Uint16 gblcdc_update3(void) {
   int x;
   static Uint8 delay_vblank_int;
   if (!(LCDCCONT&0x80)) return 0;

@@ -1,0 +1,11 @@
+gngb
+----------------------
+
+Please see the sample gngbrc to see how you can set up your configuration
+options.  It goes in your .gngb directory.
+
+gngb will operate with gzipped roms so you can gzip all your roms to
+save space.
+
+
+Ryan Underwood <nemesis@icequake.net>, Sat, 10 May 2003 04:09:38 -0500

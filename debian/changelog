@@ -1,0 +1,12 @@
+gngb (20030509-2) unstable; urgency=low
+
+  * Set up initial packaging format.
+  * Created manpage.
+
+ -- Ryan Underwood <nemesis@dbz.icequake.net>  Sat, 10 May 2003 04:35:01 -0500
+
+gngb (20030509-1) unstable; urgency=low
+
+  * Initial release.
+
+ -- Ryan Underwood <nemesis@dbz.icequake.net>  Sat, 10 May 2003 04:09:38 -0500

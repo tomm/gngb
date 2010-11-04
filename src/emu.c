@@ -81,8 +81,7 @@ struct {
 		{"resolution_w",UINTEGER32,&conf.res_w,1},
 		{"resolution_h",UINTEGER32,&conf.res_h,1},
 		{"sample_rate",UINTEGER32,&conf.sample_rate,1},
-		{"no_joy",UINTEGER32,&conf.joy_no,1},
-		{"nb_joy",UINTEGER32,&conf.joy_no,1},
+		{"joy_dev",UINTEGER32,&conf.joy_no,1},
 		{"map_joy",UINTEGER8,jmap,8},
 		{"map_key",UINTEGER16,kmap,8},
 		{"pal_1",UINTEGER32,conf.pal[0],4},
@@ -135,7 +134,7 @@ static struct option long_options[] =
   {"no-constant_cycle",0,&conf.const_cycle,0},
   {"gdma_cycle",0,NULL,'g'},
   {"no-gdma_cycle",0,&conf.gdma_cycle,0},
-  {"joy",1,0,'j'},
+  {"joy_dev",1,0,'j'},
   {"no-joy",0,&conf.use_joy,0},
   {"version",0,NULL,'v'},
   {0, 0, 0, 0}
@@ -169,7 +168,7 @@ void print_help(void) {
   printf("  -G, --normal_gb            force to normal gameboy mode\n");
   printf("  -S, --super_gb             force to super gameboy mode (experimental)\n");
   printf("      --auto_gb              turn on automatique detection\n");
-  printf("  -j, --joy=N                use the Nth joystick\n");
+  printf("  -j, --joy_dev=N            use the Nth joystick\n");
   printf("  -g, --gdma_cycle           cpu stop during gdma transfer (experimental)\n");
   printf("  -v, --version              printf gngb number version\n");
   printf("\n");
@@ -506,25 +505,27 @@ void emu_init(void) {
   
   if (conf.gb_type&SUPER_GAMEBOY) sgb_init();
 
-  if(conf.use_joy && SDL_NumJoysticks()>0){
-    sdl_joy=SDL_JoystickOpen(conf.joy_no);
-    if(sdl_joy) {
-      printf("Name: %s\n", SDL_JoystickName(conf.joy_no));
-      printf("Number of Axes: %d\n", SDL_JoystickNumAxes(sdl_joy));
-      printf("Number of Buttons: %d\n", SDL_JoystickNumButtons(sdl_joy));
-      printf("Number of Balls: %d\n", SDL_JoystickNumBalls(sdl_joy));
-      joy_axis=(Sint16 *)malloc(sizeof(Sint16)*SDL_JoystickNumAxes(sdl_joy));
-      joy_but=(Uint8 *)malloc(sizeof(Uint8)*SDL_JoystickNumButtons(sdl_joy));
-      memset(joy_axis,0,sizeof(Sint16)*SDL_JoystickNumAxes(sdl_joy));
-      memset(joy_but,0,sizeof(Uint8)*SDL_JoystickNumButtons(sdl_joy));
-    } else {
-      joy_axis=(Sint16 *)malloc(sizeof(Sint16)*2);
-      joy_but=(Uint8 *)malloc(sizeof(Uint8)*4);
-      memset(joy_axis,0,sizeof(Sint16)*2);
-      memset(joy_but,0,sizeof(Uint8)*4);
-      memset(jmap,0,8);
-    }
-  };
+  if (conf.use_joy) {
+    if(SDL_NumJoysticks()>0) {
+      sdl_joy=SDL_JoystickOpen(conf.joy_no);
+      if(sdl_joy) {
+	printf("Name: %s\n", SDL_JoystickName(conf.joy_no));
+	printf("Number of Axes: %d\n", SDL_JoystickNumAxes(sdl_joy));
+	printf("Number of Buttons: %d\n", SDL_JoystickNumButtons(sdl_joy));
+	printf("Number of Balls: %d\n", SDL_JoystickNumBalls(sdl_joy));
+	joy_axis=(Sint16 *)malloc(sizeof(Sint16)*SDL_JoystickNumAxes(sdl_joy));
+	joy_but=(Uint8 *)malloc(sizeof(Uint8)*SDL_JoystickNumButtons(sdl_joy));
+	memset(joy_axis,0,sizeof(Sint16)*SDL_JoystickNumAxes(sdl_joy));
+	memset(joy_but,0,sizeof(Uint8)*SDL_JoystickNumButtons(sdl_joy));
+      } else {
+	joy_axis=(Sint16 *)malloc(sizeof(Sint16)*2);
+	joy_but=(Uint8 *)malloc(sizeof(Uint8)*4);
+	memset(joy_axis,0,sizeof(Sint16)*2);
+	memset(joy_but,0,sizeof(Uint8)*4);
+	memset(jmap,0,8);
+      }
+    } else conf.use_joy=0;
+  }
 
   if (conf.sound)
     if (gbsound_init()) conf.sound=0;   

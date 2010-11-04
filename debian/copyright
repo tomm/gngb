@@ -1,0 +1,16 @@
+This package was debianized by Ryan Underwood <nemesis@dbz.icequake.net>.
+
+It was downloaded from http://m.peponas.free.fr/gngb/
+
+Upstream Maintainer: Thomas Peponas <tpeponas@altern.org>
+
+This software is copyright (c) 2001,2002 by:
+ - Thomas Peponas <tpeponas@altern.org>
+ - Mathieu Peponas <pepone@altern.org>
+
+See also AUTHORS.
+
+You are free to distribute this software under the terms of the GNU
+General Public License, version 2.0.  
+On Debian systems, the complete text of the GNU General Public License
+can be found in /usr/share/common-licenses/GPL-2 file.

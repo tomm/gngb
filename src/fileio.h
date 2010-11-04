@@ -25,8 +25,9 @@
 #define UNKNOW_FILE_TYPE -1
 #define ZIP_ARCH_FILE_TYPE 1
 #define GZIP_FILE_TYPE 2
-#define GB_ROM_FILE_TYPE 3
-#define NORMAL_FILE_TYPE 4
+#define BZIP_FILE_TYPE 3
+#define GB_ROM_FILE_TYPE 4
+#define NORMAL_FILE_TYPE 5
 
 typedef struct _gngb_file {
   char type;

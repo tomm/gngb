@@ -1,7 +1,14 @@
 
 WHAT'S NEW ?
 
-Only few change due to a lack of time :(
+* Add Support for Bzip2 File
+* Fix a stupid mistake for zip file (on little endian plateform now it work)
+* Fix ggc 3.3 bug (Ryan Underwood)
+* Add a man page (Ryan Underwood)	
+* Add buils script for debian package (Ryan Underwood)	
+* Add an configure option --disable-compress-roms	
+	
+20030509
 	
 * Abandon du debuger
 * Opem Zip File for Roms: zlib now mandatory

@@ -1418,7 +1418,7 @@ __inline__ Uint8 halt(void){
     gbcpu->state=HALT_STATE;
     gbcpu->pc.w--;
   } else {
-    printf("WARNING Halt with DI\n");
+    //    printf("WARNING Halt with DI\n");
 
   }
   SUB_CYCLE(4);
@@ -4529,10 +4529,12 @@ __inline__ void rom_timer_inc(void) {
   }
 }
 
-__inline__ void update_gb(void) {
+__inline__ void cpu_run(void) {
   static Uint32 divid_cycle;
   //static Uint32 key_cycle;
   //static Sint16 serial_cycle;
+  static Uint8 serial_flag;
+  static Uint8 serial_temp;
   int v=0;
   Uint8 a;
 
@@ -4608,29 +4610,55 @@ __inline__ void update_gb(void) {
 
     /* FIXME: serial is experimentale */
     if (conf.serial_on) {
-      if (gbserial.check && gbserial_check()) {
-	set_interrupt(SERIAL_INT);
-	gbserial.check=0;
-      }
+      // if (gbserial_check()) {
+      if (gbserial.ready2read) {
+	printf("Receive data\n");
+	
+	  if (SC&0x80) {	/* Transfert is on the way */
 
+	    if (SC&0x01) {	/* Server */
+	      Uint8 t=SB;
+	      SB=gbserial_read();
+	      set_interrupt(SERIAL_INT);
+	      printf("Server read %02x make int\n",SB);
+	      SC&=0x7f;
+	      serial_cycle_todo=0;
+	      
+	    } else {		/* Client */
+	      Uint8 t=SB;
+	      printf("Client write %02x make int\n",SB);
+	      gbserial_write(SB);
+	      SB=gbserial_read();
+	      printf("Client read %02x make int\n",SB);
+	      /* TODO: Make interrupt in n cycle */
+	      SC&=0x7f;
+	      set_interrupt(SERIAL_INT);
+	      serial_cycle_todo=0;
+	    }
+
+	  } else {
+	    gbserial_read();
+	    gbserial.ready2read=0;
+	  }
+	  
+	  gbserial.wait=0;
+      } 
+	
+	
       if (serial_cycle_todo>0) {
 	serial_cycle_todo-=a;
 	if (serial_cycle_todo<=0) {
-	  if (SC&0x01) {	/* Internal */
-	    SC&=0x7f;
-	    gbserial_check();
+	  serial_cycle_todo=0;
+	  if (SC&0x80) {
+	    SB=0xFF;
 	    set_interrupt(SERIAL_INT);
-	    serial_cycle_todo=0;
-	  } else {		/* External */
-	    SC&=0x7f;
-	    if (gbserial_check()) {
-	      set_interrupt(SERIAL_INT);
-	      serial_cycle_todo=0;
-	    } else gbserial.check=1;
-	  }	 
+	  }
 	}
       }
-    }
+    } /* End of serial Update */
+
+
+
   }
   while(!conf.gb_done);
 }

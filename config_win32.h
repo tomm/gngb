@@ -5,6 +5,6 @@
 
 /* #define SDL_GL */
 #define SDL_YUV
-#define GNGB_WIN32 1
+#define WIN32 1
 
 #endif

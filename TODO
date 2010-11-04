@@ -1,3 +1,6 @@
+/* Build */
+
+- gcc 3.3
 
 /* Emu */
 
@@ -17,9 +20,9 @@ pas de hblank line 0x89 (verifier) Mickey Racing deconne
 Magical Drop : freeze (Must use option -g to fix)
 Addams Family : Freeze (must use option -d to fix) 
 Star Heritage : Freeze when use Start Button
-
+Dragon Ball (SGB Pad)
 Powerpuff Girl : - Line 0 clignote si l'option -g est active
-                 
+Altered Space 
 
 Maybe set always -d and -g option (other games work)
 

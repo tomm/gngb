@@ -30,14 +30,15 @@ extern SDL_Surface *fontbuf;
 #define BLUE_MASK(b) (b==4?0xFF00:(b==3?0xFF:0))
 #define ALPHA_MASK(b) (b==4?0xFF:0)
 
-#define img2surface(a) SDL_CreateRGBSurfaceFrom((void*)a##.pixel_data,\
-						 a##.width,\
-						 a##.height,\
-						 a##.bytes_per_pixel*8,a##.width*a##.bytes_per_pixel,\
-						 RED_MASK(a##.bytes_per_pixel),\
-						 GREEN_MASK(a##.bytes_per_pixel),\
-						 BLUE_MASK(a##.bytes_per_pixel),\
-						 ALPHA_MASK(a##.bytes_per_pixel))
+#define img2surface(__a__) SDL_CreateRGBSurfaceFrom((void*)__a__.pixel_data,\
+						 __a__.width,\
+						 __a__.height,\
+						 __a__.bytes_per_pixel*8,\
+						 __a__.width*__a__.bytes_per_pixel,\
+						 RED_MASK(__a__.bytes_per_pixel),\
+						 GREEN_MASK(__a__.bytes_per_pixel),\
+						 BLUE_MASK(__a__.bytes_per_pixel),\
+						 ALPHA_MASK(__a__.bytes_per_pixel))
 
 void init_message(void);
 void set_message(const char *format,...);

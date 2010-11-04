@@ -62,15 +62,16 @@ LIBOBJS = @LIBOBJS@
 MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 SDL_CONFIG = @SDL_CONFIG@
+UNZIP_SRC = @UNZIP_SRC@
 VERSION = @VERSION@
 
 bin_PROGRAMS = gngb gngb_dbg
 
-gngb_SOURCES = cpu.c cpu.h emu.c emu.h frame_skip.c frame_skip.h global.h interrupt.c interrupt.h main.c memory.c memory.h message.c message.h rom.c rom.h serial.c  serial.h sgb.c sgb.h sound.c sound.h tiny_font.h vram.c vram.h video_yuy2.c video_yuv.c video_yuv.h video_yv12.c video_std.c video_gl.c video_gl.h video_std.h menu.h menu.c menu_image.h fileio.h fileio.c save.h save.c unzip.h unzip.c 
+gngb_SOURCES = cpu.c cpu.h emu.c emu.h frame_skip.c frame_skip.h global.h interrupt.c interrupt.h main.c memory.c memory.h message.c message.h rom.c rom.h serial.c  serial.h sgb.c sgb.h sound.c sound.h tiny_font.h vram.c vram.h video_yuy2.c video_yuv.c video_yuv.h video_yv12.c video_std.c video_gl.c video_gl.h video_std.h menu.h menu.c menu_image.h fileio.h fileio.c save.h save.c @UNZIP_SRC@ 
 
-gngb_dbg_SOURCES = cpu.c cpu.h emu.c emu.h frame_skip.c frame_skip.h global.h interrupt.c interrupt.h main.c memory.c memory.h message.c message.h rom.c rom.h serial.c  serial.h sgb.c sgb.h sound.c sound.h tiny_font.h vram.c vram.h video_yuy2.c video_yuv.c video_yuv.h video_yv12.c video_std.c video_gl.c video_gl.h video_std.h menu.h menu.c menu_image.h fileio.h fileio.c save.h save.c unzip.h unzip.c 
+gngb_dbg_SOURCES = cpu.c cpu.h emu.c emu.h frame_skip.c frame_skip.h global.h interrupt.c interrupt.h  memory.c memory.h message.c message.h rom.c rom.h serial.c  serial.h sgb.c sgb.h sound.c sound.h tiny_font.h vram.c vram.h video_yuy2.c video_yuv.c video_yuv.h video_yv12.c video_std.c video_gl.c video_gl.h video_std.h menu.h menu.c menu_image.h fileio.h fileio.c save.h save.c  @UNZIP_SRC@ 
 
-gngb_dbg_LDADDS = debuger/cmd.o @LIBOBJS@
+gngb_dbg_LDADD = debuger/cmd.o debuger/op.o debuger/cmd_code.o debuger/cmd_cpu.o debuger/cmd_lcd.o debuger/args.o debuger/main.o @LIBOBJS@ -lreadline
 
 gngb_LDADD = @LIBOBJS@
 EXTRA_DIST = getopt.h
@@ -86,20 +87,21 @@ LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 gngb_OBJECTS =  cpu.o emu.o frame_skip.o interrupt.o main.o memory.o \
 message.o rom.o serial.o sgb.o sound.o vram.o video_yuy2.o video_yuv.o \
-video_yv12.o video_std.o video_gl.o menu.o fileio.o save.o unzip.o
+video_yv12.o video_std.o video_gl.o menu.o fileio.o save.o
 gngb_DEPENDENCIES =  @LIBOBJS@
 gngb_LDFLAGS = 
-gngb_dbg_OBJECTS =  cpu.o emu.o frame_skip.o interrupt.o main.o memory.o \
+gngb_dbg_OBJECTS =  cpu.o emu.o frame_skip.o interrupt.o memory.o \
 message.o rom.o serial.o sgb.o sound.o vram.o video_yuy2.o video_yuv.o \
-video_yv12.o video_std.o video_gl.o menu.o fileio.o save.o unzip.o
-gngb_dbg_LDADD = $(LDADD)
-gngb_dbg_DEPENDENCIES = 
+video_yv12.o video_std.o video_gl.o menu.o fileio.o save.o
+gngb_dbg_DEPENDENCIES =  debuger/cmd.o debuger/op.o debuger/cmd_code.o \
+debuger/cmd_cpu.o debuger/cmd_lcd.o debuger/args.o debuger/main.o \
+@LIBOBJS@
 gngb_dbg_LDFLAGS = 
 CFLAGS = @CFLAGS@
 COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
-DIST_COMMON =  Makefile.am Makefile.in getopt.c getopt1.c
+DIST_COMMON =  Makefile.am Makefile.in getopt.c getopt1.c unzip.c
 
 
 DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
@@ -333,7 +335,25 @@ mostlyclean distclean maintainer-clean
 
 
 debuger/cmd.o : debuger/cmd.c
-	$(COMPILE) -c  debuger/cmd.c
+	$(COMPILE) -c  debuger/cmd.c -o debuger/cmd.o
+
+debuger/op.o : debuger/op.c
+	$(COMPILE) -c  debuger/op.c -o debuger/op.o
+
+debuger/cmd_code.o : debuger/cmd_code.c
+	$(COMPILE) -c  debuger/cmd_code.c -o debuger/cmd_code.o
+
+debuger/cmd_cpu.o : debuger/cmd_cpu.c
+	$(COMPILE) -c  debuger/cmd_cpu.c -o debuger/cmd_cpu.o
+
+debuger/cmd_lcd.o : debuger/cmd_lcd.c
+	$(COMPILE) -c  debuger/cmd_lcd.c -o debuger/cmd_lcd.o
+
+debuger/args.o : debuger/args.c
+	$(COMPILE) -c  debuger/args.c -o debuger/args.o
+
+debuger/main.o : debuger/main.c
+	$(COMPILE) -c  debuger/main.c -o debuger/main.o
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

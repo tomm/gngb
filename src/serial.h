@@ -23,9 +23,12 @@
 
 struct {
   Sint16 cycle_todo;
+  Uint16 p;
   Uint8 b;
   Uint8 byte_wait;
   Uint8 check;
+  Uint8 wait;
+  Uint8 ready2read;
 }gbserial;
 
 Sint16 serial_cycle_todo;
@@ -35,7 +38,8 @@ void gbserial_init(int server_side,char *servername);
 void gbserial_close(void);
 void gbserial_send(Uint8 b);
 Sint8 gbserial_receive(void);
-Uint8 gbserial_check(void);
+char gbserial_check(void);
+Uint8 gbserial_wait_data(void);
 
 #endif
 

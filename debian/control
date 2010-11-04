@@ -1,0 +1,20 @@
+Source: gngb
+Section: otherosfs
+Priority: optional
+Maintainer: Ryan Underwood <nemesis@dbz.icequake.net>
+Build-Depends: debhelper (>> 4.0.0)
+Standards-Version: 3.5.8
+
+Package: gngb
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: SDL Gameboy Classic/Color/Super Gameboy emulator
+ gngb is an emulator for the Nintendo Gameboy series of handheld systems.
+ .
+ It can use SDL, hardware YUV, or OpenGL output, has some nice display
+ filters included, emulates the rumble feature, has a quick fullscreen
+ toggle, save/load freeze states, joystick support, and all configuration
+ can be accessed via command line options or a user's config file.  It has
+ a very high compatibility level with commercial games and is actively
+ developed.
+

@@ -52,7 +52,7 @@ Sint16 rom_type=UNKNOW_TYPE;
 Uint8 rom_gb_type=UNKNOW;
 
 int check_dir(char *dir_name) {
-#ifdef GNGB_WIN32
+#ifdef WIN32
   BOOL res;
   
   res = CreateDirectory(dir_name,NULL);
@@ -115,8 +115,14 @@ int open_rom(char *filename)
   rom_page=ram_page=vram_page=wram_page=NULL;
   
   if ((stream=gngb_file_open(filename,"rb",UNKNOW_FILE_TYPE))) {
+    printf("stream %d\n",stream->type);
     if (stream->type==ZIP_ARCH_FILE_TYPE) {
+#ifdef HAVE_LIBZ
       if (zip_file_open_next_rom(stream->stream)<0) return -1;
+#else
+      fprintf(stderr,"Zip file unsupported\n");
+      return -1;  
+#endif
     }
 
     printf("Open file %s\n",filename);

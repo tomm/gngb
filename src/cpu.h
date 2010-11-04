@@ -80,7 +80,7 @@ extern GB_CPU *gbcpu;
 void gbcpu_init(void);  
 void gbcpu_reset(void);
 __inline__ Uint8 gbcpu_exec_one(void);
-__inline__ void update_gb(void);
+__inline__ void cpu_run(void);
 
 #endif
 

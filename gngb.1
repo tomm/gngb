@@ -1,0 +1,139 @@
+.TH GNGB 1
+.\" NAME should be all caps, SECTION should be 1-8, maybe w/ subsection
+.\" other parms are allowed: see man(7), man(1)
+.SH GNGB
+gngb \- emulate various Nintendo Game Boy handheld systems
+.SH SYNOPSIS
+.B gngb
+.I [-h] | [options] <romname>
+.SH "DESCRIPTION"
+.B gngb
+is an emulator program that attempts to be various forms of
+Nintendo Game Boy hardware.  It can run the various homebrew games and
+demos for the system as well as images of commercially-released games.
+.PP
+This manual page was written for the Debian GNU/Linux distribution
+because the original program does not have a manual page.
+.SH OPTIONS
+The program follows the usual GNU command line syntax, with long
+options starting with two dashes (`-').
+A summary of options are included below.
+.TP
+.B \-h, \-\-help
+print help and exit
+.TP
+.B \-a, \-\-autoframeskip
+turn on autoframeskip.  This is useful if the emulator is running too slow.
+It will cause the emulator to drop frames every now and then to maintain a
+realtime emulation.
+.TP
+.B \-\-sleep_idle
+sleep when idle.  This will cause the program to sleep when it has idle
+cycles instead of busy looping.  However, this can degrade emulation performance
+under some circumstances.
+.TP
+.B \-\-color_filter
+turn on the color filter.
+.TP
+.B \-r, \-\-rumble
+turn on the rumble simulation.  This will cause the emulated screen to shake
+when a rumble effect is caused by the running program.
+.TP
+.B \-\-filter=X
+Set the filter to apply.  These only work when using standard (not YUV or GL)
+video output.
+0 = none
+1 = scanline
+2 = scanline 50%
+3 = smooth
+4 = pseudo cell shading
+.TP
+.B \-R, \-\-res=WxH
+set the screen resolution to WxH (for YUV and GL mode only).
+.TP
+.B \-Y, \-\-yuv
+turn YUV mode on.  This utilizes the hardware YUV colorspace conversion and
+scaling features if your video card supports it.  Most video cards with Xv
+support can use this feature for excellent performance.
+.TP
+.B \-\-yuv_type
+set the type of the YUV overlay: 0 = YV12  1 = YUY2
+.TP
+.B \-o, \-\-opengl
+turn OpenGL mode on.  This will render the gameboy screen as an OpenGL 3D
+texture, which on some cards may perform much better than the YUV or X11
+output.  This requires a 3D card with GLX support.
+.TP
+.B \-f, \-\-fullscreen
+run gngb in fullscreen.  Fullscreen can be toggled during use with F9.
+.TP
+.B \-\-fps
+Show frames per second counter in the upper left corner of screen.  May
+be toggled through the emulator's menu.
+.TP
+.B \-s, \-\-sound
+Enable sound.
+.TP
+.B \-\-sample_rate=RATE
+Set the sound output sample rate to RATE. (typically a multiple of 11025 Hz)
+.TP
+.B \-\-auto_gb
+Automatically detect the system to emulate based on the cartridge image that
+is selected.  This should work in most cases.  If it fails, you can use one
+of the [
+.B \-C, \-\-color_gb
+|
+.B \-G, \-\-normal_gb
+|
+.B \-S, \-\-super_gb
+] options to force emulation of a Color, Normal, or Super Game Boy.
+.TP
+.B \-j, \-\-joy_dev=N
+The default joystick is /dev/js0.  By setting N here, /dev/jsN will be used
+in its place.
+.TP
+.B \-g, \-\-gdma_cycle
+This experimental option will halt the CPU during certain DMA operations.
+Leave it off unless you are working around problems in a certain program.
+.TP
+.B \-v, \-\-version
+Show version of program.
+.PP
+Most options can be disabled whith --no-OPTION (Ex: --no-sound turn sound off)
+.PP
+.SH "DEFAULT BINDINGS"
+These are the default keys in the emulator.  These, along with the joystick
+buttons, may be changed through a custom gngbrc(5) file.
+
+.br
+Enter          : Start
+.br
+Right Shift    : Select
+.br
+W              : B
+.br
+X              : A
+.br
+TAB            : Open menu
+.P
+F9             : fullscreen on/off
+.br
+F10            : show fps
+.br
+F11            : reset
+.br
+F12            : show keysym code
+.P
+KeyPad 1-5: Change palette
+.RS
+Palette must be define in your gngbrc file (see sample_gngbrc)
+.RE
+
+KeyPad 6  : Toggle color filter 
+
+.SH "SEE ALSO"
+There is some good info in the README included in the doc directory.
+The gngbrc file is documented in manual section 5.
+.SH AUTHOR
+This manual page was written by RCU <nemesis@dbz.icequake.net>,
+for the Debian GNU/Linux system (but may be used by others).

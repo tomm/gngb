@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src/cpu.c)
 AM_CONFIG_HEADER(config.h)
-AM_INIT_AUTOMAKE(gngb,20030509)
+AM_INIT_AUTOMAKE(gngb,20030807)
 
 dnl Setup for automake
 
@@ -22,22 +22,17 @@ AC_CHECK_LIB(pthread, pthread_create,,AC_MSG_ERROR(SDL library needs pthread Lib
 
 AC_CHECK_PROG(SDL_CONFIG, sdl-config, yes,no)
 if test "$SDL_CONFIG" = yes ; then
-CFLAGS="$CFLAGS -DSDL_YUV `sdl-config --cflags`";
-LIBS="$LIBS `sdl-config --libs`";
-AC_CHECK_LIB(SDL, SDL_Init,,AC_MSG_ERROR(can't find SDL on your system))
+	CFLAGS="$CFLAGS -DSDL_YUV `sdl-config --cflags`";
+	LIBS="$LIBS `sdl-config --libs`";
+	AC_CHECK_LIB(SDL, SDL_Init,,AC_MSG_ERROR(can't find SDL on your system))
 else 
-AC_MSG_ERROR(can't find sdl-config on your system);
+	AC_MSG_ERROR(can't find sdl-config on your system);
 fi
 
 dnl Checks for header files.
 AC_HEADER_DIRENT
 AC_HEADER_STDC
-AC_CHECK_HEADERS(fcntl.h sys/time.h unistd.h zlib.h)
-
-dnl Zlib ?
-
-AC_CHECK_HEADER(zlib.h,AC_CHECK_LIB(z, gzopen,[LIBS="$LIBS -lz";],AC_MSG_ERROR(can't find zlib on your system)))
-
+AC_CHECK_HEADERS(fcntl.h sys/time.h unistd.h )
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -50,44 +45,46 @@ AC_CHECK_FUNCS(gettimeofday sleep mkdir socket strtol)
 dnl AC_CHECK_FUNCS(getopt_long ,[GETOPT_LONG=yes , [LIBOBJS="$LIBOBJS getopt.o getopt1.o"]])
 AC_CHECK_FUNCS(getopt_long , , [LIBOBJS="$LIBOBJS getopt.o getopt1.o"])
 
-dnl Opengl Mode
+#Compress Roms
+AC_ARG_ENABLE(compress_roms,[  --disable-compress-roms      disable compress roms support], [enablecompress_roms=$enableval], [enablecompress_roms=yes])
 
-AC_ARG_WITH(gl,[  --with-gl               enable opengl support], [], [with_gl=yes])
+AC_SUBST(UNZIP_SRC)
+if test "$enablecompress_roms" = yes; then
+	AC_CHECK_HEADER(bzlib.h,AC_CHECK_LIB(bz2, BZ2_bzopen,,))
+	AC_CHECK_HEADER(zlib.h,AC_CHECK_LIB(z, gzopen,,))
+	UNZIP_SRC="unzip.c unzip.h"
+	LIBOBJS="$LIBOBJS unzip.o"
+else 
+	UNZIP_SRC=""
+fi	
 
-if test "$with_gl" = yes ; then
-AC_CHECK_HEADER(GL/gl.h,,with_gl=no)
-AC_CHECK_LIB(GL, glBegin,
-[LIBS="$LIBS -L/usr/X11R6/lib -lGL";
-CFLAGS="$CFLAGS -DSDL_GL ";]
-,with_gl=no)
+
+
+#Opengl Mode
+
+AC_ARG_ENABLE(gl,[  --enable-gl               enable opengl support], [enablegl=$enableval], [enablegl=yes])
+
+if test "$enablegl" = yes ; then
+	AC_CHECK_HEADER(GL/gl.h,,enablegl=no)
+	AC_CHECK_LIB(GL, glBegin,
+		[LIBS="$LIBS -lGL";
+		CFLAGS="$CFLAGS -DSDL_GL ";]
+	,enablegl=no)
 fi
 
 
 AM_CONDITIONAL(NATIVE_GETOPT_LONG, test "$GETOPT_LONG" = yes)
 
-dnl Proof Flag
-
-AC_ARG_WITH(prof,[  --with-prof               enable profil compil (debug)], [], [with_prof=no])
-
-if test "$with_prof" = yes ; then
-CFLAGS="$CFLAGS -pg ";
-fi
-
-dnl Opt Flag
 
 dnl Force Big Endian
 
-AC_ARG_WITH(big_endian,[  --with-big-endian               Force Big Endian], [], [with_big_endian=no])
+AC_ARG_ENABLE(big_endian,[  --enable-big-endian               Force Big Endian], [enablebig_endian=$enableval], [enablebig_endian=no])
 
-if test "$with_big_endian" = yes ; then
-CFLAGS="$CFLAGS -DWORDS_BIGENDIAN ";
+if test "$enablebig_endian" = yes ; then
+	CFLAGS="$CFLAGS -DWORDS_BIGENDIAN ";
 fi
 
 dnl Arch
-
-echo "$target"
-echo "$build"
-echo "$host"
 
 case `uname -m` in
 *686) arch_info=i686 ;;
@@ -106,19 +103,13 @@ sys_info=`uname -s`
 
 AC_MSG_RESULT(System: $sys_info)
 
-if test "$with_prof_compil" = yes ; then
-ffp="";
-else
-ffp="-fomit-frame-pointer";
-fi
-
 case $arch_info in
 i686|i586|i486|i386) OPT="-O3  -Wno-unused -funroll-loops -fstrength-reduce \
                           -ffast-math -malign-functions=2 -malign-jumps=2 \
-                          -malign-loops=2 $ffp -Wall -g" ;;
+                          -malign-loops=2 -fomit-frame-pointer -Wall -g" ;;
 sun4u)               OPT="-O3  -Wno-unused -funroll-loops -fstrength-reduce \
                           -ffast-math -malign-functions=4 -malign-jumps=4 \
-                          -malign-loops=4 $ffp -Wall -g " ;;
+                          -malign-loops=4 -fomit-frame-pointer -Wall -g " ;;
 no)                  OPT="-O3 -Wall -g" ;;
 esac
 

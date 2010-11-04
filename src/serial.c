@@ -22,7 +22,7 @@
 #include <unistd.h>
 #endif
 
-#ifndef GNGB_WIN32
+#ifndef WIN32
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
@@ -37,6 +37,7 @@
 #endif
 
 #include <fcntl.h>
+#include <signal.h>
 #include <SDL.h>
 #include <SDL_thread.h>
 #include "serial.h"
@@ -46,7 +47,7 @@
 
 #define TCPPORT 15781
 
-#ifndef GNGB_WIN32
+#ifndef WIN32
 #define SOCKET int
 #endif
 
@@ -57,7 +58,7 @@ SOCKET dest_socket=-1;
 SOCKET listen_socket=-1;
 
 void gngb_closesocket(SOCKET s){
-#ifdef GNGB_WIN32
+#ifdef WIN32
   closesocket(s);
 #else
   close(s);
@@ -69,13 +70,36 @@ void gbserial_close(void) {
   SDL_KillThread(thread);
 }
 
+void gbserial_signal_recv(int signum) {
+  fd_set rfds;
+  struct timeval tv;
+  int retval;
+
+  tv.tv_sec = 0;
+  tv.tv_usec = 0;
+
+  FD_ZERO(&rfds);
+  FD_SET(dest_socket, &rfds);
+  
+  retval = select(dest_socket+1, &rfds, NULL, NULL,&tv);
+  if (retval) {
+    gbserial.ready2read=1;
+    printf("Something to read\n");
+    //    read(dest_socket,&gbserial.b,1);
+    return;
+  } 
+  gbserial.ready2read=0;
+  return;
+}
+
 void gbserial_init(int server_side,char *servername) {
   SOCKET s,n;
   struct sockaddr_in saddr;
   struct hostent *host;
   int len;
+  int flags;
 
-#ifdef GNGB_WIN32
+#ifdef WIN32
   int e;
   WORD ver;
   WSADATA wsaData;
@@ -146,21 +170,41 @@ void gbserial_init(int server_side,char *servername) {
     printf("Connection established\n");
   }
 
-#ifndef GNGB_WIN32
-  fcntl(dest_socket,F_SETFL,O_NONBLOCK);
-#else
-  ioctlsocket(dest_socket,FIONBIO,&len);
-#endif
+  /*#ifndef WIN32
+    fcntl(dest_socket,F_SETFL,O_NONBLOCK);
+    #else
+    ioctlsocket(dest_socket,FIONBIO,&len);
+    #endif
+  */
   //  thread=SDL_CreateThread(thread_fun,NULL);  
 
   gbserial.cycle_todo=0;
   gbserial.byte_wait=0;
   gbserial.check=0;
+  gbserial.wait=0;
+
+  fcntl(dest_socket, F_SETOWN, (int) getpid());
+  flags = fcntl(dest_socket, F_GETFL);
+  flags |= O_NONBLOCK|O_ASYNC;
+  fcntl(dest_socket,F_SETFL,flags);
+
+  if ((signal(SIGIO,gbserial_signal_recv))==SIG_ERR) {
+    printf("Heu ya une erreur\n");
+  }
+  gbserial.ready2read=0;
 }
 
 void gbserial_send(Uint8 b) {
-#ifndef GNGB_WIN32
+#ifndef WIN32
+  Uint16 d;
+  Uint8 n;
+  /* We send the byte */
   write(dest_socket,&b,sizeof(Uint8));
+  /* Read The return data */
+  //  n=read(dest_socket,&d,sizeof(Uint16));
+   
+
+
 #else
   char c[2];
   int e;
@@ -170,7 +214,7 @@ void gbserial_send(Uint8 b) {
 }
 
 Sint8 gbserial_receive(void) {
-#ifndef GNGB_WIN32
+#ifndef WIN32
   Sint8 b;
   static Uint8 c[1000];
 
@@ -189,14 +233,15 @@ Sint8 gbserial_receive(void) {
 #endif
 }
 
-Uint8 gbserial_check(void) {
-#ifndef GNGB_WIN32
+Uint8 gbserial_check2(void) {
+#ifndef WIN32
   Uint8 b;
   Uint8 c;
   //  printf("Check\n");
   SB=0xFF;
   if ((b=read(dest_socket,&c,1))<=0) return 0;
   //  printf("Check Ok %02x\n",c);
+  if (c!=0xFF) set_interrupt(SERIAL_INT);
   SB=c;
   return 1;
 #else
@@ -209,9 +254,19 @@ Uint8 gbserial_check(void) {
 #endif
 }
 
+Uint8 gbserial_wait_data(void) {
+  Uint8 b;
+  Uint8 c;
+  
+  if ((b=read(dest_socket,&c,1))<=0) return 0;
+  write(dest_socket,SB,1);
+  set_interrupt(SERIAL_INT);
+  SB=c;
+  return 1;
+}
+
 int thread_fun(void *data) {
   Sint8 n;
-  printf("toto\n");
   while(!conf.gb_done) {
     if (!gbserial.byte_wait && (n=gbserial_receive())>=0) {
       gbserial.b=n;
@@ -225,7 +280,42 @@ int thread_fun(void *data) {
   return 0;
 }
 
+/* New GbSerial */
 
+/* gbserial_check: Return 1 if data can be read */
+char gbserial_check(void) {
+  fd_set rfds;
+  struct timeval tv;
+  int retval;
+
+  tv.tv_sec = 0;
+  tv.tv_usec = 0;
+
+  FD_ZERO(&rfds);
+  FD_SET(dest_socket, &rfds);
+  
+  retval = select(dest_socket+1, &rfds, NULL, NULL,&tv);
+  if (retval) return 1;
+  return 0;
+}
+
+/* Gbserial_read: Read a byte on the serial 
+   This is a block function */
+Uint8 gbserial_read(void) {
+  Uint8 b;
+
+  gbserial.ready2read=0;
+  if ((read(dest_socket,&b,2))<=0) return 0xFF;
+  return b;
+}
+
+/* Gbserial_write: Write a byte on the serial 
+   c: Command
+   b: data
+*/
+void gbserial_write(Uint8 b) {
+  write(dest_socket,&b,1);
+}
 
 
 
