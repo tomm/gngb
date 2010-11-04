@@ -1,6 +1,8 @@
 #ifndef SAVE_H
 #define SAVE_H
 
+char *get_name_without_ext(char*);
+
 int save_ram(void);
 int load_ram(void);
 int save_rom_timer(void);

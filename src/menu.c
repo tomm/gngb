@@ -31,6 +31,7 @@
 #include "sound.h"
 #include "message.h"
 #include "menu_image.h"
+#include "save.h"
 
 #define MAX_ITEM 6
 #define MENUX 7

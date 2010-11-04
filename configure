@@ -700,7 +700,7 @@ fi
 
 PACKAGE=gngb
 
-VERSION=20030809
+VERSION=20040115
 
 if test "`cd $srcdir && pwd`" != "`pwd`" && test -f $srcdir/config.status; then
   { echo "configure: error: source directory already configured; run "make distclean" there first" 1>&2; exit 1; }

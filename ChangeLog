@@ -1,6 +1,10 @@
 
 WHAT'S NEW ?
 
+* Julien Delange make a patch to fix build problem on some architecture
+
+20030809	
+
 * Add Support for Bzip2 File
 * Fix a stupid mistake for zip file (on little endian plateform now it work)
 * Fix ggc 3.3 bug (Ryan Underwood)
