@@ -14,29 +14,56 @@ configure:907: checking whether the C compiler (gcc  ) works
 configure:923: gcc -o conftest    conftest.c  1>&5
 configure:949: checking whether the C compiler (gcc  ) is a cross-compiler
 configure:954: checking whether we are using GNU C
+configure:963: gcc -E conftest.c
 configure:982: checking whether gcc accepts -g
 configure:1016: checking for pthread_create in -lpthread
+configure:1035: gcc -o conftest    conftest.c -lpthread   1>&5
 configure:1067: checking for sdl-config
 configure:1098: checking for SDL_Init in -lSDL
+configure:1117: gcc -o conftest  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT   conftest.c -lSDL  -lpthread  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread 1>&5
 configure:1152: checking for dirent.h that defines DIR
+configure:1165: gcc -c  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT  conftest.c 1>&5
 configure:1190: checking for opendir in -ldir
+configure:1209: gcc -o conftest  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT   conftest.c -ldir  -lSDL -lpthread  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread 1>&5
+/usr/bin/ld: cannot find -ldir
+collect2: ld returned 1 exit status
+configure: failed program was:
+#line 1198 "configure"
+#include "confdefs.h"
+/* Override any gcc2 internal prototype to avoid an error.  */
+/* We use char because int might match the return type of a gcc2
+    builtin and then its argument prototype would still apply.  */
+char opendir();
+
+int main() {
+opendir()
+; return 0; }
 configure:1273: checking how to run the C preprocessor
+configure:1294: gcc -E  conftest.c >/dev/null 2>conftest.out
 configure:1353: checking for ANSI C header files
+configure:1366: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:1433: gcc -o conftest  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT   conftest.c -lSDL -lpthread  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread 1>&5
 configure:1460: checking for fcntl.h
+configure:1470: gcc -E  conftest.c >/dev/null 2>conftest.out
 configure:1460: checking for sys/time.h
+configure:1470: gcc -E  conftest.c >/dev/null 2>conftest.out
 configure:1460: checking for unistd.h
+configure:1470: gcc -E  conftest.c >/dev/null 2>conftest.out
 configure:1498: checking for working const
+configure:1552: gcc -c  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT  conftest.c 1>&5
 configure:1573: checking whether time.h and sys/time.h may both be included
+configure:1587: gcc -c  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT  conftest.c 1>&5
 configure:1609: checking for vprintf
+configure:1637: gcc -o conftest  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT   conftest.c -lSDL -lpthread  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread 1>&5
 configure:1716: checking for gettimeofday
+configure:1744: gcc -o conftest  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT   conftest.c -lSDL -lpthread  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread 1>&5
 configure:1716: checking for mkdir
+configure:1744: gcc -o conftest  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT   conftest.c -lSDL -lpthread  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread 1>&5
 configure:1716: checking for socket
+configure:1744: gcc -o conftest  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT   conftest.c -lSDL -lpthread  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread 1>&5
 configure:1716: checking for strtol
+configure:1744: gcc -o conftest  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT   conftest.c -lSDL -lpthread  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread 1>&5
 configure:1782: checking for GL/gl.h
+configure:1792: gcc -E  conftest.c >/dev/null 2>conftest.out
 configure:1815: checking for glBegin in -lGL
-configure:2030: checking for gtk-config
-configure:2065: checking for gtk_init in -lgtk
-configure:2084: gcc -o conftest  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT -DSDL_GL     conftest.c -lgtk  -lSDL -lpthread  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread -L/usr/X11R6/lib -lGL  -L/usr/lib -L/usr/X11R6/lib -lgtk -lgdk -rdynamic -lgmodule -lglib -ldl -lXi -lXext -lX11 -lm 1>&5
-configure:2119: checking for glib-config
-configure:2154: checking for g_strdup in -lglib
-configure:2173: gcc -o conftest  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT -DSDL_GL     conftest.c -lglib  -lSDL -lpthread  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread -L/usr/X11R6/lib -lGL  -L/usr/lib -L/usr/X11R6/lib -lgtk -lgdk -rdynamic -lgmodule -lglib -ldl -lXi -lXext -lX11 -lm -L/usr/lib -lglib 1>&5
+configure:1834: gcc -o conftest  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT   conftest.c -lGL  -lSDL -lpthread  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread 1>&5

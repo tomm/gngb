@@ -58,17 +58,17 @@ NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
 CC = gcc
-DEBUG_CFLAGS = -DDEBUG -I/usr/lib/glib/include -I/usr/X11R6/include -I/usr/lib/glib/include
-DEBUG_LIBS =  -L/usr/lib -L/usr/X11R6/lib -lgtk -lgdk -rdynamic -lgmodule -lglib -ldl -lXi -lXext -lX11 -lm -L/usr/lib -lglib
-GLIB_CONFIG = yes
-GTK_CONFIG = yes
+DEBUG_CFLAGS = 
+DEBUG_LIBS = 
+GLIB_CONFIG = 
+GTK_CONFIG = 
 MAKEINFO = /build/gngb/missing makeinfo
 PACKAGE = gngb
 SDL_CONFIG = yes
 VERSION = 20011202
 
-CFLAGS =  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT -DSDL_GL  -O3  -Wno-unused -funroll-loops -fstrength-reduce                           -ffast-math -malign-functions=2 -malign-jumps=2                           -malign-loops=2 -fomit-frame-pointer -Wall -g -DDEBUG -I/usr/lib/glib/include -I/usr/X11R6/include -I/usr/lib/glib/include
-LIBS = -lSDL -lpthread  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread -L/usr/X11R6/lib -lGL   -L/usr/lib -L/usr/X11R6/lib -lgtk -lgdk -rdynamic -lgmodule -lglib -ldl -lXi -lXext -lX11 -lm -L/usr/lib -lglib
+CFLAGS =  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT -DSDL_GL  -O3  -Wno-unused -funroll-loops -fstrength-reduce                           -ffast-math -malign-functions=2 -malign-jumps=2                           -malign-loops=2 -fomit-frame-pointer -Wall -g 
+LIBS = -lSDL -lpthread  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread -L/usr/X11R6/lib -lGL  
 
 bin_PROGRAMS = gngb_dbg
 

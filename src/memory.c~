@@ -720,7 +720,6 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
       if (!(LCDCSTAT&0x03) || (LCDCSTAT&0x03)==0x01) set_interrupt(LCDC_INT);
       LCDCSTAT=(LCDCSTAT&0x07)|(v&0xf8);
     } else LCDCSTAT=(LCDCSTAT&0x07)|(v&0xf8);
-    
 #ifdef DEBUG
     add_mem_msg("Write %02x to LCDCSTAT %02x\n",v,LCDCSTAT);
 #endif  

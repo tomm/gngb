@@ -34,6 +34,7 @@ option:
 -y            : use constant cycle (cycle don't change according to nb sprite
 on a line)
 -g            : try to emulate gdma cycle
+-Y            : YUV Mode (resizable)
 
 Key :
 

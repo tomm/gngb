@@ -72,7 +72,6 @@ void print_help(void) {
   printf("-O WxH       : same as o, but with WxH resolution (instead of double size)\n");
   printf("-y           : use constant cycle\n");
   printf("-g           : try to emulate gdma cycle (experimental)\n");
-  printf("-Y           : YUV Mode (resizable)\n");
   exit(0);
 }
 

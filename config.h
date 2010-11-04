@@ -53,10 +53,10 @@
 #define HAVE_LIBSDL 1
 
 /* Define if you have the glib library (-lglib).  */
-#define HAVE_LIBGLIB 1
+/* #undef HAVE_LIBGLIB */
 
 /* Define if you have the gtk library (-lgtk).  */
-#define HAVE_LIBGTK 1
+/* #undef HAVE_LIBGTK */
 
 /* Define if you have the pthread library (-lpthread).  */
 #define HAVE_LIBPTHREAD 1

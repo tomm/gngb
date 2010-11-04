@@ -2,7 +2,7 @@
 WHAT'S NEW ?
 
 * Try a new frameskip code
-* Add YUV Mode (option -Y)
+* Add YUV Mode Resizable (option -Y)
 * Clean Some Code
 * Fix Segmentation Fault when can't init sound
 * Fix getenv segfault on some plateform

@@ -389,7 +389,177 @@ UINT16 gblcdc_update1(void)  // LCDC is on
   return ret;
 }
 
+/* NEW GB LCDC UPDATE */
 
+void set_lcd_int(char type) {
+#ifdef DEBUG
+  add_int_msg("Set lcd Int type%d\n",type);
+#endif
+  switch(type) {
+  case LY_LYC_CO_SEL:break;
+  case OAM_SEL:ISTAT&=0x3f;break;
+  case VBLANK_SEL:ISTAT&=0x1f;break;
+  case HBLANK_SEL:ISTAT&=0x0f;break;
+  }
+  set_interrupt(LCDC_INT);
+}
+
+static void set_lcd_stat(UINT8 v) {
+  LCDCSTAT=(LCDCSTAT&0x78)|v;
+  //if (CURLINE==CMP_LINE /*&& CURLINE!=0*/) LCDCSTAT|=0x04;
+  if (CHECK_LYC_LY) LCDCSTAT|=0x04;
+   
+  if (LCDCCONT&0x80) {
+    switch(v) {
+    case 0:
+      /*if (LCDCSTAT&0x08) set_interrupt(LCDC_INT);*/
+      if (ISTAT&0x08) set_lcd_int(HBLANK_SEL);
+      break;
+    case 1:
+      /*if ((LCDCSTAT&0x40 && LCDCSTAT&0x04)) set_interrupt(LCDC_INT);*/
+      if ((ISTAT&0x40 && LCDCSTAT&0x04)) set_lcd_int(LY_LYC_CO_SEL);
+      break;
+    case 2:
+      // if (CURLINE==CMP_LINE && ISTAT&0x40) set_lcd_int(LY_LYC_CO_SEL);
+      /*if ((LCDCSTAT&0x40 && LCDCSTAT&0x04) ) set_interrupt(LCDC_INT);*/
+      if (ISTAT&0x20) set_lcd_int(OAM_SEL);
+      if ((ISTAT&0x40 && LCDCSTAT&0x04)) set_lcd_int(LY_LYC_CO_SEL);
+      break;
+    case 3:break;
+    default:break;
+    }
+  }
+}
+
+/*void gblcdc_set_on(void) {
+  CURLINE=0x00;
+  gblcdc->cycle=lcd_cycle_tab[gblcdc->timing][2];
+  gblcdc->nb_spr=get_nb_spr();
+  vram_init_pal=1;
+  set_lcd_stat(2);
+  ISTAT=LCDCSTAT;
+  clear_screen();
+  }*/
+
+UINT16 gblcdc_update2(void) {
+  static char delay_vblank;
+  
+  UINT8 skip_this_frame=0;
+  
+  if (!(LCDCCONT&0x80)) {	/* LCD IS OFF */
+    return 0;
+    switch(LCDCSTAT&0x03) {
+    case 0:						/* HBLANK */
+      set_lcd_stat(2);
+      return lcd_cycle_tab[gblcdc->timing][2];
+      break;
+    case 1:						/* VBLANK */
+      set_lcd_stat(2);
+      return lcd_cycle_tab[gblcdc->timing][2];
+      break;
+    case 2:						/* OAM */
+      set_lcd_stat(3);
+      return lcd_cycle_tab[gblcdc->timing][3];
+      break;
+    case 3:						/* VRAM */
+      set_lcd_stat(0);
+      return lcd_cycle_tab[gblcdc->timing][0];
+      break;
+    }    
+  } else {			/* LCD IS ON */
+    switch(LCDCSTAT&0x03) {
+    
+    case 0:
+      CURLINE++;
+      if (CURLINE==0x90) {
+	if ((gbcpu->state&HALT_STATE)) {
+	  set_interrupt(VBLANK_INT);
+	  if (ISTAT&0x10) set_lcd_int(VBLANK_SEL);
+	  set_lcd_stat(1);
+	  return lcd_cycle_tab[gblcdc->timing][1];
+	} else {
+	  delay_vblank=1;
+	  set_lcd_stat(1);
+	  return DELAY_CYCLE;
+	}
+      }
+      gblcdc->nb_spr=get_nb_spr();
+      set_lcd_stat(2);
+      return lcd_cycle_tab[gblcdc->timing][2];
+      break;
+
+    case 1:
+      if (CURLINE==0x90 && delay_vblank) {
+	/* FIX: Addams Family */
+	delay_vblank=0;
+	set_interrupt(VBLANK_INT);
+	if (ISTAT&0x10) set_lcd_int(VBLANK_SEL);
+	return lcd_cycle_tab[gblcdc->timing][1]-DELAY_CYCLE;
+      }
+
+      if (CURLINE==0x00) {
+	set_lcd_stat(2);
+	return lcd_cycle_tab[gblcdc->timing][2];
+      }
+      
+      CURLINE++;
+      if (CURLINE==0x99) {
+	//CURLINE=0x00;
+	if (conf.autoframeskip) {
+	  skip_this_frame=skip_next_frame;
+	  skip_next_frame=barath_skip_next_frame(conf.show_fps);
+	  if (!skip_this_frame) blit_screen();
+	} else blit_screen();
+	set_lcd_stat(1);
+	/* FIX : Sagaia */
+	/*if ((CMP_LINE==0x00) && LCDCSTAT&0x40) {
+	  LCDCSTAT|=0x04;
+	  set_interrupt(LCDC_INT);
+	  } */
+	return /*lcd_cycle_tab[gblcdc->timing][1]*/60;
+      }
+
+      if (CURLINE==0x9a) {
+	CURLINE=0x00;
+	set_lcd_stat(1);
+	/*if (CMP_LINE==0x00 && ISTAT&0x40) {
+	  LCDCSTAT|=0x04;
+	  set_lcd_int(LY_LYC_CO_SEL);
+	  }*/
+	return lcd_cycle_tab[gblcdc->timing][1]-60;
+      }
+      
+      set_lcd_stat(1);
+      return lcd_cycle_tab[gblcdc->timing][1];
+      break;
+
+    case 2:
+      /* Emulate Vic Viper Laser */
+      if (vram_init_pal) {
+	int x;
+	for(x=0;x<160;x++)
+	  gblcdc->vram_pal_line[x]=pal_bck;
+	pal_bck[0]=BGPAL&3;
+	pal_bck[1]=(BGPAL>>2)&3;
+	pal_bck[2]=(BGPAL>>4)&3;
+	pal_bck[3]=(BGPAL>>6)&3;
+	vram_init_pal=0;
+      }
+      
+      set_lcd_stat(3);
+      return lcd_cycle_tab[gblcdc->timing][3];
+      break;
+      
+    case 3:
+      if (!skip_this_frame) draw_screen();
+      if (dma_info.type==HDMA) do_hdma();
+      set_lcd_stat(0);
+      return lcd_cycle_tab[gblcdc->timing][0];      
+      break;
+    }
+  }
+  return 0;
+}
 
 /* FIXME */
 void gblcdc_addcycle(INT32 c) {
