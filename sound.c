@@ -17,6 +17,7 @@
  */
 
 
+#include <stdlib.h>
 #include <SDL/SDL.h>
 #include "sound.h"
 #include "memory.h"
@@ -181,7 +182,8 @@ void write_sound_reg(UINT16 add,UINT8 val)
   case 0xFF22 : // NR43
     snd_m4.poly=val;
     snd_m4.sample=(double)sample_rate*freq_table_m4[val];
-    //    printf("poly %x %g\n",val,snd_m4.sample);
+    //    printf("poly %x:%x %x %x\n",val,(val&0xd0)>>5,(val&0x10)>>4,val&0xF);
+    snd_m4.poly_changed=1;
     break;
   case 0xFF23 : // NR44
     snd_m4.initial=(val&0x80)>>7;
@@ -298,21 +300,11 @@ UINT8 read_sound_reg(UINT16 add)
 void init_freq_table(void)
 {
   int i;
-  long double a=0.015896,b=7.7961e-6;
   long double y;
-  //  printf("a:%Lg,b:%Lg\n",a,b);
+ 
   for(i=0;i<2048;i++) {
-    /*
-    y=(a-b*(double)i);
-    // printf("%d:%Lg\n",i,y);
-    if (y<20000 && y>0)
-      freq_table[i]=y;
-    else
-      freq_table[i]=20000.0;
-    */
     freq_table[i]=1.0/HZ(i);
     freq_table_m3[i]=1.0/HZ_M3(i);
-    // printf("%d %g\n",i,freq_table[i]);
   }
 
   for(i=0;i<256;i++) {
@@ -320,14 +312,12 @@ void init_freq_table(void)
       y=(long double)2.0;
     else
       y=(long double)1.0/(float)(i&0x7);
-
-    freq_table_m4[i]=1.0/(long double)((long double)4194304.0*(long double)(1.0/8.0)*y*(long double)(1.0/(long double)(2<<(i>>4))));
-    // printf("%x %Lg %Lg %Lg\n",i,freq_table_m4[i],(long double)524288.0*y,y);
+    freq_table_m4[i]=1.0/(4194304.0*(1.0/8.0)*y*(1.0/(long double)(2<<(i>>4))));
   }
 }
 
 
-INT8 update_snd_m1(void)
+inline INT8 update_snd_m1(void)
 {
   static float cp=0;
   static int env=0;
@@ -437,7 +427,7 @@ INT8 update_snd_m1(void)
 
 }
 
-INT8 update_snd_m2(void)
+inline INT8 update_snd_m2(void)
 {
   static float cp=0;
   static int env=0;
@@ -517,7 +507,7 @@ INT8 update_snd_m2(void)
 
 }
 
-INT8 update_snd_m3(void)
+inline INT8 update_snd_m3(void)
 {
   static float cp=0;
   static int lp=0;
@@ -590,10 +580,10 @@ INT8 update_snd_m3(void)
     else 
     return vol_table[val];
 */
-
+  return 0;
 }
 
-INT8 update_snd_m4(void)
+inline INT8 update_snd_m4(void)
 {
   static float cp=0;
   static int env=0;
@@ -601,6 +591,8 @@ INT8 update_snd_m4(void)
   static int lp=0; 
   static int ep=0;
   static int cur_env_step;
+  static UINT32 poly_counter=0x2;
+  int a;
   int vol;
 
   if (snd_m4.initial) {
@@ -620,9 +612,13 @@ INT8 update_snd_m4(void)
     cp=0;
     //    sp=0;
     ep=0;
-
+    
   }
 
+  if (snd_m4.poly_changed) {
+    // poly_counter=0xA;
+    snd_m4.poly_changed=0;
+  } 
 
 
   if (snd_m4.mode==1) { // on doit gerer la durée
@@ -675,7 +671,23 @@ INT8 update_snd_m4(void)
 
 
   if (cp+1.0>snd_m4.sample) {
-    sp=rand()&0x1;// 0 ou 1
+    
+    /*if (snd_m4.poly&0x10)
+      sp=(((poly_counter&0x4)|(poly_counter&0x1)|(rand()&0x1))?0:1);
+      else*/
+    // sp=rand()&0x1;
+    /*
+    sp^=(poly_counter&0x4)>>2;// rand()&0x1;// 0 ou 1
+    sp^=(poly_counter&0x1);
+    poly_counter+=((snd_m4.poly&0x10)?15:7);
+    */
+    //    sp=(poly_counter&0x1)/*^((poly_counter&0x4)>>2)*/;
+    if ((poly_counter+1)&2) sp=1-sp;
+    // printf("%d\n",sp);
+    for(a=0;a<((snd_m4.poly&0x10)?16:8);a++) {
+      if ((poly_counter&0x1)/*^((poly_counter&0x2)>>1)*/) poly_counter ^=0x500000;
+      poly_counter >>= 1;
+    }
     cp=(cp+1.0)-snd_m4.sample;
 
   } else
@@ -701,7 +713,7 @@ void update_gb_sound(UINT32 snd_len)
    SDL_LockAudio();
   
 
-  if ((snd_len+(lastpos<<1))>buf_size) {
+  if ((snd_len+(lastpos<<1))>=buf_size) {
     //printf("ho:%d %d\n",snd_len,(INT16)(lastpos<<1));
     snd_len=buf_size-(lastpos<<1); // on borne.
   }
@@ -727,7 +739,7 @@ void update_gb_sound(UINT32 snd_len)
     
   //printf("curpos start:%d len:%d\n",curpos,len);
 
-  for(i=0;i<(snd_len>>1);i++) {
+  for(i=0;i<(snd_len>>1) && pl<playbuf+buf_size;i++) {
 
     l=r=0;
 
@@ -772,6 +784,7 @@ void update_gb_sound(UINT32 snd_len)
     *pl++=(INT8)r;
     curpos++;
   }
+  if (curpos==buf_size) curpos=0;
   lastpos=curpos;
 
   //  printf("curpos end:%d\n",curpos);
@@ -783,38 +796,24 @@ void update_gb_sound(UINT32 snd_len)
 /* fonction callback */
 void update_stream(void *userdata,UINT8 *stream,int snd_len)
 {
-  int i;
-  UINT32 lg;
+
   /* update tous les buffer dans playbuf*/
 
- 
-  
-  //  printf("---- %d-%d = %d\n",len,(lastpos<<1),len-(lastpos<<1));
-  /*
-  lg = (float)get_nb_cycle()*(sample_rate/59.73)/((gbcpu->mode== DOUBLE_SPEED)?140448.0:70224.0);
-  //  printf("--- len:%d\n",lg);
-  if (lg) 
-    update_gb_sound(lg<<1);
-  */
   if (snd_len-(lastpos<<1)>0)
      update_gb_sound(snd_len-(lastpos<<1));
   get_nb_cycle();
-  // playbuf[(lastpos<<1)+(lg<<1)]=100;
-  //    playbuf[0]=-100; // DEBUG!!!!
-  //  playbuf[len-1]=100;
-
 
 #ifdef LOG_SOUND
   fwrite(playbuf,snd_len,1,fsound);
 #endif
 
-  /* NO PROB HERE */
+
   memcpy(stream,playbuf,snd_len);
   memset(playbuf,0,snd_len);
   
  
   lastpos=curpos=0;
-  // get_nb_cycle();
+
  
 }
 
@@ -845,6 +844,7 @@ int init_sound(void)
 
   SDL_PauseAudio(0);
   SDL_Delay(1000); // Pour pemetre au thread audio de ce lancer
+  return 0;
 }
 
 void close_sound(void)

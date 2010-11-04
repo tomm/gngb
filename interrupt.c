@@ -43,14 +43,9 @@ UINT16 mode1cycle;
 UINT16 mode2cycle=82;
 UINT16 mode3cycle;
 
-INT16 hblank_cycle=210;
-INT16 vblank_cycle=456;
-INT16 oam_cycle=82;
-INT16 vram_cycle=175;
-
 UINT16 timer_clk_inc=0;   // nb_cycle when inc timer
 
-static UINT8 inc_line;
+// static UINT8 inc_line;
 
 UINT32 get_nb_cycle(void)
 {
@@ -69,6 +64,7 @@ void go2double_speed(void)
   mode2cycle=162;//150;
   mode3cycle=tb_vram_cycle[1][0];
   gbcpu->mode=DOUBLE_SPEED;
+  vblank_cycle=70224*2;
 }
 
 void go2simple_speed(void)
@@ -79,6 +75,7 @@ void go2simple_speed(void)
   mode2cycle=82;
   mode3cycle=tb_vram_cycle[0][0];
   gbcpu->mode=SIMPLE_SPEED;
+  vblank_cycle=70224;
 }
 
 inline UINT8 request_interrupt(UINT8 n) {
@@ -89,6 +86,7 @@ inline UINT8 request_interrupt(UINT8 n) {
 inline UINT8 make_interrupt(UINT8 n) {
   //printf("try int %d  %0.2x %0.2x %d",n,INT_ENABLE,INT_FLAG,gbcpu->int_flag);
   if ((INT_ENABLE&n) && (gbcpu->int_flag)) {
+    // printf("do int %d %0.4x\n",n,gbcpu->pc.w);
     //printf("make int %d %d %d %d\n",n,CURLINE,CMP_LINE,LCDCSTAT);
     INT_FLAG&=(~n);
     gbcpu->int_flag=0;
@@ -108,7 +106,7 @@ inline UINT16 lcdc_update(void)  // LCDC is on
   UINT16 ret=0;
   static UINT8 inc_line;
   UINT8 skip_this_frame;
-  static UINT8 skip_next_frame;
+  // static UINT8 skip_next_frame;
   
   if (inc_line) CURLINE++;
   
@@ -123,7 +121,7 @@ inline UINT16 lcdc_update(void)  // LCDC is on
     if (LCDCCONT&0x80) {
      if (conf.autofs) {
       skip_this_frame=skip_next_frame;
-      skip_next_frame=barath_skip_next_frame(0);
+      //      skip_next_frame=barath_skip_next_frame(0);
       if (!skip_this_frame) blit_screen();
      }
      else blit_screen();
@@ -149,14 +147,6 @@ inline UINT16 lcdc_update(void)  // LCDC is on
     lcdc_mode=OAM_PER;
     inc_line=1;
     if (dma_info.type==HDMA) do_hdma();
-      /*{
-       int i;
-       for(i=0;i<16;i++) {
-       mem_write(dma_info.dest++,mem_read(dma_info.src++));
-       }
-       HDMA_CTRL5--;
-       if (HDMA_CTRL5==0xff) dma_info.type=NO_DMA;
-       }*/
     break;
   case VBLANK_PER:       // VBLANK
     LCDCSTAT|=0x01;
@@ -194,86 +184,10 @@ inline void halt_update(void) // gbcpu->state=HALT_STATE
 { 
   if (INT_FLAG&INT_ENABLE) {
     gbcpu->state=0;
-    gbcpu->pc.w++;
+    // gbcpu->pc.w++;
   }
 }
 
-inline void main_loop(void) {
-  static UINT32 timer_cycle;
-  static INT16 cycle_todo;
-  static UINT8 int_request,int_cycle=24;
-  UINT8 a;
-    
-  if (cycle_todo<=0) {
-    if (LCDCCONT&0x80) cycle_todo+=lcdc_update();
-    else cycle_todo=0;
-  }
 
-  while(cycle_todo>=0) {
-    DIVID++;
-   
-    if (gbcpu->state==HALT_STATE) halt_update();
-
-    if (INT_FLAG&VBLANK_INT) cycle_todo-=make_interrupt(VBLANK_INT);
-    else if (INT_FLAG&LCDC_INT) cycle_todo-=make_interrupt(LCDC_INT);
-    else if (INT_FLAG&TIMEOWFL_INT) cycle_todo-=make_interrupt(TIMEOWFL_INT);
-    
-    a=gbcpu_exec_one();
-    nb_cycle+=a;
-    cycle_todo-=a;
-
-    if (TIME_CONTROL&0x04) {
-      timer_cycle+=a;
-      if (timer_cycle>=timer_clk_inc) {
-	timer_update();
-	timer_cycle=0;
-      }
-    }
-  }
-}
-
-inline void update_gb(void) {
-  static UINT8 a;
-  static INT16 lcdc_cycle;
-  static UINT32 timer_cycle;
-  static UINT32 key_cycle;
-  int v=0;
-   
-  a=gbcpu_exec_one();
-  nb_cycle+=a;
-  DIVID++;
-  
-  if (LCDCCONT&0x80) {
-    if (lcdc_cycle<=0) {
-      // printf("%d %d \n",lcdc_mode,lcdc_mode_clk[lcdc_mode]);
-      lcdc_cycle+=(lcdc_update()-a);
-      lcdc_mode_clk[lcdc_mode]=0;
-    } else {
-      lcdc_cycle-=(INT16)a;
-      lcdc_mode_clk[lcdc_mode]+=a;
-    }
-  } else lcdc_cycle=0;
-
-  if (TIME_CONTROL&0x04) {
-    timer_cycle+=a;
-    if (timer_cycle>=timer_clk_inc) {
-      timer_update();
-      timer_cycle=0;
-    }
-  }
-
-  if (gbcpu->state==HALT_STATE) halt_update();
-  
-  if (INT_FLAG&VBLANK_INT) v=make_interrupt(VBLANK_INT);
-  if (INT_FLAG&LCDC_INT && !v) v=make_interrupt(LCDC_INT);
-  if (INT_FLAG&TIMEOWFL_INT && !v) v=make_interrupt(TIMEOWFL_INT);  
-
-  key_cycle+=a;
-  if (key_cycle>=70224) {
-    update_key();
-    key_cycle=0;
-  }
-
-}
-			 
+		 
   

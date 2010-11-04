@@ -16,11 +16,15 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. 
  */
 
-
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
 #include <dirent.h>
 #include <stdlib.h>
+#include <string.h>
 #include "rom.h"
 #include "memory.h"
 #include "cpu.h"
@@ -272,7 +276,7 @@ int open_rom(char *filename)
     case 0x1c: printf("MBC5+RUMBLE\n"); rom_type=MBC5|RUMBLE;break;
     case 0x1d: printf("MBC5+RUMBLE+SRAM\n"); rom_type=MBC5|RUMBLE|SRAM;break;
     case 0x1e: printf("MBC5+RUMBLE+SRAM+BATTERY\n"); rom_type=MBC5|RUMBLE|SRAM|BATTERY;break;
-    default: printf("unknown %0.2x \n",gb_memory[0x147]); rom_type=UNKNOW_TYPE;break;
+    default: printf("unknown %02x \n",gb_memory[0x147]); rom_type=UNKNOW_TYPE;break;
     }
     printf("ROM size : %u * 16 kbyte \n", 1 << gb_memory[0x148] << 1 );
       

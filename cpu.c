@@ -23,6 +23,7 @@
 #include "cpu.h"
 #include "memory.h"
 #include "interrupt.h"
+#include "frame_skip.h"
 
 GB_CPU *gbcpu=0;
 
@@ -63,14 +64,25 @@ inline UINT8 get_byte(void)
 
 inline void push_r(REG *r)
 {
+  //  printf("push_r %x0.4",(r)->b.w);
   mem_write(--SP,(r)->b.h);
   mem_write(--SP,(r)->b.l);
+  /*
+  mem_write(--SP,(r)->b.l);
+  mem_write(--SP,(r)->b.h);
+  */
 }
 
 inline void pop_r(REG *r)
 {
+  
   (r)->b.l=mem_read(SP++);
   (r)->b.h=mem_read(SP++);
+
+  /*
+  (r)->b.h=mem_read(SP++);
+  (r)->b.l=mem_read(SP++);
+  */
 } 
 
 //#define GET_BYTE (gbcpu->base[PC++])
@@ -1152,6 +1164,7 @@ inline UINT8 unknown(void){
 }
 
 inline UINT8 nop(void){
+  // conf.gb_done=1;
   SUB_CYCLE(4);
 }
 
@@ -1209,7 +1222,8 @@ inline UINT8 ld_mem_nn_sp(void){
 inline UINT8 add_hl_bc(void){
   UINT32 r=HL+BC;
   ((r&0x00010000)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((L&0x10)^(C&0x10))^(r&0x10))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((L&0x10)^(C&0x10))^(r&0x10))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((HL&0x0f)+(BC&0x0f))>0x0f)?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   HL=r&0xffff;
   UNSET_FLAG(FLAG_NN);
   SUB_CYCLE(8);
@@ -1310,7 +1324,8 @@ inline UINT8 jr_disp(void){
 inline UINT8 add_hl_de(void){
   UINT32 r=HL+DE;
   ((r&0x00010000)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((L&0x10)^(E&0x10))^(r&0x10))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((L&0x10)^(E&0x10))^(r&0x10))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((HL&0x0f)+(DE&0x0f))>0x0f)?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   HL=r&0xffff;
   UNSET_FLAG(FLAG_NN);
   SUB_CYCLE(8);
@@ -1435,7 +1450,8 @@ inline UINT8 jr_z_disp(void){
 inline UINT8 add_hl_hl(void){
   UINT32 r=HL+HL;
   ((r&0x00010000)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((L&0x10)^(L&0x10))^(r&0x10))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((L&0x10)^(L&0x10))^(r&0x10))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((HL&0x0f)+(HL&0x0f))>0x0f)?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   HL=r&0xffff;
   UNSET_FLAG(FLAG_NN);
   SUB_CYCLE(8);
@@ -1547,7 +1563,8 @@ inline UINT8 jr_c_disp(void){
 inline UINT8 add_hl_sp(void){
   UINT32 r=HL+SP;
   ((r&0x00010000)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((L&0x10)^(SP&0x10))^(r&0x10))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((L&0x10)^(SP&0x10))^(r&0x10))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((HL&0x0f)+(SP&0x0f))>0x0f)?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   HL=r&0xffff;
   UNSET_FLAG(FLAG_NN);
   SUB_CYCLE(8);
@@ -1863,8 +1880,15 @@ inline UINT8 ld_mem_hl_l(void){
 inline UINT8 halt(void){
   if (gbcpu->int_flag) {
     gbcpu->state=HALT_STATE;
+    //gbcpu->pc.w--;
+  } /*else {
+    UINT16 p=gbcpu->pc.w;
+    printf("here\n");
     gbcpu->pc.w--;
-  }
+    mem_write(gbcpu->pc.w,mem_read(p));
+    gbcpu_exec_one();
+    mem_write(p,0x76);
+    }*/
   SUB_CYCLE(4);
 }
 
@@ -1916,7 +1940,8 @@ inline UINT8 ld_a_a(void){
 inline UINT8 add_a_b(void){
   INT16 r=A+B;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(B&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //  ((((A&0x10)^(B&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(B&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -1926,7 +1951,8 @@ inline UINT8 add_a_b(void){
 inline UINT8 add_a_c(void){
   INT16 r=A+C;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(C&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+//((((A&0x10)^(C&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(C&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -1936,7 +1962,8 @@ inline UINT8 add_a_c(void){
 inline UINT8 add_a_d(void){
   INT16 r=A+D;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(D&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(D&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(D&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -1946,7 +1973,8 @@ inline UINT8 add_a_d(void){
 inline UINT8 add_a_e(void){
   INT16 r=A+E;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(E&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(E&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(E&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -1956,7 +1984,8 @@ inline UINT8 add_a_e(void){
 inline UINT8 add_a_h(void){
   INT16 r=A+H;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(H&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(H&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(H&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -1966,7 +1995,8 @@ inline UINT8 add_a_h(void){
 inline UINT8 add_a_l(void){
   INT16 r=A+L;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(L&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(L&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(L&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -1977,7 +2007,8 @@ inline UINT8 add_a_mem_hl(void){
   UINT8 v=mem_read(HL);
   INT16 r=A+v;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(v&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -1987,7 +2018,8 @@ inline UINT8 add_a_mem_hl(void){
 inline UINT8 add_a_a(void){
   INT16 r=A+A;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(A&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(A&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(A&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -1998,7 +2030,8 @@ inline UINT8 adc_a_b(void){
   UINT16 v=B+(IS_SET(FLAG_C)?(1):(0));
   UINT16 r=A+v;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(v&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -2009,7 +2042,8 @@ inline UINT8 adc_a_c(void){
   UINT16 v=C+(IS_SET(FLAG_C)?(1):(0));
   UINT16 r=A+v;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(v&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -2020,7 +2054,8 @@ inline UINT8 adc_a_d(void){
   UINT16 v=D+(IS_SET(FLAG_C)?(1):(0));
   UINT16 r=A+v;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(v&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -2031,7 +2066,8 @@ inline UINT8 adc_a_e(void){
   UINT16 v=E+(IS_SET(FLAG_C)?(1):(0));
   UINT16 r=A+v;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(v&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -2042,7 +2078,8 @@ inline UINT8 adc_a_h(void){
   UINT16 v=H+(IS_SET(FLAG_C)?(1):(0));
   UINT16 r=A+v;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(v&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -2053,7 +2090,8 @@ inline UINT8 adc_a_l(void){
   UINT16 v=L+(IS_SET(FLAG_C)?(1):(0));
   UINT16 r=A+v;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(v&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -2064,7 +2102,8 @@ inline UINT8 adc_a_mem_hl(void){
   UINT16 v=mem_read(HL)+(IS_SET(FLAG_C)?(1):(0));
   UINT16 r=A+v;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(v&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -2075,7 +2114,8 @@ inline UINT8 adc_a_a(void){
   UINT16 v=A+(IS_SET(FLAG_C)?(1):(0));
   UINT16 r=A+v;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(v&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -2459,7 +2499,7 @@ inline UINT8 or_a(void){
   SUB_CYCLE(4);
 }
 
-#define CP_A_R(v) {UINT16 r=A-(v); ((r&0x0100)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC)); ((r&0xff)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z)); ((((A&0x0f)-((v)&0x0f))&0x10)?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH)); SET_FLAG(FLAG_N); } 
+#define CP_A_R(v) {UINT16 r=A-(v); ((r&0x0100)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC)); ((r&0xff)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z)); ((((v&0x0f)>((A)&0x0f)))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH)); SET_FLAG(FLAG_N); } 
 
 inline UINT8 cp_b(void){
   CP_A_R(B);
@@ -2553,7 +2593,8 @@ inline UINT8 add_a_n(void){
   UINT16 v=GET_BYTE;
   UINT16 r=A+v;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(v&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -2611,7 +2652,8 @@ inline UINT8 adc_a_n(void){
   UINT16 v=GET_BYTE+(IS_SET(FLAG_C)?(1):(0));
   UINT16 r=A+v;
   ((r&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  //((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((A&0X0f)+(v&0x0f))>0x0f) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   A=r&0xff;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
@@ -2846,7 +2888,8 @@ inline UINT8 ld_hl_sp_dd(void){
   INT8 v=GET_BYTE;
   UINT32 r=SP+v;
   ((r&0x00010000)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
-  ((((SP&0x10)^(v&0x10))^(r&0x10))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  // ((((SP&0x10)^(v&0x10))^(r&0x10))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
+  (((SP&0x0f)+(v&0x0f))>0x0f) ?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
   HL=r&0xffff;
   UNSET_FLAG(FLAG_NN&FLAG_NZ);
   SUB_CYCLE(12);
@@ -4497,6 +4540,7 @@ inline UINT8 cb_inst(void){
   case 0xfe: return set_7_mem_hl();
   case 0xff: return set_7_a();  
   }
+  return 0;
 }
 
 inline UINT8 gbcpu_exec_one(void)
@@ -4687,7 +4731,7 @@ inline UINT8 gbcpu_exec_one(void)
   case 0xb6: return or_mem_hl();
   case 0xb7: return or_a();
   case 0xb8: return cp_b();
-  case 0xb9: return cp_c();
+   case 0xb9: return cp_c();
   case 0xba: return cp_d();
   case 0xbb: return cp_e();
   case 0xbc: return cp_h();
@@ -4759,6 +4803,158 @@ inline UINT8 gbcpu_exec_one(void)
   case 0xfe: return cp_n();
   case 0xff: return rst_38h();
   }
+  return 0;
+}
+
+inline void update_gb(void) {
+  static UINT8 a;
+  static INT16 lcdc_cycle;
+  static UINT32 timer_cycle;
+  static UINT32 key_cycle;
+  int v=0;
+
+  while(!conf.gb_done) {
+    v=0;
+    if (gbcpu->state!=HALT_STATE) a=gbcpu_exec_one();
+    else a=4;
+    nb_cycle+=a;
+    DIVID++;
+  
+  if (LCDCCONT&0x80) {
+    if (lcdc_cycle<=0) {
+      lcdc_cycle+=(lcdc_update()-a);
+      lcdc_mode_clk[lcdc_mode]=0;
+    } else {
+      lcdc_cycle-=(INT16)a;
+      lcdc_mode_clk[lcdc_mode]+=a;
+    }
+  } else lcdc_cycle=0;
+
+  if (TIME_CONTROL&0x04) {
+    timer_cycle+=a;
+    if (timer_cycle>=timer_clk_inc) {
+      timer_update();
+      timer_cycle=0;
+    }
+  }
+
+  if (gbcpu->state==HALT_STATE) halt_update();
+  if (INT_FLAG&VBLANK_INT) {
+    /*    int b=0;
+    do {
+      b+=gbcpu_exec_one();
+      nb_cycle+=b;
+      DIVID++;
+  
+      if (LCDCCONT&0x80) {
+	if (lcdc_cycle<=0) {
+	  // printf("%d %d \n",lcdc_mode,lcdc_mode_clk[lcdc_mode]);
+	  lcdc_cycle+=(lcdc_update()-b);
+	  lcdc_mode_clk[lcdc_mode]=0;
+	} else {
+	  lcdc_cycle-=(INT16)b;
+	  lcdc_mode_clk[lcdc_mode]+=b;
+	}
+      } else lcdc_cycle=0;
+
+      if (TIME_CONTROL&0x04) {
+	timer_cycle+=b;
+	if (timer_cycle>=timer_clk_inc) {
+	  timer_update();
+	  timer_cycle=0;
+	}
+      }
+
+    }while(b<1);
+    */
+    v=make_interrupt(VBLANK_INT);
+  }
+  if (INT_FLAG&LCDC_INT && !v) v=make_interrupt(LCDC_INT);
+  if (INT_FLAG&TIMEOWFL_INT && !v) v=make_interrupt(TIMEOWFL_INT);  
+
+  key_cycle+=a;
+  if (key_cycle>=vblank_cycle) {
+    if (conf.autofs) skip_next_frame=barath_skip_next_frame(0);
+    update_key();
+    key_cycle=0;
+  }
+  }
+}
+
+inline void update_gb_one(void) {
+  static UINT8 a;
+  static INT16 lcdc_cycle;
+  static UINT32 timer_cycle;
+  static UINT32 key_cycle;
+  int v=0;
+
+
+    v=0;
+    if (gbcpu->state!=HALT_STATE) a=gbcpu_exec_one();
+    else a=4;
+    nb_cycle+=a;
+    DIVID++;
+  
+  if (LCDCCONT&0x80) {
+    if (lcdc_cycle<=0) {
+      // printf("%d %d \n",lcdc_mode,lcdc_mode_clk[lcdc_mode]);
+      lcdc_cycle+=(lcdc_update()-a);
+      lcdc_mode_clk[lcdc_mode]=0;
+    } else {
+      lcdc_cycle-=(INT16)a;
+      lcdc_mode_clk[lcdc_mode]+=a;
+    }
+  } else lcdc_cycle=0;
+
+  if (TIME_CONTROL&0x04) {
+    timer_cycle+=a;
+    if (timer_cycle>=timer_clk_inc) {
+      timer_update();
+      timer_cycle=0;
+    }
+  }
+
+  if (gbcpu->state==HALT_STATE) halt_update();
+  
+  if (INT_FLAG&VBLANK_INT) {
+    /*
+    int b=0;
+    do {
+      b+=gbcpu_exec_one();
+      nb_cycle+=b;
+      DIVID++;
+  
+      if (LCDCCONT&0x80) {
+	if (lcdc_cycle<=0) {
+	  // printf("%d %d \n",lcdc_mode,lcdc_mode_clk[lcdc_mode]);
+	  lcdc_cycle+=(lcdc_update()-b);
+	  lcdc_mode_clk[lcdc_mode]=0;
+	} else {
+	  lcdc_cycle-=(INT16)b;
+	  lcdc_mode_clk[lcdc_mode]+=b;
+	}
+      } else lcdc_cycle=0;
+
+      if (TIME_CONTROL&0x04) {
+	timer_cycle+=b;
+	if (timer_cycle>=timer_clk_inc) {
+	  timer_update();
+	  timer_cycle=0;
+	}
+      }
+
+      }while(b<1);*/
+    v=make_interrupt(VBLANK_INT);
+  }
+  if (INT_FLAG&LCDC_INT && !v) v=make_interrupt(LCDC_INT);
+  if (INT_FLAG&TIMEOWFL_INT && !v) v=make_interrupt(TIMEOWFL_INT);  
+
+  key_cycle+=a;
+  if (key_cycle>=vblank_cycle) {
+    update_key();
+    key_cycle=0;
+  }
+
 }
 
 #undef REG_AF

@@ -18,12 +18,14 @@
                 
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <SDL/SDL.h>
 #include "memory.h"
 #include "cpu.h"
 #include "rom.h"
 #include "vram.h"
 #include "interrupt.h"
+#include "frame_skip.h"
 
 #ifdef LINUX_JOYSTICK
 #include "joystick.h"
@@ -89,7 +91,8 @@ void select_default(UINT16 adr,UINT8 v)
 
 void mbc1_select_page(UINT16 adr,UINT8 v)
 {
-  UINT8 bank=v&0x1f;
+  UINT8 bank=v/*&0x1f*/;
+  // printf("%d \n",v);
   if (bank<1) bank=1;
   active_rom_page=bank;
 }
@@ -263,7 +266,7 @@ inline void do_dma(UINT8 v)
 
 inline UINT8 mem_read_ff(UINT16 adr)
 {
-  // if (adr==0xff55) printf("%0.4x \n",gbcpu->pc.w);
+  // if (adr==0xff04) printf("%04x %02x\n",gbcpu->pc.w,DIVID);
 
   if (adr==0xff00) {
      update_gb_pad();
@@ -321,11 +324,12 @@ inline UINT8 mem_read(UINT16 adr)
   case 0x0c:return wram_page[0][adr-0xc000];break;
   case 0x0d:return wram_page[active_wram_page][adr-0xd000];break;
   }
+  return 0xFF;
 }
 
 inline void write2lcdccont(UINT8 v)
 {
-  static UINT8 temp;
+  //  static UINT8 temp;
   
   //printf("write to lcdccont %0.2x \n",v);
 
@@ -339,10 +343,11 @@ inline void write2lcdccont(UINT8 v)
   }
   
   if ((!(LCDCCONT&0x80)) && (v&0x80)) {
-    if (dma_info.type==HDMA_STAND) {
+    /*if (dma_info.type==HDMA_STAND) {
       dma_info.type=HDMA;
       do_hdma();
-    }
+      }*/
+    barath_skip_next_frame(0);
   }
    
   LCDCCONT=v;
@@ -358,7 +363,7 @@ inline void write2lcdcstat(UINT8 v)
 inline void mem_write_ff(UINT16 adr,UINT8 v) {
   UINT16 a;
   UINT8 c,p;
-  UINT32 snd_len=0;
+
 
   if (gameboy_type&COLOR_GAMEBOY) {
     if (adr==0xff4d) {
@@ -393,7 +398,8 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
       if (BGPAL_SPE&0x01) 
 	pal_col_bck[p][c].gb_tp=(pal_col_bck[p][c].gb_tp&0x00ff)|(v<<8);
       else pal_col_bck[p][c].gb_tp=(pal_col_bck[p][c].gb_tp&0xff00)|v;
-      pal_col_bck[p][c].alleg_tp=Filter[pal_col_bck[p][c].gb_tp];
+      // printf("%d \n",pal_col_bck[p][c].gb_tp);
+      pal_col_bck[p][c].alleg_tp=Filter[pal_col_bck[p][c].gb_tp&0x7FFF];
       if (BGPAL_SPE&0x80) {
 	a=BGPAL_SPE&0x3f;
 	a++;
@@ -420,7 +426,7 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
       
       //printf("%d %d\n",p,c);
 
-      pal_col_obj[p][c].alleg_tp=Filter[pal_col_obj[p][c].gb_tp];
+      pal_col_obj[p][c].alleg_tp=Filter[pal_col_obj[p][c].gb_tp&0x7FFF];
       if (OBJPAL_SPE&0x80) {
 	a=OBJPAL_SPE&0x3f;
 	a++;
@@ -514,7 +520,7 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
 inline void mem_write(UINT16 adr,UINT8 v) 
 {
   UINT8 bk;
-
+  //  printf("add %x\n",adr);
   if (adr>=0xfe00 && adr<0xfea0) {
     oam_space[adr-0xfe00]=v;
     return;

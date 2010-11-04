@@ -139,7 +139,7 @@ typedef struct SoundM4
  
 
   UINT8 env_changed:1;
-
+  UINT8 poly_changed:1;
   double sample;     // Periode en samples
   float freq;
   UINT16 sample_len; // durée en samples

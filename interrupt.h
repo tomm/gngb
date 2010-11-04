@@ -35,19 +35,18 @@
 extern UINT8 lcdc_mode;
 extern UINT8 sc_mode;
 
-extern INT16 hblank_cycle;
-extern INT16 vblank_cycle;
-extern INT16 oam_cycle;
-extern INT16 vram_cycle;
-
 extern UINT16 timer_clk_inc;
 extern UINT32 nb_cycle;
+extern UINT16 lcdc_mode_clk[4];
+
+UINT8 skip_next_frame;
+UINT32 vblank_cycle;
 
 inline void update_int(void); // DEBUGAGE
 void go2double_speed(void);
 void go2simple_speed(void);
 inline void main_loop(void);
-inline void update_gb(void);
+UINT32 get_nb_cycle(void);
 
 inline UINT8 make_interrupt(UINT8 n);
 inline UINT16 lcdc_update(void);

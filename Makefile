@@ -21,11 +21,13 @@
 
 
 DEBUG = -g 
+PROFILE = -pg -O3
 OPT = -O3  -mpentiumpro  -Wno-unused -funroll-loops -fstrength-reduce -ffast-math -malign-functions=2   -malign-jumps=2 -malign-loops=2 -fomit-frame-pointer -Wall -g
 OBJ = cpu.o memory.o vram.o interrupt.o rom.o sound.o frame_skip.o 
 
 
 CFLAGS = $(OPT) -D_REENTRANT
+# CFLAGS = $(PROFILE) -D_REENTRANT
 LIBS = -lSDL -lpthread  
 
 ifdef JOYSTICK
@@ -76,3 +78,10 @@ gngb_debug : $(OBJ) gngb_debug.o
 
 gngb : $(OBJ) main.o
 	gcc $(CFLAGS) $(OBJ)  main.o $(LIBS) -o gngb
+
+# ACTION
+
+clean : 
+	rm -f *.o *~
+
+

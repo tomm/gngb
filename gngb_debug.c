@@ -112,7 +112,7 @@ void aff_op1(int op,UINT16 *pc,char *ret)  // 1 operande 1 byte
   char a[4];
   strcpy(ret,tab_op[op].id);
   while(ret[i]!='n') i++;
-  sprintf(a,"%0.2x",mem_read(*pc+1));
+  sprintf(a,"%02x",mem_read(*pc+1));
   memcpy(ret+i,a,2);
   (*pc)+=1;
 }
@@ -123,9 +123,9 @@ void aff_op2(int op,UINT16 *pc,char *ret)   // 1 operande 2 byte
   char a[4];
   strcpy(ret,tab_op[op].id);
   while(ret[i]!='n') i++;
-  sprintf(a,"%0.2x",mem_read(*pc+2));
+  sprintf(a,"%02x",mem_read(*pc+2));
   memcpy(ret+i,a,2);
-  sprintf(a,"%0.2x",mem_read(*pc+1));
+  sprintf(a,"%02x",mem_read(*pc+1));
   memcpy(ret+i+2,a,2);
   (*pc)+=2;
 }
@@ -192,7 +192,7 @@ void run(void)
     for(i=0;i<MAX_PC-1;i++)
       last_pc[i]=last_pc[i+1];
     last_pc[MAX_PC-1]=gbcpu->pc.w;
-    update_gb();
+    update_gb_one();
   }
   conf.gb_done=0;
 }    
@@ -202,13 +202,13 @@ void aff_register(void)
   char aff[30];
   UINT16 pc=gbcpu->pc.w;;
   tab_op[mem_read(pc)].aff_op(mem_read(pc),&pc,aff);    
-  printf("[AF: %0.4x]    [HL: %0.4x]    [BC: %0.4x]",
+  printf("[AF: %04x]    [HL: %04x]    [BC: %04x]",
 	 gbcpu->af.w,
 	 gbcpu->hl.w,
 	 gbcpu->bc.w);
   if (gbcpu->int_flag) printf("   EI \n");
   else printf("   DI \n");
-  printf("[DE: %0.4x]    [SP: %0.4x]    [PC: %0.4x]",
+  printf("[DE: %04x]    [SP: %04x]    [PC: %04x]",
 	 gbcpu->de.w,
 	 gbcpu->sp.w,
 	 gbcpu->pc.w);
@@ -217,7 +217,7 @@ void aff_register(void)
   if (gbcpu->af.w&0x40) printf("N"); else printf("n");
   if (gbcpu->af.w&0x20) printf("H"); else printf("h");
   if (gbcpu->af.w&0x10) printf("C....]\n"); else printf("c....]\n");    
-  printf("[(SP): %0.2x%0.2x]   [(PC): %0.2x - %s ] \n",
+  printf("[(SP): %02x%02x]   [(PC): %02x - %s ] \n",
 	 mem_read(gbcpu->sp.w+1),mem_read(gbcpu->sp.w),
 	 mem_read(pc),aff);
   printf("state : ");
@@ -240,7 +240,7 @@ void list_code(void)
     last=line;
     id=mem_read(line);
     tab_op[id].aff_op(id,&line,op);
-    printf("address %x val %0.2x : %s \n",last,id,op);
+    printf("address %x val %02x : %s \n",last,id,op);
     line++;
   }
 }     
@@ -255,16 +255,16 @@ void exec_until(void)
 
   if (add==gbcpu->pc.w) {
     for(i=0;i<MAX_PC-1;i++)
-      last_pc[MAX_PC-1]=last_pc[i+1];
+      last_pc[i]=last_pc[i+1];
     last_pc[MAX_PC-1]=gbcpu->pc.w;
-    update_gb();
+    update_gb_one();
   }
   
   while(!conf.gb_done && add!=gbcpu->pc.w) {
     for(i=0;i<MAX_PC-1;i++)
-      last_pc[MAX_PC-1]=last_pc[i+1];
+      last_pc[i]=last_pc[i+1];
     last_pc[MAX_PC-1]=gbcpu->pc.w;
-    update_gb();
+    update_gb_one();
     if (gbcpu->sp.w<=0x1000 && gbcpu->sp.w>=0x100)  conf.gb_done=1;
   }  
   conf.gb_done=0;
@@ -279,8 +279,8 @@ void dump_memory(void)
   sscanf(arg,"%x",&add);
 
   for(i=add,j=0;i<=add+0xff;i++) {
-    if (j==0) printf("%0.4x  ",i);
-    printf("%0.2x ",mem_read(i));
+    if (j==0) printf("%04x  ",i);
+    printf("%02x ",mem_read(i));
     if (j==15) {
       printf("\n");
       j=0;
@@ -377,7 +377,7 @@ void set_reg(void)
     case 'S':gbcpu->sp.w=v;break; 
     }
   }
-  printf("set %c to %0.2x \n",c,v);
+  printf("set %c to %02x \n",c,v);
   free(arg);
 }
 
@@ -388,11 +388,11 @@ void show_info(void)
   printf("active ram page %d on %d\n",active_ram_page,nb_ram_page-1);
   printf("active vram page %d on %d\n",active_vram_page,nb_vram_page-1);
   printf("active wram page %d on %d\n",active_wram_page,nb_wram_page-1);
-  printf("LCDCCONT %0.2x LCDCSTAT %0.2x\n",LCDCCONT,LCDCSTAT);
-  printf("CURLINE %0.2x CMP_LINE %0.2x\n",CURLINE,CMP_LINE);
-  printf("INT_FLAG %0.2x INT_ENABLE %0.2x \n",INT_FLAG,INT_ENABLE);
+  printf("LCDCCONT %02x LCDCSTAT %02x\n",LCDCCONT,LCDCSTAT);
+  printf("CURLINE %02x CMP_LINE %02x\n",CURLINE,CMP_LINE);
+  printf("INT_FLAG %02x INT_ENABLE %02x \n",INT_FLAG,INT_ENABLE);
   printf("last pc : ");
-  for(i=0;i<MAX_PC;i++) printf("%0.2x \n",last_pc[i]);
+  for(i=0;i<MAX_PC;i++) printf("%02x \n",last_pc[i]);
 }
 
 void select_page(void)

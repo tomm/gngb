@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. 
  */
 
-
+#include <stdlib.h>
 #include "vram.h"
 #include "memory.h"
 #include "rom.h"
@@ -260,14 +260,14 @@ inline void draw_obj(UINT16 *buf)
 {
   INT8 i;
   for(i=nb_spr-1;i>=0;i--) 
-    draw_spr(buf,&gb_spr[i]);
+    draw_spr(buf,&gb_spr[(UINT8)i]);
 }
 
 inline void draw_obj_col(UINT16 *buf)
 {
   INT8 i;
   for(i=nb_spr-1;i>=0;i--) 
-    draw_spr_col(buf,&gb_spr[i]);
+    draw_spr_col(buf,&gb_spr[(UINT8)i]);
 }
 
 inline void draw_back_col(UINT16 *buf)
@@ -395,7 +395,7 @@ inline void draw_back(UINT16 *buf)
 
 inline void draw_win_col(UINT16 *buf)
 {
-  UINT8 *tb,*tp,*att_tb,*tiles;
+  UINT8 *tb,*tp,*att_tb; // ,*tiles;
   int y,x,i,sx;
   INT16 no_tile;
   UINT8 bit0,bit1,c,p,att,xflip,yflip;
@@ -504,6 +504,8 @@ UINT8 draw_screen_col(void)
 inline void clear_screen(void)
 {
   UINT8 i,j;
+ 
+  SDL_FillRect(screen,NULL,pal_bck[0]);
   for(i=0;i<170;i++)
     for(j=0;j<170;j++)
       back_col[i][j]=0x00;

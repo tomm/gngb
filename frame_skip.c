@@ -1,20 +1,20 @@
 /* taken from xmame */
-
-#include "frame_skip.h"
+#include <unistd.h>
 #include <sys/time.h>
 #include <math.h>
+#include "frame_skip.h"
 
 /* don't define this for a production version 
 #define barath_debug
  */
 /* MAME Version */
-#define FRAMESKIP_LEVELS 12
+#define FRAMESKIP_LEVELS 22
 
 typedef clock_t uclock_t;
 #define  UCLOCKS_PER_SEC CLOCKS_PER_SEC
-#define uclock clock
+// #define uclock clock
 
-#define CPU_FPS 60
+#define CPU_FPS 59.7
 
 uclock_t uclock(void)
 {
@@ -33,7 +33,7 @@ int throttle=1;
 int autoframeskip=1;
 int frameskip;
 int sleep_idle=0;
-int max_autoframeskip=12;
+int max_autoframeskip=FRAMESKIP_LEVELS;//22;
 
 static int barath_skip_this_frame(void)
 {
@@ -139,36 +139,19 @@ int barath_skip_next_frame(int showfps)
     avg_uclocks = (avg_uclocks * 5 + curr - scratch_time) / (6 + frames_skipped);
     speed = (speed * 5 + (float) uclocks_per_frame / avg_uclocks) / 6.0;
     /* double-forward average  */
-
+#if 0
     if (showfps) {
       static char buf[80] = "";
-      static int showme = 0;
-
+      static int showme = 20;
+      //printf("hello\n");
       if (showme++ > 20) {
-	int fps = (60 * framerate * speed + .5);
-#ifdef barath_debug
-	sprintf(buf, "%2d %d %s%s%s%2d %3d%%(%3d/%3d)", debug_value, sysload,
-		throttle ? "T" : "", (throttle && sleep_idle) ? "S" : "",
-		(throttle && autoframeskip) ? "A" : "F", frameskip,
-		(int) (speed * 100 + .5), (int) (fps / slow_speed),
-		(int) (60 / slow_speed));
-
-	/* set game speed based on manual frameskip setting */
-	if (!throttle && !autoframeskip)
-	  slow_speed = (.25 + 3 * frameskip / (float) FRAMESKIP_LEVELS);
-#else
-	sprintf(buf, " %s%s%sfskp%2d %3d%%(%2d/%d fps)",
-	      throttle ? "T " : "", (throttle && sleep_idle) ? "S " : "",
-		(throttle && autoframeskip) ? "auto" : "", frameskip,
-	 (int) (speed * 100 + .5), fps, (int)60);
-#endif
-	showme = 0;
+	int fps=60 * framerate * speed + .5;
+	sprintf(conf.fps,"%2d",fps);
+	//printf("%2d\n",fps);
+	showme=0;
       }
-      //clear_to_color(fps_buf,0xf81f);
-      //textout(fps_buf,font,buf,1,1,0xFFFF);
-      //printf("%s",buf);
-      //ui_text(buf, Machine->uiwidth - strlen(buf) * Machine->uifontwidth, 0);
     }
+#endif
     frames_skipped = 0;
   }
 
