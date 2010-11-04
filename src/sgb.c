@@ -39,7 +39,7 @@ extern Uint16 Filter[32768];
 Uint16 sgb_border_pal[64];
 Uint16 sgb_scpal[512][4];   // 512 pallete of 4 color
 Uint8 sgb_ATF[45][90];
-Uint sgb_buffer[4160];
+Uint8 sgb_buffer[4160];
 
 static Uint8 sgb_flag=0;
 
@@ -87,7 +87,7 @@ __inline__ void sgb_tiles_pat_transfer(void) {
 __inline__ void sgb_tiles_map_transfer(void) {
   int i;
 
-  printf("%02x\n",LCDCCONT);
+  //printf("%02x\n",LCDCCONT);
 
   for(i=0;i<32*32;i++) {
     /* FIXME: dkl2 et conker => 0x1000 */
@@ -535,12 +535,12 @@ void sgb_exec_cmd(void) {
   
   if (sgb.cmd==0xff) {
     int i;
-    
+/*    
     printf("sgb:%02x nb:%d pack: ",sgb.pack[0]>>3,sgb.pack[0]&0x07);
     for(i=0;i<SGB_PACKSIZE;i++)
       printf("%02x ",sgb.pack[i]);
     putchar('\n');
-    
+  */  
     sgb.cmd=sgb.pack[0]>>3;
   }   
   //  printf("LCDCSTAT: %02x LCDCCONT: %02x SCR: %02x %02x WIN: %02x %02x LY: %02x LYC: %02x\n",LCDCSTAT,LCDCCONT,SCRX,SCRY,WINX,WINY,CURLINE,CMP_LINE);

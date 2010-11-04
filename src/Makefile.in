@@ -65,13 +65,9 @@ SDL_CONFIG = @SDL_CONFIG@
 UNZIP_SRC = @UNZIP_SRC@
 VERSION = @VERSION@
 
-bin_PROGRAMS = gngb gngb_dbg
+bin_PROGRAMS = gngb 
 
 gngb_SOURCES = cpu.c cpu.h emu.c emu.h frame_skip.c frame_skip.h global.h interrupt.c interrupt.h main.c memory.c memory.h message.c message.h rom.c rom.h serial.c  serial.h sgb.c sgb.h sound.c sound.h tiny_font.h vram.c vram.h video_yuy2.c video_yuv.c video_yuv.h video_yv12.c video_std.c video_gl.c video_gl.h video_std.h menu.h menu.c menu_image.h fileio.h fileio.c save.h save.c @UNZIP_SRC@ 
-
-gngb_dbg_SOURCES = cpu.c cpu.h emu.c emu.h frame_skip.c frame_skip.h global.h interrupt.c interrupt.h  memory.c memory.h message.c message.h rom.c rom.h serial.c  serial.h sgb.c sgb.h sound.c sound.h tiny_font.h vram.c vram.h video_yuy2.c video_yuv.c video_yuv.h video_yv12.c video_std.c video_gl.c video_gl.h video_std.h menu.h menu.c menu_image.h fileio.h fileio.c save.h save.c  @UNZIP_SRC@ 
-
-gngb_dbg_LDADD = debuger/cmd.o debuger/op.o debuger/cmd_code.o debuger/cmd_cpu.o debuger/cmd_lcd.o debuger/args.o debuger/main.o @LIBOBJS@ -lreadline
 
 gngb_LDADD = @LIBOBJS@
 EXTRA_DIST = getopt.h
@@ -90,13 +86,6 @@ message.o rom.o serial.o sgb.o sound.o vram.o video_yuy2.o video_yuv.o \
 video_yv12.o video_std.o video_gl.o menu.o fileio.o save.o
 gngb_DEPENDENCIES =  @LIBOBJS@
 gngb_LDFLAGS = 
-gngb_dbg_OBJECTS =  cpu.o emu.o frame_skip.o interrupt.o memory.o \
-message.o rom.o serial.o sgb.o sound.o vram.o video_yuy2.o video_yuv.o \
-video_yv12.o video_std.o video_gl.o menu.o fileio.o save.o
-gngb_dbg_DEPENDENCIES =  debuger/cmd.o debuger/op.o debuger/cmd_code.o \
-debuger/cmd_cpu.o debuger/cmd_lcd.o debuger/args.o debuger/main.o \
-@LIBOBJS@
-gngb_dbg_LDFLAGS = 
 CFLAGS = @CFLAGS@
 COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
@@ -108,8 +97,8 @@ DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
 
 TAR = tar
 GZIP_ENV = --best
-SOURCES = $(gngb_SOURCES) $(gngb_dbg_SOURCES)
-OBJECTS = $(gngb_OBJECTS) $(gngb_dbg_OBJECTS)
+SOURCES = $(gngb_SOURCES)
+OBJECTS = $(gngb_OBJECTS)
 
 all: all-redirect
 .SUFFIXES:
@@ -170,10 +159,6 @@ gngb: $(gngb_OBJECTS) $(gngb_DEPENDENCIES)
 	@rm -f gngb
 	$(LINK) $(gngb_LDFLAGS) $(gngb_OBJECTS) $(gngb_LDADD) $(LIBS)
 
-gngb_dbg: $(gngb_dbg_OBJECTS) $(gngb_dbg_DEPENDENCIES)
-	@rm -f gngb_dbg
-	$(LINK) $(gngb_dbg_LDFLAGS) $(gngb_dbg_OBJECTS) $(gngb_dbg_LDADD) $(LIBS)
-
 tags: TAGS
 
 ID: $(HEADERS) $(SOURCES) $(LISP)
@@ -218,51 +203,6 @@ distdir: $(DISTFILES)
 	    || cp -p $$d/$$file $(distdir)/$$file || :; \
 	  fi; \
 	done
-cpu.o: cpu.c rom.h global.h ../config.h cpu.h memory.h interrupt.h \
-	serial.h emu.h fileio.h
-emu.o: emu.c ../config.h getopt.h emu.h global.h fileio.h message.h \
-	rom.h vram.h serial.h memory.h cpu.h interrupt.h menu.h \
-	frame_skip.h sound.h sgb.h video_std.h save.h
-fileio.o: fileio.c ../config.h getopt.h fileio.h unzip.h
-frame_skip.o: frame_skip.c ../config.h getopt.h frame_skip.h message.h \
-	emu.h global.h fileio.h
-interrupt.o: interrupt.c interrupt.h global.h ../config.h frame_skip.h \
-	memory.h vram.h cpu.h emu.h fileio.h rom.h
-main.o: main.c ../config.h getopt.h global.h emu.h fileio.h memory.h \
-	cpu.h rom.h vram.h interrupt.h serial.h frame_skip.h sgb.h \
-	sound.h save.h
-memory.o: memory.c memory.h global.h ../config.h emu.h fileio.h cpu.h \
-	rom.h vram.h interrupt.h frame_skip.h sound.h serial.h \
-	message.h sgb.h
-menu.o: menu.c ../config.h memory.h global.h emu.h fileio.h menu.h \
-	message.h vram.h video_std.h rom.h sound.h menu_image.h
-message.o: message.c global.h ../config.h tiny_font.h message.h emu.h \
-	fileio.h menu.h video_std.h vram.h
-rom.o: rom.c ../config.h getopt.h rom.h global.h memory.h emu.h fileio.h \
-	cpu.h interrupt.h vram.h sound.h save.h
-save.o: save.c emu.h global.h ../config.h fileio.h rom.h memory.h vram.h \
-	interrupt.h cpu.h
-serial.o: serial.c ../config.h getopt.h serial.h global.h interrupt.h \
-	memory.h emu.h fileio.h
-sgb.o: sgb.c ../config.h memory.h global.h sgb.h vram.h rom.h emu.h \
-	fileio.h
-sound.o: sound.c ../config.h emu.h global.h fileio.h sound.h memory.h \
-	interrupt.h cpu.h
-unzip.o: unzip.c unzip.h
-video_gl.o: video_gl.c global.h ../config.h memory.h vram.h message.h \
-	tiny_font.h emu.h fileio.h interrupt.h sgb.h video_std.h \
-	video_gl.h
-video_std.o: video_std.c global.h ../config.h memory.h vram.h message.h \
-	tiny_font.h emu.h fileio.h interrupt.h sgb.h video_std.h menu.h
-video_yuv.o: video_yuv.c ../config.h cpu.h global.h emu.h fileio.h \
-	vram.h video_yuv.h memory.h message.h
-video_yuy2.o: video_yuy2.c ../config.h global.h memory.h video_yuv.h \
-	vram.h video_std.h sgb.h message.h emu.h fileio.h interrupt.h
-video_yv12.o: video_yv12.c global.h ../config.h memory.h video_yuv.h \
-	vram.h video_std.h sgb.h message.h emu.h fileio.h interrupt.h
-vram.o: vram.c vram.h global.h ../config.h memory.h rom.h interrupt.h \
-	message.h emu.h fileio.h sgb.h video_std.h menu.h
-
 info-am:
 info: info-am
 dvi-am:
@@ -333,27 +273,6 @@ all-redirect all-am all installdirs mostlyclean-generic \
 distclean-generic clean-generic maintainer-clean-generic clean \
 mostlyclean distclean maintainer-clean
 
-
-debuger/cmd.o : debuger/cmd.c
-	$(COMPILE) -c  debuger/cmd.c -o debuger/cmd.o
-
-debuger/op.o : debuger/op.c
-	$(COMPILE) -c  debuger/op.c -o debuger/op.o
-
-debuger/cmd_code.o : debuger/cmd_code.c
-	$(COMPILE) -c  debuger/cmd_code.c -o debuger/cmd_code.o
-
-debuger/cmd_cpu.o : debuger/cmd_cpu.c
-	$(COMPILE) -c  debuger/cmd_cpu.c -o debuger/cmd_cpu.o
-
-debuger/cmd_lcd.o : debuger/cmd_lcd.c
-	$(COMPILE) -c  debuger/cmd_lcd.c -o debuger/cmd_lcd.o
-
-debuger/args.o : debuger/args.c
-	$(COMPILE) -c  debuger/args.c -o debuger/args.o
-
-debuger/main.o : debuger/main.c
-	$(COMPILE) -c  debuger/main.c -o debuger/main.o
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
