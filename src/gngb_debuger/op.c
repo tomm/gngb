@@ -540,23 +540,23 @@ int get_nb_byte(UINT8 op) {
 int aff_op0(char *format,UINT16 pc,char *ret) {
   ret[0]=0;
   sprintf(ret,format);
-  return 0;
+  return 1;
 }
 
 int aff_op1(char *format,UINT16 pc,char *ret) {
   ret[0]=0;
   sprintf(ret,format,mem_read(pc+1));
-  return 1;
+  return 2;
 }
 
 int aff_op2(char *format,UINT16 pc,char *ret) {
   ret[0]=0;
   sprintf(ret,format,(mem_read(pc+2)<<8)|mem_read(pc+1));
-  return 2;
+  return 3;
 }
 
 int aff_op_cb(char *format,UINT16 pc,char *ret) {
   tab_op[mem_read(pc+1)+256].aff_op(tab_op[mem_read(pc+1)+256].format,pc+1,ret);  
-  return 1;
+  return 2;
 }
 

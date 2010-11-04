@@ -1,0 +1,42 @@
+This file contains any messages produced by compilers while
+running configure, to aid debugging if configure makes a mistake.
+
+configure:565: checking for a BSD compatible install
+configure:618: checking whether build environment is sane
+configure:675: checking whether make sets ${MAKE}
+configure:721: checking for working aclocal
+configure:734: checking for working autoconf
+configure:747: checking for working automake
+configure:760: checking for working autoheader
+configure:773: checking for working makeinfo
+configure:794: checking for gcc
+configure:907: checking whether the C compiler (gcc  ) works
+configure:923: gcc -o conftest    conftest.c  1>&5
+configure:949: checking whether the C compiler (gcc  ) is a cross-compiler
+configure:954: checking whether we are using GNU C
+configure:982: checking whether gcc accepts -g
+configure:1016: checking for pthread_create in -lpthread
+configure:1067: checking for sdl-config
+configure:1098: checking for SDL_Init in -lSDL
+configure:1152: checking for dirent.h that defines DIR
+configure:1190: checking for opendir in -ldir
+configure:1273: checking how to run the C preprocessor
+configure:1353: checking for ANSI C header files
+configure:1460: checking for fcntl.h
+configure:1460: checking for sys/time.h
+configure:1460: checking for unistd.h
+configure:1498: checking for working const
+configure:1573: checking whether time.h and sys/time.h may both be included
+configure:1609: checking for vprintf
+configure:1716: checking for gettimeofday
+configure:1716: checking for mkdir
+configure:1716: checking for socket
+configure:1716: checking for strtol
+configure:1782: checking for GL/gl.h
+configure:1815: checking for glBegin in -lGL
+configure:2030: checking for gtk-config
+configure:2065: checking for gtk_init in -lgtk
+configure:2084: gcc -o conftest  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT -DSDL_GL     conftest.c -lgtk  -lSDL -lpthread  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread -L/usr/X11R6/lib -lGL  -L/usr/lib -L/usr/X11R6/lib -lgtk -lgdk -rdynamic -lgmodule -lglib -ldl -lXi -lXext -lX11 -lm 1>&5
+configure:2119: checking for glib-config
+configure:2154: checking for g_strdup in -lglib
+configure:2173: gcc -o conftest  -DSDL_YUV -I/usr/local/include -I/usr/local/include/SDL -D_REENTRANT -DSDL_GL     conftest.c -lglib  -lSDL -lpthread  -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL -lpthread -L/usr/X11R6/lib -lGL  -L/usr/lib -L/usr/X11R6/lib -lgtk -lgdk -rdynamic -lgmodule -lglib -ldl -lXi -lXext -lX11 -lm -L/usr/lib -lglib 1>&5

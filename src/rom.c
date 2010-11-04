@@ -143,7 +143,6 @@ void get_filename_ext(char *f,char *ext) {
   check_dir(f);
   strcat(f,rom_name);
   strcat(f,ext);
-  free(a);
 }
 
 void get_ext_nb(char *r,int n) {
@@ -217,7 +216,7 @@ int save_rom_timer(void) {
   for(i=0;i<5;i++)
     fprintf(stream,"%02x ",rom_timer->reg[i]);
 
-  fprintf(stream,"%d",(long)time(NULL));
+  fprintf(stream,"%ld",(long)time(NULL));
 
   fclose(stream);
   return 0;
@@ -239,8 +238,7 @@ int load_rom_timer(void) {
   /* FIXME : must adjust the time still last time */
   for(i=0;i<5;i++)
     fscanf(stream,"%02x",&rom_timer->reg[i]);
-
-  fscanf(stream,"%d",&dt);
+  fscanf(stream,"%ld",&dt);
 
   {
     int h,m,s,d,dd;
@@ -298,7 +296,7 @@ void set_gameboy_type(void) {
   if (rom_gb_type&COLOR_GAMEBOY)  // prefer always CGB
     conf.gb_type=COLOR_GAMEBOY;
   else {
-    if (rom_gb_type&SUPER_GAMEBOY) // prefer SGB if not CGB
+    if (rom_gb_type&SUPER_GAMEBOY && !conf.yuv) // prefer SGB if not CGB
       conf.gb_type=SUPER_GAMEBOY;
     else 
       conf.gb_type=NORMAL_GAMEBOY;

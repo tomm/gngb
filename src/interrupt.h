@@ -29,12 +29,24 @@
 #define LINE_90_BEGIN 5
 #define LINE_90_END 6
 #define BEGIN_OAM_PER 7
+#define LINE_99 8
 
 #define NO_INT 0
 #define VBLANK_INT 0x01
 #define LCDC_INT 0x02
 #define TIMEOWFL_INT 0x04
 #define SERIAL_INT 0x08
+
+// LCD Interrupt
+
+#define LY_LYC_CO_SEL 1
+#define OAM_SEL 2
+#define VBLANK_SEL 3
+#define HBLANK_SEL 4
+#define CHECK_LYC_LY (((CURLINE==CMP_LINE) && (CURLINE!=0x00)) ||\
+		      ((CURLINE==0x99) && (CMP_LINE==0x00)))
+void set_lcd_int(char type);
+extern UINT8 ISTAT;
 
 extern UINT32 nb_cycle;
 
@@ -91,12 +103,10 @@ extern UINT8 vram_init_pal;
 
 typedef struct {
   UINT16 clk_inc;
-  UINT32 cycle;
+  INT32 cycle;
 }GBTIMER;
 
 GBTIMER *gbtimer;
-
-UINT8 skip_next_frame;
 
 void gblcdc_init(void);
 void gblcdc_reset(void);
@@ -113,9 +123,10 @@ void unset_interrupt(UINT8 n);
 UINT8 make_interrupt(UINT8 n);
 UINT8 request_interrupt(UINT8 n);
 
+//int check_lcdstat_int(void);
 void gblcdc_set_on(void);
 void gblcdc_addcycle(INT32 c);
-UINT16 gblcdc_update(void);
+extern UINT16 (*gblcdc_update)(void);
 void gbtimer_update(void);
 void halt_update(void); 
 

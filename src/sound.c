@@ -82,22 +82,12 @@ void write_sound_reg(UINT16 add,UINT8 val)
  clk=get_nb_cycle();
   snd_len = (UINT32)((float)clk*sample_rate/(float)((gbcpu->mode== DOUBLE_SPEED)?8388608.0:4194304.0));
   
+  if (snd_len) update_gb_sound(snd_len<<1);
  
-  // printf("%d\n",snd_len);
-  if (snd_len) {
-    update_gb_sound(snd_len<<1);
-    // printf("%d\n",clk);
-    //clk=0;
-  }
-
   himem[add-0xfea0]=val;
 
   if (add>=0xFF30 && add<=0xFF3F) { // Wave Pattern RAM
-    if (!snd_m3.is_on) {
-      snd_m3.wave[add-0xFF30]=val;
-      /*      printf("%02x(%x),",val,add-0xFF30);
-	      if (add-0xFF30==0xf) printf("\n");*/
-    }
+    if (!snd_m3.is_on) snd_m3.wave[add-0xFF30]=val;
     return;
   }
 
@@ -108,7 +98,6 @@ void write_sound_reg(UINT16 add,UINT8 val)
     snd_g.SO2_OutputLevel=(val&0x70)>>4;
     snd_g.Vin_SO1=(val&0x8)>>3;
     snd_g.Vin_SO2=(val&0x80)>>7;
-    // printf("outup %d %d \n",snd_g.SO1_OutputLevel,snd_g.SO2_OutputLevel);
     return;
     break;
   case 0xFF25 : // NR51
@@ -133,7 +122,6 @@ void write_sound_reg(UINT16 add,UINT8 val)
     snd_m1.swp_dir=(val&0x8)>>3;
     snd_m1.swp_shift=val&0x7;
     snd_m1.sample_sweep_time=(float)sample_rate*snd_m1.swp_time/128.0;
-    //    printf("sweep %d %d %d\n",snd_m1.swp_time,snd_m1.swp_dir,snd_m1.swp_shift);
     break;
   case 0xFF11 : // NR11
     snd_m1.duty=(val&0xC0)>>6;
@@ -364,8 +352,6 @@ void init_freq_table(void)
 
 inline INT8 update_snd_m1(void)
 {
-  static float cp=0;
-  static float samp;
   static int env=0;
   static char sp=0;
   static int lp=0; 
@@ -573,11 +559,9 @@ inline INT8 update_snd_m2(void)
 
 inline INT8 update_snd_m3(void)
 {
-  // static float cp=0;
   static int lp=0;
   static int sp=0;
   static int val=0;
-  float j;
 
   if (snd_m3.sample==0)
     return 0;
@@ -674,7 +658,6 @@ inline INT8 update_snd_m4(void)
   static int cur_env_step;
   static UINT32 poly_counter;
   int vol;
-  static int rol=0;
   float j;
 
   /* prohibited code */
@@ -945,17 +928,20 @@ int gbsound_init(void)
   desired.callback=update_stream;
   desired.userdata = NULL;
 
-  SDL_OpenAudio(&desired,NULL);
-  playbuf=(INT8*)malloc(desired.size);
-  buf_size=desired.size;
-  memset(playbuf,0,desired.size);
-  printf("Allocating %d\n",desired.size);
-  init_freq_table();
+  if (!SDL_OpenAudio(&desired,NULL)) {
+    playbuf=(INT8*)malloc(desired.size);
+    buf_size=desired.size;
+    memset(playbuf,0,desired.size);
+    printf("Allocating %d for sound\n",desired.size);
+    init_freq_table();
 
-  SDL_PauseAudio(0);
-  SDL_Delay(1000); // Pour pemetre au thread audio de ce lancer
-  update_sound_reg();
-  return 0;
+    SDL_PauseAudio(0);
+    SDL_Delay(1000); // Pour pemetre au thread audio de ce lancer
+    update_sound_reg();
+    return 0;
+  } 
+  printf("Error while trying to init sound\n");
+  return 1;
 }
 
 void close_sound(void)

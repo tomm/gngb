@@ -1,173 +1,184 @@
-//#include "code_info.h"
+#include <gtk/gtk.h>
+#include "op.h"
 #include "debuger.h"
+#include "break.h"
+#include "../global.h"
 #include "../memory.h"
 #include "../cpu.h"
-#include "op.h"
-//#include "break.h"
 
-extern int COL1,LGN1;
+#define NB_LINE 12
 
-static UINT16 cur_add=0x100;
-static UINT16 beg_add=0x100;
-static UINT16 last_add=0x100;
-static UINT16 max_add=0xfff0;
-static INT8 cur_add_pos=0;
-static int nb_line;
-char *op_size;
+struct {
+  GtkWidget *clist;
+  GtkObject *vadj;
+  int curent_line;
+  UINT16 curent_add;
+  UINT16 begin_add;
+  UINT16 last_add;
+  UINT16 line_add[NB_LINE];
+}code_info;
 
-MY_WIN *code_info_win=NULL;
+GdkColor bp_col={1,0xffff,0,0};
+GdkColor pc_col={1,0,0xffff,0};
+GdkColor pc_bp_col={1,0xffff,0xffff,0};
+GdkColor normal_col={1,0xffff,0xffff,0xffff};  
 
-void code_win_update(MY_WIN *w);
-int code_win_key_pressed(MY_WIN *w,int key_code);
-int code_win_mouse_event(MY_WIN *w,MEVENT *e);
-void code_win_resize(MY_WIN *w,int l,int c);
-
-void init_code_info(void) {
-  WINDOW *w;
-  
-  code_info_win=new_mywin();
-  w=newwin(LGN1,COL1,0,0);
-
-  code_info_win->p=new_panel(w);
-  
-  code_info_win->name=strdup("CODE");
-  draw_border_win(code_info_win); 
- 
-  // function
-  code_info_win->key_pressed=code_win_key_pressed;
-  code_info_win->mouse_event=code_win_mouse_event;
-  code_info_win->update=code_win_update;
-  code_info_win->resize=code_win_resize;
-  
-
-  keypad(w,TRUE);
-  
-  //  wrefresh(code_info_win->w);
-  add2win_list(code_info_win);
-
-  nb_line=LGN1-2;
-  op_size=(char *)malloc(LGN1-2);
+static UINT16 get_last_add(UINT16 begin_add) {
+  int i;
+  for(i=0;i<NB_LINE;i++) 
+    begin_add+=(get_nb_byte(mem_read(begin_add)));
+  return begin_add;		
 }
 
-int code_win_key_pressed(MY_WIN *w,int key_code) {
+static void code_info_set_begin_add(UINT16 add,char update_adj) {
   int i;
-  
-  switch(key_code) {
-  case KEY_HOME:beg_add=cur_add=0x100;cur_add_pos=0;break;
-  case KEY_END:beg_add=cur_add=max_add;cur_add_pos=0;break;
-  case KEY_DOWN:
-    cur_add+=get_nb_byte(mem_read(cur_add));
-    if (cur_add>last_add) beg_add+=get_nb_byte(mem_read(beg_add));
-    else cur_add_pos++;
-    break;
-  case KEY_UP:
-    cur_add_pos--;
-    if (cur_add_pos>0)
-      cur_add-=op_size[cur_add_pos];
-    else {
-      cur_add_pos=0;
-      cur_add--;
-      beg_add=cur_add;
-    }
-    break;
-  case KEY_NPAGE:
-    beg_add=last_add;
-    cur_add=beg_add;
-    for(i=0;i<cur_add_pos;i++)
-      cur_add+=get_nb_byte(mem_read(cur_add));
-    break;
-  case KEY_PPAGE:
-    beg_add-=nb_line;
-    cur_add=beg_add;
-    for(i=0;i<cur_add_pos;i++)
-      cur_add+=get_nb_byte(mem_read(cur_add));
-    break;
-  case KEY_F(2):
-    if (is_break_point(cur_add)) 
-      del_break_point(cur_add);
-    else add_break_point(cur_add);
-    break;
-  default:return FALSE;
-  }
-  
-  /*if (cur_add<0) cur_add=0;
-    if (cur_add>max_add) cur_add=max_add;
-    if (cur_add<beg_add) beg_add=cur_add;
-    if (cur_add>=last_add) beg_add+=get_nb_byte(mem_read(beg_add));*/
+  UINT8 op;
+  char text[50];
+ 
 
-  code_info_win->update(code_info_win);
+  code_info.begin_add=add;
+  gtk_clist_freeze(GTK_CLIST(code_info.clist));
+  for(i=0;i<NB_LINE;i++) {
+    code_info.line_add[i]=add;
+
+    if (is_break_point(add)) {
+      if (gbcpu->pc.w==add)
+	gtk_clist_set_background(GTK_CLIST(code_info.clist),i,&pc_bp_col);
+      else gtk_clist_set_background(GTK_CLIST(code_info.clist),i,&bp_col);
+    } else {
+      if (gbcpu->pc.w==add)
+	gtk_clist_set_background(GTK_CLIST(code_info.clist),i,&pc_col);
+      else gtk_clist_set_background(GTK_CLIST(code_info.clist),i,&normal_col);
+    }
+    
+    sprintf(text,"0x%04x",add);
+    gtk_clist_set_text(GTK_CLIST(code_info.clist),i,0,text);
+    get_mem_id(add,text);
+    gtk_clist_set_text(GTK_CLIST(code_info.clist),i,1,text);
+    op=mem_read(add);
+    add+=(aff_op(op,add,text));
+    gtk_clist_set_text(GTK_CLIST(code_info.clist),i,2,text);
+  }  
+  code_info.last_add=add;
+  gtk_clist_thaw(GTK_CLIST(code_info.clist));
+  if (update_adj) gtk_adjustment_set_value(GTK_ADJUSTMENT(code_info.vadj),
+					   code_info.begin_add);
+}
+
+static void code_info_add2begin_add(INT16 off,char update_adj) {
+  int i;
+  UINT16 add=code_info.begin_add;
+  if (off>0) {
+    for(i=0;i<off && add<0xffff;i++) 
+      add+=get_nb_byte(mem_read(add));
+  } else {
+    if (((INT32)add+off)<=0) add=0;
+    else add+=off;
+  }
+  code_info_set_begin_add(add,update_adj);
+}
+
+static char code_info_check_add(UINT32 add) {
+  int i;
+  for(i=0;i<NB_LINE;i++) {
+    add+=get_nb_byte(mem_read(add));
+    if (add>0xffff) return FALSE;
+  }  
   return TRUE;
 }
-
-int code_win_mouse_event(MY_WIN *w,MEVENT *e) {
-  return FALSE;
+ 
+static void cb_vadj_value_changed(GtkAdjustment *adj,gpointer data) {
+  UINT16 add=(UINT16)adj->value;
+  if (code_info_check_add(add))
+    code_info_set_begin_add(add,FALSE);
 }
 
-void code_win_update(MY_WIN *w) {
-  static UINT16 old_pc=0x100;
-  int i;
-  UINT16 add;
-  UINT16 l;
-  UINT8 id;
-  char s[100];
-  char t[10];
-  int att_on=0;
-  int att_off=0;
-
-  WINDOW *win=panel_window(w->p);
-
-  if (old_pc!=gbcpu->pc.w && (gbcpu->pc.w<beg_add || gbcpu->pc.w>last_add)) {
-    beg_add=cur_add=old_pc=gbcpu->pc.w;
-    cur_add_pos=0;
-  }    
-  
-  add=beg_add;
-  for(i=1;i<LGN1-1;i++) {
-    /*    if (add==cur_add) 
-      wattron(win,A_REVERSE|COLOR_PAIR(COLOR_WHITE));
-    else {
-      wattroff(win,A_REVERSE|COLOR_PAIR(COLOR_GREEN));
-      if (add==gbcpu->pc.w) 
-	wattron(win,A_REVERSE|COLOR_PAIR(COLOR_GREEN));
-      else {
-	wattroff(win,A_REVERSE|COLOR_PAIR(COLOR_GREEN));
-	if (is_break_point(add)) 
-	  wattron(win,A_REVERSE|COLOR_PAIR(COLOR_RED));
-	else wattroff(win,A_REVERSE|COLOR_PAIR(COLOR_RED));
-      }  
-      }*/
-    att_on=0;
-    att_off=0;
-    if (add==cur_add) att_on|=A_REVERSE|COLOR_PAIR(COLOR_BLUE);
-    else att_off|=A_REVERSE|COLOR_PAIR(COLOR_WHITE);
-    if (add==gbcpu->pc.w) att_on|=A_REVERSE|COLOR_PAIR(COLOR_GREEN);
-    else att_off|=A_REVERSE|COLOR_PAIR(COLOR_GREEN);
-    if (is_break_point(add)) att_on|=A_REVERSE|COLOR_PAIR(COLOR_RED);
-    else att_off|=A_REVERSE|COLOR_PAIR(COLOR_RED);
-
-    wattroff(win,att_off);
-    wattron(win,att_on);
-
-    mvwhline(win,i,1,' ',COL1-2);
-    get_mem_id(add,t);
-    l=add;
-    id=mem_read(add);
-    add+=aff_op(id,add,s);
-    mvwprintw(win,i,1,"%s %04x %02x %s",t,l,id,s);
-    add++;
-    op_size[i-1]=add-l;
+static void cb_clist_scroll_horizontal(GtkCList *clist,GtkScrollType scroll_type,gfloat position,gpointer data) {
+  INT32 add;
+  switch(scroll_type) {
+  case GTK_SCROLL_NONE:return;
+  case GTK_SCROLL_STEP_BACKWARD:
+    if (code_info.curent_line==0) {
+      add=code_info.begin_add-1;
+      if (add>=0) code_info_set_begin_add(add,TRUE);
+    } else code_info.curent_line--;
+    break;
+  case GTK_SCROLL_STEP_FORWARD:
+    if (code_info.curent_line==(NB_LINE-1)) {
+      add=code_info.begin_add+get_nb_byte(mem_read(code_info.begin_add));
+      if (add<0xffff) code_info_set_begin_add(add,TRUE);
+    } else code_info.curent_line++;
+    break;
+  case GTK_SCROLL_PAGE_BACKWARD:
+    add=code_info.begin_add-NB_LINE;
+    /*while(add>0 && code_info.begin_add!=get_last_add(add)) add--;*/
+    if (add>=0) code_info_set_begin_add(add,TRUE);
+    break;
+  case GTK_SCROLL_PAGE_FORWARD:
+    add=code_info.last_add;
+    if (add<0xffff) code_info_set_begin_add(add,TRUE);
+    break;
+  case GTK_SCROLL_JUMP:printf("code scroll jump");
   }
-  last_add=add-1;
-  //wrefresh(win);
 }
 
-void code_win_resize(MY_WIN *w,int l,int c) {
-  wresize(panel_window(w->p),l,c);
-  wclear(panel_window(w->p));
-  draw_border_win(w);
-  nb_line=l-2;
-  op_size=(char *)realloc(op_size,l-2);
+static void cb_clist_select_row(GtkCList *clist,gint row,gint column,GdkEvent *event,gpointer data) {
+  if (!is_break_point(code_info.line_add[row])) 
+    add_break_point(code_info.line_add[row]);
+  else del_break_point(code_info.line_add[row]);
+  code_info.curent_line=row;
+  gtk_clist_unselect_row(GTK_CLIST(code_info.clist),row,column);
+  code_info_set_begin_add(code_info.begin_add,FALSE);
+}
+
+GtkWidget *init_code_info(void) {
+  GtkWidget *frame;
+  GtkWidget *vscroll_bar;
+  GtkWidget *hbox;
+  int i;
+  char *text[]={"ADD     ","TYPE   ","OP"};
+		
+  code_info.begin_add=0x100;
+  code_info.curent_line=NB_LINE-1;
+
+  frame=gtk_frame_new("Code");
+
+  hbox=gtk_hbox_new(FALSE,1);
+ 
+  code_info.vadj=gtk_adjustment_new(0,0,0x10000-NB_LINE,1,NB_LINE-2,NB_LINE);
+  gtk_signal_connect(GTK_OBJECT(code_info.vadj),"value_changed",
+		     GTK_SIGNAL_FUNC(cb_vadj_value_changed),NULL);
+  
+  code_info.clist=gtk_clist_new_with_titles(3,text);
+  gtk_clist_column_titles_passive(GTK_CLIST(code_info.clist));
+  gtk_signal_connect(GTK_OBJECT(code_info.clist),"scroll_vertical",
+		     GTK_SIGNAL_FUNC(cb_clist_scroll_horizontal),NULL);
+  gtk_signal_connect(GTK_OBJECT(code_info.clist),"select_row",
+		     GTK_SIGNAL_FUNC(cb_clist_select_row),NULL);
+  
+  gtk_box_pack_start(GTK_BOX(hbox),code_info.clist,TRUE,TRUE,2);    
+  for(i=0;i<NB_LINE;i++)
+    gtk_clist_prepend(GTK_CLIST(code_info.clist),text);
+  code_info_set_begin_add(0x100,TRUE);
+  gtk_widget_show(code_info.clist);
+
+  vscroll_bar=gtk_vscrollbar_new(GTK_ADJUSTMENT(code_info.vadj));
+  gtk_box_pack_start(GTK_BOX(hbox),vscroll_bar,FALSE,FALSE,2);    
+  gtk_widget_show(vscroll_bar); 
+
+  gtk_container_add(GTK_CONTAINER(frame),hbox);
+  gtk_widget_show(hbox);
+
+  return frame;
 }
 
 
+void update_code_info(void) {
+  if (gbcpu->pc.w<code_info.begin_add || gbcpu->pc.w>=code_info.last_add)
+    code_info_set_begin_add(gbcpu->pc.w,TRUE);
+  else code_info_set_begin_add(code_info.begin_add,FALSE);
+}
 
+void code_info_set_bp(void) {
+  gtk_clist_select_row(GTK_CLIST(code_info.clist),code_info.curent_line,0);
+}

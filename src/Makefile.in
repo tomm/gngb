@@ -60,6 +60,8 @@ POST_UNINSTALL = :
 CC = @CC@
 DEBUG_CFLAGS = @DEBUG_CFLAGS@
 DEBUG_LIBS = @DEBUG_LIBS@
+GLIB_CONFIG = @GLIB_CONFIG@
+GTK_CONFIG = @GTK_CONFIG@
 MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 SDL_CONFIG = @SDL_CONFIG@
@@ -68,6 +70,7 @@ VERSION = @VERSION@
 bin_PROGRAMS = gngb
 gngb_SOURCES = cpu.c cpu.h emu.c emu.h frame_skip.c frame_skip.h global.h interrupt.c interrupt.h main.c memory.c memory.h message.c message.h rom.c rom.h serial.c  serial.h sgb.c sgb.h sound.c sound.h tiny_font.c vram.c vram.h
 
+@MAKE_DEBUGER_CURSES_TRUE@SUBDIRS = gngb_debuger_curses
 @MAKE_DEBUGER_TRUE@SUBDIRS = gngb_debuger
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = ../config.h
@@ -95,7 +98,7 @@ DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
 
 TAR = tar
 GZIP_ENV = --best
-DIST_SUBDIRS =  gngb_debuger
+DIST_SUBDIRS =  gngb_debuger_curses gngb_debuger
 DEP_FILES =  .deps/cpu.P .deps/emu.P .deps/frame_skip.P \
 .deps/interrupt.P .deps/main.P .deps/memory.P .deps/message.P \
 .deps/rom.P .deps/serial.P .deps/sgb.P .deps/sound.P .deps/tiny_font.P \

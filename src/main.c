@@ -80,17 +80,14 @@ int main(int argc,char *argv[])
       printf("Number of Buttons: %d\n", SDL_JoystickNumButtons(joy));
       printf("Number of Balls: %d\n", SDL_JoystickNumBalls(joy));
     }
-  }
+  };
 
-  if (conf.sound) {
-    gbsound_init();
-    update_sound_reg();
-  }
+  if (conf.sound)
+    if (gbsound_init()) conf.sound=0;      
+
+  //frame_skip(1);
+  while(!conf.gb_done) update_gb();
   
-  while(!conf.gb_done) {
-    update_gb();
-  }
-
   if (rom_type&BATTERY) {
     save_ram();
     if (rom_type&TIMER) save_rom_timer();

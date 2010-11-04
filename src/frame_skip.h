@@ -5,5 +5,11 @@
 
 int barath_skip_next_frame(int showfps);
 
+extern char skip_next_frame;
+
+void reset_frame_skip(void);
+int frame_skip(int init);
+
+
 #endif
 

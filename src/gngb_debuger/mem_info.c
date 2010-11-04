@@ -1,85 +1,107 @@
-//#include "mem_info.h"
+#include <gtk/gtk.h>
 #include "debuger.h"
+#include "../global.h"
 #include "../memory.h"
-#include <form.h>
 
-extern int COL1,LGN1;
+struct {
+  GtkWidget *clist;
+  GtkObject *vadj;
+  UINT16 begin_add;
+}mem_info;
 
-static int cur_add=0;
-static int add_max;
-
-MY_WIN *mem_info_win=NULL;
-
-void mem_win_update(MY_WIN *w);
-int mem_win_key_pressed(MY_WIN *w,int key_code);
-void mem_info_resize(MY_WIN *w,int l,int c);
-
-void init_mem_info(void) {
-  WINDOW *w;
-  
-  mem_info_win=new_mywin();
-  w=newwin(LINES-LGN1,COL1,LGN1,0);
-  mem_info_win->p=new_panel(w);
- 
-  add_max=0x10000-(LINES-LGN1-2)*0x10; 
-
-  mem_info_win->name=strdup("MEM");
-  draw_border_win(mem_info_win);
-
-  // function
-  
-  mem_info_win->key_pressed=mem_win_key_pressed;
-  mem_info_win->update=mem_win_update;
-  mem_info_win->resize=mem_info_resize; 
-  
-  keypad(w,TRUE);
-  
-  add2win_list(mem_info_win);
-}
-
-int mem_win_key_pressed(MY_WIN *w,int key_code) {
-  int c;
-  
-  switch(key_code) {
-  case KEY_HOME:cur_add=0x0;break;
-  case KEY_END:cur_add=add_max;break;
-  case KEY_DOWN:cur_add+=0x10;break;
-  case KEY_UP:cur_add-=0x10;break;
-  case KEY_NPAGE:cur_add+=0xa0;break;
-  case KEY_PPAGE:cur_add-=0xa0;break;
-  case 'G':go_at(10,10);break;
-  default:return FALSE;
-  }
-  
-  if (cur_add<0) cur_add=0;
-  if (cur_add>add_max) cur_add=add_max;
-
-  mem_info_win->update(mem_info_win);
-  return TRUE; 
-}
-
-void mem_win_update(MY_WIN *w) {
+void mem_info_set_begin_add(UINT16 add) {
   int i,j;
-  int add=cur_add;
-  char t[10];
-  int l;
-   
-  for(j=1;j<LINES-LGN1-1;j++) {
-    mvwhline(panel_window(mem_info_win->p),j,1,' ',COL1-2);
-    get_mem_id(add,t);
-    mvwprintw(panel_window(mem_info_win->p),j,1,"%s",t);
-    mvwprintw(panel_window(mem_info_win->p),j,l=(strlen(t)+2),"%04x",add);
-    l+=5;
-    for(i=0;i<16;i++)
-      mvwprintw(panel_window(mem_info_win->p),j,l+3*i,"%02x",mem_read(add++));
+  char text[10];
+  mem_info.begin_add=add;
+  
+  gtk_clist_freeze(GTK_CLIST(mem_info.clist));
+  for(i=0;i<10;i++) {
+    sprintf(text,"0x%04x",add);
+    gtk_clist_set_text(GTK_CLIST(mem_info.clist),i,0,text);
+    get_mem_id(add,text);
+    gtk_clist_set_text(GTK_CLIST(mem_info.clist),i,1,text);
+    for(j=0;j<16;j++,add++) {
+      sprintf(text,"%02x",mem_read(add));
+      gtk_clist_set_text(GTK_CLIST(mem_info.clist),i,j+2,text);
+    }
+  }  
+  gtk_clist_thaw(GTK_CLIST(mem_info.clist));
+}
+
+
+static void cb_vadj_value_changed(GtkAdjustment *adj,gpointer data) {
+  UINT16 add;
+  add=((UINT16)adj->value)*16;
+  mem_info_set_begin_add(add);
+}
+
+static void cb_clist_scroll_horizontal(GtkCList *clist,GtkScrollType scroll_type,gfloat position) {
+  float value=GTK_ADJUSTMENT(mem_info.vadj)->value;
+  switch(scroll_type) {
+  case GTK_SCROLL_NONE:return;
+  case GTK_SCROLL_STEP_BACKWARD:value-=GTK_ADJUSTMENT(mem_info.vadj)->step_increment;break;
+  case GTK_SCROLL_STEP_FORWARD:value+=GTK_ADJUSTMENT(mem_info.vadj)->step_increment;break;
+  case GTK_SCROLL_PAGE_BACKWARD:value-=GTK_ADJUSTMENT(mem_info.vadj)->page_increment;break;
+  case GTK_SCROLL_PAGE_FORWARD:value+=GTK_ADJUSTMENT(mem_info.vadj)->page_increment;break;
+  case GTK_SCROLL_JUMP:printf("scroll jump");
   }
+  if (value>(GTK_ADJUSTMENT(mem_info.vadj)->upper-GTK_ADJUSTMENT(mem_info.vadj)->page_size))
+    value=GTK_ADJUSTMENT(mem_info.vadj)->upper-GTK_ADJUSTMENT(mem_info.vadj)->page_size;
+  if (value<GTK_ADJUSTMENT(mem_info.vadj)->lower)
+    value=GTK_ADJUSTMENT(mem_info.vadj)->lower;
+  gtk_adjustment_set_value(GTK_ADJUSTMENT(mem_info.vadj),value);
+  gtk_adjustment_value_changed(GTK_ADJUSTMENT(mem_info.vadj));
 }
 
-void mem_info_resize(MY_WIN *w,int l,int c) {
-  wresize(panel_window(w->p),l,c);
-  wclear(panel_window(w->p));
-  draw_border_win(w);
-  add_max=0x10000-(l-2)*0x10; 
+GtkWidget *init_mem_info(void) {
+  GtkWidget *frame;
+  GtkWidget *vscroll_bar;
+  GtkWidget *hbox;
+  int i;
+  char *text[]={"ADD     ","TYPE   ",
+		"00","01","02","03","04","05","06","07",
+		"08","09","0A","0B","0C","0D","0E","0F"};
+
+  frame=gtk_frame_new("MEM");
+
+  hbox=gtk_hbox_new(FALSE,1);
+ 
+  mem_info.vadj=gtk_adjustment_new(0,0,0x10000/0x10,1,8,10);
+  gtk_signal_connect(GTK_OBJECT(mem_info.vadj),"value_changed",
+		     GTK_SIGNAL_FUNC(cb_vadj_value_changed),NULL);
+  
+  mem_info.clist=gtk_clist_new_with_titles(18,text);
+  gtk_clist_column_titles_passive(GTK_CLIST(mem_info.clist));
+  gtk_signal_connect(GTK_OBJECT(mem_info.clist),"scroll_vertical",
+		     GTK_SIGNAL_FUNC(cb_clist_scroll_horizontal),NULL);
+  for(i=0;i<10;i++)
+    gtk_clist_prepend(GTK_CLIST(mem_info.clist),text);
+  mem_info_set_begin_add(0x0000);
+ 
+  gtk_box_pack_start(GTK_BOX(hbox),mem_info.clist,FALSE,FALSE,2);    
+  gtk_widget_show(mem_info.clist);
+
+  vscroll_bar=gtk_vscrollbar_new(GTK_ADJUSTMENT(mem_info.vadj));
+  gtk_box_pack_start(GTK_BOX(hbox),vscroll_bar,FALSE,FALSE,2);    
+  gtk_widget_show(vscroll_bar); 
+
+  gtk_container_add(GTK_CONTAINER(frame),hbox);
+  gtk_widget_show(hbox);
+
+  return frame;
 }
 
+void update_mem_info(void) {
+  int i,j;
+  char text[5];
+  UINT16 add=mem_info.begin_add;
 
+  gtk_clist_freeze(GTK_CLIST(mem_info.clist));
+  for(i=0;i<10;i++) {
+    for(j=0;j<16;j++,add++) {
+      sprintf(text,"%02x",mem_read(add));
+      gtk_clist_set_text(GTK_CLIST(mem_info.clist),i,j+2,text);
+    }
+  }  
+  gtk_clist_thaw(GTK_CLIST(mem_info.clist));
+}

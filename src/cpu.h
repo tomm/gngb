@@ -31,12 +31,29 @@
 #define FLAG_NH 0xDF
 #define FLAG_NC 0xEF
 
+#define SET_FLAG(f) ((gbcpu->af.b.l)|=(f))
+#define UNSET_FLAG(f) ((gbcpu->af.b.l)&=(f))
+#define IS_SET(f) ((gbcpu->af.b.l&(f)))
+
+#if SDL_BYTEORDER==SDL_BIG_ENDIAN
+
 typedef union {
 	UINT16 w;
 	struct {
 		UINT8 l,h;
 	}b;
 }REG;
+
+#else 
+
+typedef union {
+	UINT16 w;
+	struct {
+		UINT8 h,l;
+	}b;
+}REG;
+
+#endif 
 
 #define SIMPLE_SPEED 0
 #define DOUBLE_SPEED 1

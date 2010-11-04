@@ -75,16 +75,19 @@ extern UINT8 nb_spr;
 UINT8 rb_on;
 
 extern UINT8 (*draw_screen)(void);
+extern void (*blit_screen)(void);
 
 void init_vram(UINT32 flag);
 void close_vram(void);
 void switch_fullscreen(void);
-inline void blit_screen(void);
+//inline void blit_screen(void);
 void clear_screen(void);
 
 void gb_set_pal(int i);
 
 inline UINT8 get_nb_spr(void);
+
+void reinit_vram(void);
 
 #endif
 

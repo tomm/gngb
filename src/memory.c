@@ -33,7 +33,6 @@
 #include "sgb.h"
 
 #ifdef DEBUG
-#include "gngb_debuger/log.h"
 #include "gngb_debuger/debuger.h"
 #endif
 
@@ -430,13 +429,11 @@ inline UINT8 mem_read_ff(UINT16 adr)
   if (adr>=0xff10 && adr<=0xff3f && conf.sound) return read_sound_reg(adr);
   
 #ifdef DEBUG
-  if (active_log) {
-    if (adr==0xff40) put_log("read LCDCCONT %02x\n",LCDCCONT);
-    if (adr==0xff41) put_log("read LCDCSTAT %02x\n",LCDCSTAT);
-    if (adr==0xff0f) put_log("read INT_FLAG %02x\n",INT_FLAG);
-    if (adr==0xffff) put_log("read INT_ENABLE %02x\n",INT_ENABLE);
-    if (adr==0xff45) put_log("read CMP_LINE %02x\n",CMP_LINE);
-  }
+  if (adr==0xff40) add_mem_msg("read LCDCCONT %02x\n",LCDCCONT);
+  if (adr==0xff41) add_mem_msg("read LCDCSTAT %02x\n",LCDCSTAT);
+  if (adr==0xff0f) add_mem_msg("read INT_FLAG %02x\n",INT_FLAG);
+  if (adr==0xffff) add_mem_msg("read INT_ENABLE %02x\n",INT_ENABLE);
+  if (adr==0xff45) add_mem_msg("read CMP_LINE %02x\n",CMP_LINE);
 #endif
 
   return himem[adr-0xfea0];
@@ -477,11 +474,9 @@ inline UINT8 mem_read(UINT16 adr)
 
 inline void write2lcdccont(UINT8 v)
 {
-
   if ((LCDCCONT&0x80) && (!(v&0x80))) {  // LCDC go to off
 #ifdef DEBUG
-    if (active_log)
-      put_log("LCDC got to off \n");
+    add_mem_msg("LCDC got to off \n");
 #endif
     gblcdc->mode=HBLANK_PER;
     LCDCSTAT=(LCDCSTAT&0xfc);
@@ -491,16 +486,14 @@ inline void write2lcdccont(UINT8 v)
     dma_info.type=NO_DMA;
     HDMA_CTRL5=0xff;
     clear_screen();
+    reset_frame_skip();
   }
-  
+    
   if ((!(LCDCCONT&0x80)) && (v&0x80)) { // LCDC go to on
 #ifdef DEBUG
-    if (active_log)
-      put_log("LCDC got to on \n");
+    add_mem_msg("LCDC got to on \n");
 #endif
-   
     gblcdc_set_on();
- 
   }
   LCDCCONT=v;
 }
@@ -529,7 +522,7 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
 	/* FIXME */
 	get_nb_cycle();
       }
-      CPU_SPEED=v;
+      CPU_SPEED=(v&0xfe);
       return;
     }
 
@@ -675,15 +668,13 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
     if (v&0x1f) 
       set_interrupt(v&0x1f);
 #ifdef DEBUG
-    if (active_log)
-      put_log("write %02x to INT_FLAG %02x\n",v,INT_FLAG);
+    add_mem_msg("write %02x to INT_FLAG %02x\n",v,INT_FLAG);
 #endif
     break;
   case 0xffff:
     INT_ENABLE=v&0x1f;
 #ifdef DEBUG
-    if (active_log)
-      put_log("write %02x to INT_ENABLE %02x\n",v,INT_ENABLE);
+    add_mem_msg("write %02x to INT_ENABLE %02x\n",v,INT_ENABLE);
 #endif
     break;
   case 0xff04:DIVID=0;break;
@@ -692,15 +683,13 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
     /* FIXME */
     gbtimer->cycle=0;
 #ifdef DEBUG
-    if (active_log)
-      put_log("write %02x to TIMER_COUNTER, %02x:TIMER_CONTROLE, %02x:TIME_MOD\n",v,TIME_CONTROL,TIME_MOD);
+    add_mem_msg("write %02x to TIMER_COUNTER, %02x:TIMER_CONTROLE, %02x:TIME_MOD\n",v,TIME_CONTROL,TIME_MOD);
 #endif
     break;
   case 0xff06:
     TIME_MOD=v;
 #ifdef DEBUG
-    if (active_log)
-      put_log("write %02x to TIMER_MOD\n",v);
+    add_mem_msg("write %02x to TIMER_MOD\n",v);
 #endif
     break;
   case 0xff07:
@@ -713,58 +702,59 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
       }
     } else gbtimer->clk_inc=0;
     /* FIXME */
-    gbtimer->cycle=0;
+    gbtimer->cycle=gbtimer->clk_inc;
     TIME_CONTROL=v;
 #ifdef DEBUG
-    if (active_log)
-      put_log("write %02x to TIMER_CONTROLER\n",v);
+    add_mem_msg("write %02x to TIMER_CONTROLER\n",v);
 #endif
     break;
   case 0xff40:
     write2lcdccont(v);
 #ifdef DEBUG
-    if (active_log)
-      put_log("write %02x to LCDCCONT %02x\n",v,LCDCCONT);
+    add_mem_msg("write %02x to LCDCCONT %02x\n",v,LCDCCONT);
 #endif   
     break;
-  case 0xff41:LCDCSTAT=(LCDCSTAT&0x07)|(v&0xf8);
+  case 0xff41:
+    /* Emulate Normal Gameboy Bug (fix Legend Oz Zerd) */
+    if (!(conf.gb_type&COLOR_GAMEBOY)) {
+      if (!(LCDCSTAT&0x03) || (LCDCSTAT&0x03)==0x01) set_interrupt(LCDC_INT);
+      LCDCSTAT=(LCDCSTAT&0x07)|(v&0xf8);
+    } else LCDCSTAT=(LCDCSTAT&0x07)|(v&0xf8);
 #ifdef DEBUG
-    if (active_log)
-      put_log("write %02x to LCDCSTAT %02x\n",v,LCDCSTAT);
+    add_mem_msg("Write %02x to LCDCSTAT %02x\n",v,LCDCSTAT);
 #endif  
     break;
   case 0xff44:
 #ifdef DEBUG
-    if (active_log) {
-      v=CURLINE;
-      put_log("write to CURLINE %02x \n",v);
-    }
+    add_mem_msg("Write to CURLINE %02x \n",v);
 #endif
     CURLINE=0;
     gblcdc_set_on();
     break;
   case 0xff45:CMP_LINE=v;
 #ifdef DEBUG
-    if (active_msg)
-      add_msg("Write %02x to CMPLINE",v);
+    add_mem_msg("Write %02x to CMPLINE\n",v);
 #endif   
-    if (CMP_LINE==CURLINE) LCDCSTAT|=0x04;
+    /*if (CMP_LINE==CURLINE && CURLINE!=0x00) LCDCSTAT|=0x04;
+      else LCDCSTAT&=~0x04;*/
+    if (CHECK_LYC_LY) LCDCSTAT|=0x04;
     else LCDCSTAT&=~0x04;
-    if (LCDCSTAT&0x40 && LCDCSTAT&0x04 && LCDCCONT&0x80 && (LCDCSTAT&0x02)==0x02) 
-      set_interrupt(LCDC_INT);    
+    /* FIXME */
+    if (LCDCCONT&0x80 && LCDCSTAT&0x40 && LCDCSTAT&0x04 && (LCDCSTAT&0x02)==0x02) 
+      set_interrupt(LCDC_INT);
     break;
   case 0xff46:      // DMA
     do_dma(v);
     break;
   case 0xff47:
 #ifdef DEBUG
-    if (active_msg) add_msg("set bck_pal %02x",v);
+    add_mem_msg("set bck_pal %02x\n",v);
 #endif
     gb_set_pal_bck(v);
     break;
   case 0xff48:
 #ifdef DEBUG
-    if (active_msg) add_msg("set obj_pal0 %02x",v);
+    add_mem_msg("set obj_pal0 %02x\n",v);
 #endif  
     OBJ0PAL=v;
     pal_obj[0][0]=OBJ0PAL&3;
@@ -774,7 +764,7 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
     break;
   case 0xff49:
 #ifdef DEBUG
-    if (active_msg) add_msg("set obj_pal1 %02x",v);
+    add_mem_msg("set obj_pal1 %02x\n",v);
 #endif
     OBJ1PAL=v;
     pal_obj[1][0]=OBJ1PAL&3;

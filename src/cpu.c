@@ -27,7 +27,6 @@
 #include "emu.h"
 
 #ifdef DEBUG
-#include "gngb_debuger/log.h"
 #include "gngb_debuger/debuger.h"
 #endif
 
@@ -91,9 +90,6 @@ inline void pop_r(REG *r)
 #define GET_BYTE get_byte()
 #define GET_WORD get_word()
 
-#define SET_FLAG(f) ((gbcpu->af.b.l)|=(f))
-#define UNSET_FLAG(f) ((gbcpu->af.b.l)&=(f))
-#define IS_SET(f) ((gbcpu->af.b.l&(f)))
 
 #define SUB_CYCLE(a) return (a)
 
@@ -1374,8 +1370,7 @@ inline UINT8 ld_mem_hl_l(void){
 inline UINT8 halt(void){
   if (gbcpu->int_flag) {
 #ifdef DEBUG
-    if (active_log)
-      put_log("set halt \n");
+    add_cpu_msg("set halt \n");
 #endif
     gbcpu->state=HALT_STATE;
     gbcpu->pc.w--;
@@ -2275,8 +2270,7 @@ inline UINT8 ret_c(void){
 
 inline UINT8 reti(void){
 #ifdef DEBUG
-  if (active_log)
-    put_log("RETI\n");
+  add_cpu_msg("RETI\n");
 #endif 
   POP_R(REG_PC);
   //EI;
@@ -2415,8 +2409,7 @@ inline UINT8 ld_a_mem_c(void){
 
 inline UINT8 di(void){
 #ifdef DEBUG
-  if (active_log) 
-    put_log("DI\n");
+  add_cpu_msg("DI\n");
 #endif
   DI;
   SUB_CYCLE(4);
@@ -2466,8 +2459,7 @@ inline UINT8 ld_a_mem_nn(void){
 
 inline UINT8 ei(void){
 #ifdef DEBUG
-  if (active_log)
-    put_log("EI\n");
+  add_cpu_msg("EI\n");
 #endif
   EI;
   SUB_CYCLE(4);
@@ -4116,7 +4108,6 @@ inline UINT8 gbcpu_exec_one(void)
     gbcpu->int_flag=1;  
     gbcpu->ei_flag=0;
   }
-  
   switch(mem_read(PC++)) {
   case 0x00: return nop();
   case 0x01: return ld_bc_nn();
@@ -4440,21 +4431,24 @@ inline void update_gb(void) {
     //if (gbcpu->state==HALT_STATE) halt_update();
  
     nb_cycle+=a;
-    divid_cycle+=a;
     
+    divid_cycle+=a;
     if (divid_cycle>256) {
       DIVID++;
       divid_cycle=0;
     }
     
-    if (LCDCCONT&0x80) 
+    //if (LCDCCONT&0x80) 
       GBLCDC_ADD_CYCLE(a);
+
+    /*gblcdc->cycle-=a;
+      if (gblcdc->cycle<=0) lcdc_trans();*/
     
     if (TIME_CONTROL&0x04) {
-      gbtimer->cycle+=a;
-      if (gbtimer->cycle>=gbtimer->clk_inc) {
+      gbtimer->cycle-=a;
+      if (gbtimer->cycle<=0) {
 	gbtimer_update();
-	gbtimer->cycle-=gbtimer->clk_inc;
+	gbtimer->cycle+=gbtimer->clk_inc;
       }
     }
 

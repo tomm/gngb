@@ -60,6 +60,8 @@ POST_UNINSTALL = :
 CC = @CC@
 DEBUG_CFLAGS = @DEBUG_CFLAGS@
 DEBUG_LIBS = @DEBUG_LIBS@
+GLIB_CONFIG = @GLIB_CONFIG@
+GTK_CONFIG = @GTK_CONFIG@
 MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 SDL_CONFIG = @SDL_CONFIG@
@@ -68,10 +70,10 @@ VERSION = @VERSION@
 CFLAGS = @CFLAGS@ @DEBUG_CFLAGS@
 LIBS = @LIBS@ @DEBUG_LIBS@
 
-bin_PROGRAMS = gngb_debug
+bin_PROGRAMS = gngb_dbg
 
-gngb_debug_SOURCES = debuger.h debuger.c code_info.c cpu_info.c mem_info.c io_info.c vram_info.c msg_info.c main.c log.c log.h op.c op.h
-gngb_debug_LDADD = memory_dbg.o cpu_dbg.o vram_dbg.o interrupt_dbg.o message_dbg.o sgb_dbg.o sound_dbg.o rom_dbg.o frame_skip_dbg.o emu_dbg.o serial_dbg.o
+gngb_dbg_SOURCES = break.c break.h code_info.c cpu_info.c debuger.c debuger.h debuger_wid.h io_info.c main.c mem_info.c menu.c msg_dbg.c op.c op.h 
+gngb_dbg_LDADD = memory_dbg.o cpu_dbg.o vram_dbg.o interrupt_dbg.o message_dbg.o sgb_dbg.o sound_dbg.o rom_dbg.o frame_skip_dbg.o emu_dbg.o serial_dbg.o
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = ../../config.h
 CONFIG_CLEAN_FILES = 
@@ -81,12 +83,12 @@ PROGRAMS =  $(bin_PROGRAMS)
 DEFS = @DEFS@ -I. -I$(srcdir) -I../..
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
-gngb_debug_OBJECTS =  debuger.o code_info.o cpu_info.o mem_info.o \
-io_info.o vram_info.o msg_info.o main.o log.o op.o
-gngb_debug_DEPENDENCIES =  memory_dbg.o cpu_dbg.o vram_dbg.o \
+gngb_dbg_OBJECTS =  break.o code_info.o cpu_info.o debuger.o io_info.o \
+main.o mem_info.o menu.o msg_dbg.o op.o
+gngb_dbg_DEPENDENCIES =  memory_dbg.o cpu_dbg.o vram_dbg.o \
 interrupt_dbg.o message_dbg.o sgb_dbg.o sound_dbg.o rom_dbg.o \
 frame_skip_dbg.o emu_dbg.o serial_dbg.o
-gngb_debug_LDFLAGS = 
+gngb_dbg_LDFLAGS = 
 COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
@@ -97,11 +99,11 @@ DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
 
 TAR = tar
 GZIP_ENV = --best
-DEP_FILES =  .deps/code_info.P .deps/cpu_info.P .deps/debuger.P \
-.deps/io_info.P .deps/log.P .deps/main.P .deps/mem_info.P \
-.deps/msg_info.P .deps/op.P .deps/vram_info.P
-SOURCES = $(gngb_debug_SOURCES)
-OBJECTS = $(gngb_debug_OBJECTS)
+DEP_FILES =  .deps/break.P .deps/code_info.P .deps/cpu_info.P \
+.deps/debuger.P .deps/io_info.P .deps/main.P .deps/mem_info.P \
+.deps/menu.P .deps/msg_dbg.P .deps/op.P
+SOURCES = $(gngb_dbg_SOURCES)
+OBJECTS = $(gngb_dbg_OBJECTS)
 
 all: all-redirect
 .SUFFIXES:
@@ -155,9 +157,9 @@ distclean-compile:
 
 maintainer-clean-compile:
 
-gngb_debug: $(gngb_debug_OBJECTS) $(gngb_debug_DEPENDENCIES)
-	@rm -f gngb_debug
-	$(LINK) $(gngb_debug_LDFLAGS) $(gngb_debug_OBJECTS) $(gngb_debug_LDADD) $(LIBS)
+gngb_dbg: $(gngb_dbg_OBJECTS) $(gngb_dbg_DEPENDENCIES)
+	@rm -f gngb_dbg
+	$(LINK) $(gngb_dbg_LDFLAGS) $(gngb_dbg_OBJECTS) $(gngb_dbg_LDADD) $(LIBS)
 
 tags: TAGS
 

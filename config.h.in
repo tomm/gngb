@@ -51,6 +51,12 @@
 /* Define if you have the SDL library (-lSDL).  */
 #undef HAVE_LIBSDL
 
+/* Define if you have the glib library (-lglib).  */
+#undef HAVE_LIBGLIB
+
+/* Define if you have the gtk library (-lgtk).  */
+#undef HAVE_LIBGTK
+
 /* Define if you have the pthread library (-lpthread).  */
 #undef HAVE_LIBPTHREAD
 

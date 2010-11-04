@@ -42,10 +42,13 @@ typedef struct {
   UINT8 gb_done;
   UINT8 joy_no;
   UINT8 gl;
+  UINT8 yuv;
   UINT8 delay_int;
   UINT8 show_fps;
   UINT8 show_keycode;
   UINT16 gl_w,gl_h;
+  UINT16 yuv_w,yuv_h;
+  UINT16 yuv_interline_int;
   UINT8 gb_type;
   UINT8 const_cycle;
   UINT8 gdma_cycle;

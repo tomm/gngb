@@ -22,7 +22,7 @@
 #include "global.h"
 #include "tiny_font.c"
 #include "message.h"
-#include "vram.h"
+//#include "vram.h"
 #include "emu.h"
 #ifdef SDL_GL
 #include <GL/gl.h>
@@ -30,13 +30,10 @@
 #endif
 
 #ifdef SDL_GL
-
 #define FONTBUF_GL_W 128
 #define FONTBUF_GL_H 128
-
 GLubyte *gl_buf;
 int fontgl_texid;
-
 #endif
 
 SDL_Surface *fontbuf=NULL;
@@ -47,13 +44,26 @@ static int tempo_mes;
 #define BUF_ALPHA 240
 
 char mes_buf[50];
+extern SDL_Surface *gb_screen;
+int mx_off,my_off;
+
+void (*draw_message)(int x,int y,char *mes);
+
+void draw_message_default(int x,int y,char *mes);
+
+#ifdef SDL_YUV
+extern SDL_Overlay *overlay;
+void draw_message_yuv(int x,int y,char *mes);
+#endif
 
 #ifdef SDL_GL
+
+void draw_message_gl(int x,int y,char *mes);
+
 inline void draw_char_gl(int x,int y,unsigned char c) {
   int indice=c-32;
   static float u1,v1,u2,v2;
   static int x1,x2,y1,y2;
-
 
   x1=((indice*8)%FONTBUF_GL_W);
   y1=((indice*8)/FONTBUF_GL_W)*hl;
@@ -144,6 +154,39 @@ void init_message_gl(void) {
 }
 #endif
 
+#ifdef SDL_YUV
+
+inline void draw_char_yuv(int ox,int oy,unsigned char c) {
+  int fx,fy;
+  int indice=c-32;
+  int x,y;
+  UINT8 *buf=(UINT8 *)overlay->pixels[0] + oy*overlay->pitches[0];
+  
+  fx=indice*wl;
+  fy=0;
+  
+  for(y=0;y<hl;y++,buf+=(overlay->pitches[0]-1)) {
+    for(x=0;x<wl;x++) {
+      buf[y+ox+x]=tiny_font.pixel_data[((x+fx)+(y+fy)*tiny_font.width)*3];
+    }
+  }
+}
+
+void draw_message_yuv(int x,int y,char *mes) {
+  int i;
+  if (!fontbuf) init_message();
+  for(i=0;i<strlen(mes);i++)
+    draw_char_yuv(x+i*wl,y,mes[i]);
+}
+
+void init_message_yuv(void) {
+  /*int i;
+    if (!fontbuf) init_message();
+    for(i=0;i<strlen(mes);i++)
+    draw_char_yuv(x+i*wl,y,mes[i]);*/
+}
+#endif
+
 void init_message(void) {
   wl=tiny_font.width/(128-32);
   hl=tiny_font.height;
@@ -152,9 +195,25 @@ void init_message(void) {
 				   tiny_font.height,
 				   24,tiny_font.width*3,0xFF0000,0xFF00,0xFF,0);
   SDL_SetAlpha(fontbuf,SDL_SRCALPHA,BUF_ALPHA);
+  draw_message=draw_message_default;
+
+  if (conf.gb_type&SUPER_GAMEBOY) {
+    mx_off=48;
+    my_off=40;
+  } else mx_off=my_off=0;
+  
 #ifdef SDL_GL
-  if (conf.gl)
+  if (conf.gl) {
     init_message_gl();
+    draw_message=draw_message_gl;
+  }
+#endif
+#ifdef SDL_YUV
+  if (conf.yuv) {
+    init_message_yuv();
+    draw_message=draw_message_yuv;
+    if (conf.gb_type&COLOR_GAMEBOY) my_off+=144;
+  }
 #endif
 }
 
@@ -167,11 +226,11 @@ void draw_message_gl(int x,int y,char *mes) {
 }
 #endif
 
-void draw_message(SDL_Surface *dest,int x,int y,char *mes) {
+void draw_message_default(int x,int y,char *mes) {
   int i;
   if (!fontbuf) init_message();
   for(i=0;i<strlen(mes);i++)
-    draw_char(dest,x+i*wl,y,mes[i]);
+    draw_char(gb_screen,x+i*wl,y,mes[i]);
 }
 
 void set_message(const char *format,...) {
@@ -194,11 +253,13 @@ void update_message(void) {
       SDL_SetAlpha(fontbuf,SDL_SRCALPHA,tempo_mes);
     }
     tempo_mes--;
-#ifdef SDL_GL
-    if (conf.gl) 
-      draw_message_gl(scxoff+xm,scyoff+ym,mes_buf);
-    else
-#endif
-      draw_message(gb_screen,scxoff+xm,scyoff+ym,mes_buf);
+    draw_message(mx_off+xm,my_off+ym,mes_buf);
+
+    /*#ifdef SDL_GL
+      if (conf.gl) 
+      draw_message_gl(mx_off+xm,my_off+ym,mes_buf);
+      else
+      #endif
+      draw_message(gb_screen,mx_off+xm,my_off+ym,mes_buf);*/
   } 
 }

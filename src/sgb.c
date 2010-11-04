@@ -24,7 +24,7 @@
 #include <SDL/SDL.h>
 
 #ifdef DEBUG
-#include "gngb_debuger/log.h"
+#include "gngb_debuger/debuger.h"
 #endif
 
 #define SGB_CMD_END() {sgb.cmd=0xff;sgb.nb_pack=-1;}
@@ -490,7 +490,7 @@ void sgb_set_data_ATF(void) {
 /* Pallete Functions */
 
 inline void sgb_set_scpal_data(void) {
-  int i,j,n;
+  int i,j;
   UINT8 *t=&vram_page[0][0x800];
   
   for(i=0;i<512;i++) 
@@ -570,14 +570,13 @@ inline void sgb_window_mask(void) {
 void sgb_exec_cmd(void) {
   
   if (sgb.cmd==0xff) {
-    int i;
-    /*printf("sgb:%02x nb:%d pack: ",sgb.pack[0]>>3,sgb.pack[0]&0x07);
-    for(i=0;i<SGB_PACKSIZE;i++)
+    /*int i;
+      printf("sgb:%02x nb:%d pack: ",sgb.pack[0]>>3,sgb.pack[0]&0x07);
+      for(i=0;i<SGB_PACKSIZE;i++)
       printf("%02x ",sgb.pack[i]);
       putchar('\n');*/
 #ifdef DEBUG  
-    if (active_log)
-      put_log("sgb:%02x nb:%d pack:\n",sgb.pack[0]>>3,sgb.pack[0]&0x07);
+    add_sgb_msg("sgb:%02x nb:%d pack:\n",sgb.pack[0]>>3,sgb.pack[0]&0x07);
 #endif
     sgb.cmd=sgb.pack[0]>>3;
   }   

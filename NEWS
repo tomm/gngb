@@ -1,4 +1,9 @@
 
+What's New:
+
+A YUV Mode have been add (option -Y).
+
+
 Now the configuration by 
 ./configure
 make

@@ -1,6 +1,17 @@
 
 WHAT'S NEW ?
 
+* Try a new frameskip code
+* Add YUV Mode (option -Y)
+* Clean Some Code
+* Fix Segmentation Fault when can't init sound
+* Fix getenv segfault on some plateform
+* Fix bit 0x01 when go 2 double speed (demokart work)
+* Fix LCD int when write to LCDSTAT register (Legend of Zerd Work)
+
+
+20010813
+
 * Fix interrupt bug (stop halt when make_int and not when set_int)
 * Add -g option: try to emulate gdma cycle
 * New Load/Save state (old save don't work)

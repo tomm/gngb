@@ -12,22 +12,22 @@
 #define FRAMESKIP_LEVELS 22
 
 #ifndef CLOCKS_PER_SEC        /* Thanks to Benjamin */
-#define CLOCKS_PER_SEC 1000000
+#define CLOCKS_PER_SEC 1000000L
 #endif
 
 //typedef clock_t uclock_t;
-typedef long uclock_t;
+typedef unsigned long uclock_t;
 #define  UCLOCKS_PER_SEC CLOCKS_PER_SEC
 // #define uclock clock
 
 
-#define TICKS_PER_SEC 1000000 
+#define TICKS_PER_SEC 1000000L
 #define CPU_FPS 59.7
 
-long get_ticks(void)
+/*long get_ticks(void)
 {
   return SDL_GetTicks()*1000;
-}
+}*/
 
 
 uclock_t uclock(void)
@@ -186,7 +186,7 @@ int barath_skip_next_frame(int showfps)
 }
 
 /* the following code is experimantale i dont use it */
-/*uclock_t elapsed_clock(int init)
+uclock_t elapsed_clock(int init)
 {
   static uclock_t init_sec = 0;
   struct timeval tv;
@@ -196,36 +196,62 @@ int barath_skip_next_frame(int showfps)
   gettimeofday(&tv, 0);
   if (init_sec == 0) init_sec = tv.tv_sec;
   // printf(" %d\n",(tv.tv_sec - init_sec) * 1000000 + tv.tv_usec);
-  return (tv.tv_sec - init_sec) * 1000000 + tv.tv_usec;
+  return (tv.tv_sec - init_sec) * 1000000L + tv.tv_usec;
 }
-*/
-/*
-int frame_skip(int init) {
-  static uclock_t F=1000000/CPU_FPS;
-  uclock_t dt;
-  static uclock_t t=0,lt=0,sec=0;
-  static uclock_t f=1000000/CPU_FPS;
-  static int nbFrame=0;
-  static int skpFrm=0;
-*/
-  /*
-    if (init) 
-    dt=elapsed_clock(1);
-    else*/
-/*lt=t;
-  t=elapsed_clock(0);
-  dt=t-lt;
 
-  if (dt>F*12)
-  dt=F*12;*/
-  /* 
- nbFrame++;
-  if (t-sec>1000000) {
-    printf("%d\n",nbFrame);
-    sec=t;
-    nbFrame=0;
+static char init_frame_skip=1;
+char skip_next_frame=0;
+static struct timeval init_tv = {0,0};
+
+uclock_t get_ticks(void) {
+  struct timeval tv;
+  gettimeofday(&tv, 0);
+  if (init_tv.tv_sec == 0) init_tv = tv;
+  return (tv.tv_sec - init_tv.tv_sec) * 1000000UL + tv.tv_usec - init_tv.tv_usec;
+}
+
+void reset_frame_skip(void) {
+  init_tv.tv_usec = 0;
+  init_tv.tv_sec = 0;
+  skip_next_frame=0;
+  init_frame_skip=1;
+}
+
+int frame_skip(int init) {
+  static int frame2skip;
+  //static uclock_t F=(uclock_t)((double)1000000UL/CPU_FPS);
+  static uclock_t t=0,lt=0,sec=0;
+  static uclock_t f=(uclock_t)((double)1000000UL/CPU_FPS);
+  static int nbFrame=0;
+  uclock_t dt;
+  
+  if (init_frame_skip) {
+    init_frame_skip=0;
+    t=get_ticks();
+    frame2skip=0;
+    return 0;
+  } else {
+    lt=t;
+    t=get_ticks();
   }
-  */
+
+  if (frame2skip) {
+    frame2skip--;
+    return 1;
+  }
+
+  dt=t-lt;
+ 
+  /*if (dt>F*12)
+    dt=F*12;*/
+  
+  nbFrame++;
+  if ((t-sec)>=1000000UL) {
+    if (conf.show_fps) set_message("fps:%d",nbFrame);
+    nbFrame=0;
+    sec=get_ticks();
+  }
+  
 
   //printf("%d %d\n",dt,f);
   /*
@@ -233,24 +259,33 @@ int frame_skip(int init) {
     skpFrm--;
     return 1;
     }*/
-
-/*if (dt<f) {
+  
+  
+  if (dt<f) {
     while(dt<f) {
-      // usleep(10);
-      //printf("Wait\n");
-      dt=elapsed_clock(0)-lt;
-      t=elapsed_clock(0);
-      }*/
-    //f=F/*-(dt-f)*/;
-/*return 0;
+      // printf("wait\n");
+      //SDL_Delay(1);
+      //usleep(1);
+    //SDL_Delay((f-dt)/1000);
+      dt=(t=get_ticks())-lt;
+      /*dt=elapsed_clock(0)-lt;
+	t=elapsed_clock(0);*/
+      //printf("%d %d\n",dt,i++);
+    }
+    
+    //f=F-(dt-f);
+    return 0;
   } else {
+    //printf("skip\n");
     // printf("skip\n");
-    f=F-((dt-f)%F);
+    //f=F-((dt-f)%F);
     // printf("%d %d\n",F,f);
     //skpFrm++;
+    frame2skip=(dt/f);
+    //printf("frame2skip %d:\n",frame2skip);
     return 1;
-  }   
-  }*/
+  }
+}
 
 
 

@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_keysym.h>
 #include "emu.h"
@@ -97,6 +98,11 @@ void setup_default_conf(void) {
   conf.gl_w=160*2;
   conf.gl_h=144*2;
 
+  conf.yuv=0;  // ATTENTION!!!
+  conf.yuv_interline_int=0x2020; // intensité d'une interligne en yuv color ((int&0xff)<<8)|(int&0xff)
+  conf.yuv_w=160;
+  conf.yuv_h=144;
+
   conf.show_keycode=0;
 
   for (i=0;i<5;i++) {
@@ -119,7 +125,7 @@ int discard_line(char *buf)
 }
 void read_tab(void *tab,int type,char *val,int size)
 {
-  int i=0,j;
+  int i=0;
   char *v;
 
   v=strtok(val,",");
@@ -186,7 +192,7 @@ void open_conf() {
 void check_option(int argc,char *argv[]) 
 {
   char c;
-  while((c=getopt(argc,argv,"yrGSChasfj:O:odglc:"))!=EOF) {
+  while((c=getopt(argc,argv,"yrGSChasfj:O:oYdglc:"))!=EOF) {
     switch(c) {
     case 'G':conf.gb_type=NORMAL_GAMEBOY;printf("Force to normal GB\n");break;
     case 'S':conf.gb_type|=SUPER_GAMEBOY;printf("Force to super GB\n");break;
@@ -201,14 +207,22 @@ void check_option(int argc,char *argv[])
     case 'h':print_help();break;
 #ifdef SDL_GL
     case 'O':
-   	sscanf(optarg,"%dx%d",&conf.gl_w,&conf.gl_h);
-	conf.gl=1;break;
+      sscanf(optarg,"%hdx%hd",&conf.gl_w,&conf.gl_h);
+      conf.gl=1;break;
     case 'o' :
       conf.gl=1;break;
 #else
     case 'o':
     case 'O':printf("Opengl mode not conpiled in\n");break; 
 #endif
+#ifdef SDL_YUV
+    case 'Y':
+      conf.yuv=1;
+      break;
+#else 
+    case 'Y':printf("YUV mode not conpiled in\n");break;   
+#endif
+
       /* For DEBUG */
     case 'd':conf.delay_int=1;break;
       /* Link */
@@ -216,12 +230,24 @@ void check_option(int argc,char *argv[])
     case 'c':conf.serial_on=1;gbserial_init(0,optarg);break;
     }
   }
+  if (conf.yuv) conf.gl=0;
 }
 
 inline void update_key(void) {
   SDL_Event event;
   while(SDL_PollEvent(&event)) {
     switch (event.type) {
+#ifdef SDL_YUV
+    case SDL_VIDEORESIZE:
+      if (conf.yuv) {
+        conf.yuv_w=event.resize.w;
+        conf.yuv_h=event.resize.h;
+        reinit_vram();
+      }
+      break;
+#endif
+
+
     case SDL_JOYAXISMOTION:
       if (conf.show_keycode) 
 	  set_message("%d",event.jaxis.axis);
@@ -232,9 +258,11 @@ inline void update_key(void) {
       break;
     case SDL_KEYUP:
       key[event.key.keysym.sym]=0;
+      //printf("key released %d\n",event.key.keysym.sym);
       break;
     case SDL_KEYDOWN:
       key[event.key.keysym.sym]=1;
+      //printf("key pressed %d\n",event.key.keysym.sym);
       if (conf.show_keycode) 
 	set_message("%d",event.key.keysym.sym);
       switch(event.key.keysym.sym) {
@@ -268,6 +296,9 @@ inline void update_key(void) {
 	set_message("Set Pal 5");
 	gb_set_pal(4);
 	break;      
+      case SDLK_KP6:
+	rb_on=1;
+	break;   
 
     	/* FIXME : Save State are experimental */
       case SDLK_F1: 
