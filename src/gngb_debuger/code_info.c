@@ -8,14 +8,16 @@
 
 #define NB_LINE 12
 
+Sint8 opcode_size[0xffff]={-1};
+
 struct {
   GtkWidget *clist;
   GtkObject *vadj;
   int curent_line;
-  UINT16 curent_add;
-  UINT16 begin_add;
-  UINT16 last_add;
-  UINT16 line_add[NB_LINE];
+  Uint16 curent_add;
+  Uint16 begin_add;
+  Uint16 last_add;
+  Uint16 line_add[NB_LINE];
 }code_info;
 
 GdkColor bp_col={1,0xffff,0,0};
@@ -23,16 +25,16 @@ GdkColor pc_col={1,0,0xffff,0};
 GdkColor pc_bp_col={1,0xffff,0xffff,0};
 GdkColor normal_col={1,0xffff,0xffff,0xffff};  
 
-static UINT16 get_last_add(UINT16 begin_add) {
+static Uint16 get_last_add(Uint16 begin_add) {
   int i;
   for(i=0;i<NB_LINE;i++) 
     begin_add+=(get_nb_byte(mem_read(begin_add)));
   return begin_add;		
 }
 
-static void code_info_set_begin_add(UINT16 add,char update_adj) {
+static void code_info_set_begin_add(Uint16 add,char update_adj) {
   int i;
-  UINT8 op;
+  Uint8 op;
   char text[50];
  
 
@@ -65,20 +67,20 @@ static void code_info_set_begin_add(UINT16 add,char update_adj) {
 					   code_info.begin_add);
 }
 
-static void code_info_add2begin_add(INT16 off,char update_adj) {
+static void code_info_add2begin_add(Sint16 off,char update_adj) {
   int i;
-  UINT16 add=code_info.begin_add;
+  Uint16 add=code_info.begin_add;
   if (off>0) {
     for(i=0;i<off && add<0xffff;i++) 
       add+=get_nb_byte(mem_read(add));
   } else {
-    if (((INT32)add+off)<=0) add=0;
+    if (((Sint32)add+off)<=0) add=0;
     else add+=off;
   }
   code_info_set_begin_add(add,update_adj);
 }
 
-static char code_info_check_add(UINT32 add) {
+static char code_info_check_add(Uint32 add) {
   int i;
   for(i=0;i<NB_LINE;i++) {
     add+=get_nb_byte(mem_read(add));
@@ -88,18 +90,20 @@ static char code_info_check_add(UINT32 add) {
 }
  
 static void cb_vadj_value_changed(GtkAdjustment *adj,gpointer data) {
-  UINT16 add=(UINT16)adj->value;
+  Uint16 add=(Uint16)adj->value;
   if (code_info_check_add(add))
     code_info_set_begin_add(add,FALSE);
 }
 
 static void cb_clist_scroll_horizontal(GtkCList *clist,GtkScrollType scroll_type,gfloat position,gpointer data) {
-  INT32 add;
+  Sint32 add;
   switch(scroll_type) {
   case GTK_SCROLL_NONE:return;
   case GTK_SCROLL_STEP_BACKWARD:
     if (code_info.curent_line==0) {
-      add=code_info.begin_add-1;
+      /*      add=code_info.begin_add-1;
+	      if (add>=0) code_info_set_begin_add(add,TRUE);*/
+      add=code_info.begin_add-((opcode_size[code_info.begin_add]&0x0c)>>2);
       if (add>=0) code_info_set_begin_add(add,TRUE);
     } else code_info.curent_line--;
     break;
@@ -123,16 +127,19 @@ static void cb_clist_scroll_horizontal(GtkCList *clist,GtkScrollType scroll_type
 }
 
 static void cb_clist_select_row(GtkCList *clist,gint row,gint column,GdkEvent *event,gpointer data) {
-  if (!is_break_point(code_info.line_add[row])) 
-    add_break_point(code_info.line_add[row]);
-  else del_break_point(code_info.line_add[row]);
-  code_info.curent_line=row;
-  gtk_clist_unselect_row(GTK_CLIST(code_info.clist),row,column);
-  code_info_set_begin_add(code_info.begin_add,FALSE);
+
+  if (event->type==GDK_2BUTTON_PRESS) {
+    if (!is_break_point(code_info.line_add[row])) 
+      add_break_point(code_info.line_add[row]);
+    else del_break_point(code_info.line_add[row]);
+    code_info.curent_line=row;
+    gtk_clist_unselect_row(GTK_CLIST(code_info.clist),row,column);
+    code_info_set_begin_add(code_info.begin_add,FALSE);
+  }
 }
 
-GtkWidget *init_code_info(void) {
-  GtkWidget *frame;
+GtkWidget *dbg_code_win_create(void) {
+  GtkWidget *win;
   GtkWidget *vscroll_bar;
   GtkWidget *hbox;
   int i;
@@ -141,7 +148,11 @@ GtkWidget *init_code_info(void) {
   code_info.begin_add=0x100;
   code_info.curent_line=NB_LINE-1;
 
-  frame=gtk_frame_new("Code");
+  win=gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_window_set_title(GTK_WINDOW(win),"Code");
+  gtk_signal_connect_object(GTK_OBJECT(win),"delete_event",
+			    GTK_SIGNAL_FUNC(gtk_widget_hide),GTK_OBJECT(win));
+  gtk_widget_show(win);
 
   hbox=gtk_hbox_new(FALSE,1);
  
@@ -166,19 +177,31 @@ GtkWidget *init_code_info(void) {
   gtk_box_pack_start(GTK_BOX(hbox),vscroll_bar,FALSE,FALSE,2);    
   gtk_widget_show(vscroll_bar); 
 
-  gtk_container_add(GTK_CONTAINER(frame),hbox);
+  gtk_container_add(GTK_CONTAINER(win),hbox);
   gtk_widget_show(hbox);
 
-  return frame;
+  return win;
 }
 
 
 void update_code_info(void) {
+  Uint32 add=0;
+  Uint8 t=0;
+
   if (gbcpu->pc.w<code_info.begin_add || gbcpu->pc.w>=code_info.last_add)
     code_info_set_begin_add(gbcpu->pc.w,TRUE);
   else code_info_set_begin_add(code_info.begin_add,FALSE);
+
+  while(add<0xffff) {
+    opcode_size[add]=t<<2;
+    opcode_size[add]|=(t=get_nb_byte(mem_read(add)));
+    add+=t;    
+  }
+
 }
 
 void code_info_set_bp(void) {
   gtk_clist_select_row(GTK_CLIST(code_info.clist),code_info.curent_line,0);
 }
+
+

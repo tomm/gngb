@@ -19,11 +19,33 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
 
-#include <SDL/SDL.h>
+#include <SDL.h>
+
+int wl,hl,xm,ym;
+//extern void (*draw_message)(int x,int y,char *mes);
+extern SDL_Surface *fontbuf;
+
+#define RED_MASK(b) (b==4?0xFF000000:(b==3?0xFF0000:0))
+#define GREEN_MASK(b) (b==4?0xFF0000:(b==3?0xFF00:0))
+#define BLUE_MASK(b) (b==4?0xFF00:(b==3?0xFF:0))
+#define ALPHA_MASK(b) (b==4?0xFF:0)
+
+#define img2surface(a) SDL_CreateRGBSurfaceFrom((void*)a##.pixel_data,\
+						 a##.width,\
+						 a##.height,\
+						 a##.bytes_per_pixel*8,a##.width*a##.bytes_per_pixel,\
+						 RED_MASK(a##.bytes_per_pixel),\
+						 GREEN_MASK(a##.bytes_per_pixel),\
+						 BLUE_MASK(a##.bytes_per_pixel),\
+						 ALPHA_MASK(a##.bytes_per_pixel))
 
 void init_message(void);
 void set_message(const char *format,...);
+void set_info(const char *format,...);
+void unset_info(void);
 void update_message(void);
+void draw_message(int x,int y,char *mes);
+void restore_message_pal(void);
 
 #endif
 

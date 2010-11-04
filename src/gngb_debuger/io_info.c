@@ -6,7 +6,7 @@
 
 typedef struct {
   char *name;
-  UINT16 add;
+  Uint16 add;
   GtkWidget *entry;
 }io_reg_info;
 
@@ -141,7 +141,7 @@ void update_timer_info(void) {
 
 /*struct {
   char *name;
-  UINT16 add;
+  Uint16 add;
   GtkWidget *entry;
 }io_reg[]={
   {"separator",0x0000,NULL},
@@ -171,14 +171,18 @@ struct {
 };
 
 
-GtkWidget *init_io_info(void) {
-  GtkWidget *frame;
+GtkWidget *dbg_io_win_create(void) {
+  GtkWidget *win;
   GtkWidget *scroll_win;
   GtkWidget *vbox;
   GtkWidget *w;
   int i;
 
-  frame=gtk_frame_new("IO");
+  win=gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_window_set_title(GTK_WINDOW(win),"Io");
+  gtk_signal_connect_object(GTK_OBJECT(win),"delete_event",
+			    GTK_SIGNAL_FUNC(gtk_widget_hide),GTK_OBJECT(win));
+  gtk_widget_show(win);
 
   scroll_win=gtk_scrolled_window_new(NULL,NULL);
   vbox=gtk_vbox_new(FALSE,2);
@@ -192,9 +196,9 @@ GtkWidget *init_io_info(void) {
      
   gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(scroll_win),vbox);
   gtk_widget_show(vbox);
-  gtk_container_add(GTK_CONTAINER(frame),scroll_win);
+  gtk_container_add(GTK_CONTAINER(win),scroll_win);
   gtk_widget_show(scroll_win);
-  return frame;
+  return win;
 }
 
 void update_io_info(void) {

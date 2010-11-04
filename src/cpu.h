@@ -35,21 +35,21 @@
 #define UNSET_FLAG(f) ((gbcpu->af.b.l)&=(f))
 #define IS_SET(f) ((gbcpu->af.b.l&(f)))
 
-#if SDL_BYTEORDER==SDL_BIG_ENDIAN
+#ifdef GNGB_BIG_ENDIAN
 
 typedef union {
-	UINT16 w;
+	Uint16 w;
 	struct {
-		UINT8 l,h;
+		Uint8 h,l;
 	}b;
 }REG;
 
 #else 
 
 typedef union {
-	UINT16 w;
+	Uint16 w;
 	struct {
-		UINT8 h,l;
+		Uint8 l,h;
 	}b;
 }REG;
 
@@ -68,18 +68,18 @@ typedef struct {
   REG hl;
   REG sp;
   REG pc;
-  UINT8 int_flag;        // IME 
-  UINT8 ei_flag;    
-  UINT8 mode;
-  UINT8 state;
+  Uint8 int_flag;        // IME 
+  Uint8 ei_flag;    
+  Uint8 mode;
+  Uint8 state;
 }GB_CPU;
 
 extern GB_CPU *gbcpu;
 
 void gbcpu_init(void);  
 void gbcpu_reset(void);
-inline UINT8 gbcpu_exec_one(void);
-inline void update_gb(void);
+__inline__ Uint8 gbcpu_exec_one(void);
+__inline__ void update_gb(void);
 
 #endif
 

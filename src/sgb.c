@@ -16,12 +16,15 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. 
  */
 
+#include <config.h>
+#include <SDL.h>
+#include <stdlib.h>
 #include "memory.h"
 #include "sgb.h"
 #include "rom.h"
 #include "vram.h"
 #include "emu.h"
-#include <SDL/SDL.h>
+
 
 #ifdef DEBUG
 #include "gngb_debuger/debuger.h"
@@ -30,48 +33,19 @@
 #define SGB_CMD_END() {sgb.cmd=0xff;sgb.nb_pack=-1;}
 #define SGB_COLOR(c) ((((c)&0x7C00)>>10)|(((c)&0x3E0)<<1)|(((c)&0x1F)<<11))
 
-struct mask_shift {
-  unsigned char mask;
-  unsigned char shift;
-};
-
-static struct mask_shift tab_ms[8]={
-  { 0x80,7 },
-  { 0x40,6 },
-  { 0x20,5 },
-  { 0x10,4 },
-  { 0x08,3 },
-  { 0x04,2 },
-  { 0x02,1 },
-  { 0x01,0 }};
-
-UINT8 sgb_tiles[256*32];
-UINT8 sgb_map[32*32];
-UINT8 sgb_att[32*32];
+Uint8 sgb_tiles[256*32];
+Uint8 sgb_map[32*32];
+Uint8 sgb_att[32*32];
 
 SDL_Surface *sgb_buf=NULL;
 
-extern UINT16 Filter[32768];
+extern Uint16 Filter[32768];
 
-UINT16 sgb_border_pal[64];
-UINT16 sgb_scpal[512][4];   // 512 pallete of 4 color
-UINT8 sgb_ATF[45][90];
+Uint16 sgb_border_pal[64];
+Uint16 sgb_scpal[512][4];   // 512 pallete of 4 color
+Uint8 sgb_ATF[45][90];
 
-static UINT8 sgb_flag=0;
-
-#ifdef SDL_GL
-void sgb_init_gl(void) {
-  sgb_tex.bmp=(UINT8 *)malloc(256*256*2);
-  glGenTextures(1,&sgb_tex.id);
-  glBindTexture(GL_TEXTURE_2D,sgb_tex.id);
-  glTexImage2D(GL_TEXTURE_2D,0,GL_RGB5,256,256,0,
-	       GL_RGB,GL_UNSIGNED_BYTE,NULL);
-  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP);
-  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP);  
-}
-#endif
+static Uint8 sgb_flag=0;
 
 void sgb_init(void) {
   int i;
@@ -97,18 +71,16 @@ void sgb_init(void) {
 
   SGB_CMD_END();
 
-#ifdef SDL_GL
-  if (conf.gl) 
-    sgb_init_gl();
-#endif
 }
 
 /* SGB Border */
 
-inline void sgb_tiles_pat_transfer(void) {
+__inline__ void sgb_tiles_pat_transfer(void) {
   //char type=sgb.pack[1]>>2;
-  UINT8 range=sgb.pack[1]&0x03;
-  UINT8 *src,*dst;
+  Uint8 range=sgb.pack[1]&0x03;
+  Uint8 *src,*dst;
+
+  //  printf("LCDCSTAT: %02x LCDCCONT: %02x SCR: %02x %02x WIN: %02x %02x LY: %02x LYC: %02x\n",LCDCSTAT,LCDCCONT,SCRX,SCRY,WINX,WINY,CURLINE,CMP_LINE);
 
   //  printf("Pack %02x\n",sgb.pack[1]);
   src=&vram_page[0][0x800];
@@ -118,8 +90,10 @@ inline void sgb_tiles_pat_transfer(void) {
   SGB_CMD_END();
 }
 
-inline void sgb_tiles_map_transfer(void) {
+__inline__ void sgb_tiles_map_transfer(void) {
   int i;
+
+  // printf("LCDCSTAT: %02x LCDCCONT: %02x SCR: %02x %02x WIN: %02x %02x LY: %02x LYC: %02x\n",LCDCSTAT,LCDCCONT,SCRX,SCRY,WINX,WINY,CURLINE,CMP_LINE);
 
   for(i=0;i<32*32;i++) {
     /* FIXME: dkl2 et conker => 0x1000 */
@@ -133,6 +107,7 @@ inline void sgb_tiles_map_transfer(void) {
   }
   
   /* FIXME: dkl2 et conker => 0x800 */
+  /* TODO: Fix sgb border color 0 */
   if (sgb_flag) 
     for(i=0;i<64;i++) 
       sgb_border_pal[i]=SGB_COLOR((vram_page[0][0x800+i*2+1]<<8)|vram_page[0][0x800+i*2]);
@@ -140,17 +115,20 @@ inline void sgb_tiles_map_transfer(void) {
     for(i=0;i<64;i++) 
       sgb_border_pal[i]=SGB_COLOR((vram_page[0][0x1000+i*2+1]<<8)|vram_page[0][0x1000+i*2]);
   
+  sgb_border_pal[0]=0xffff;
+
   SGB_CMD_END();
 }
 
-inline void sgb_draw_one_tile(UINT16 *buf,int x,int y,UINT16 no_tile,UINT8 att) {
+__inline__ void sgb_draw_one_tile(Uint16 *buf,int x,int y,Uint16 no_tile,Uint8 att,Uint16 pitch) {
   int sx,sy;
   char bit0,bit1,bit2,bit3;
   int c;
   char xflip=att&0x40;
-  UINT16 *b=&buf[x+y*SGB_WIDTH];
-
+  Uint16 *b=&buf[x+y*(pitch>>1)];
+  pitch=pitch>>1;
   /* FIXME: comme ca dkl2 et conker ca marche mais dragon quest nan :(*/
+ 
   if (sgb_flag) {
     if (no_tile>=128) no_tile=((64+no_tile)%128)+128;
     else  no_tile=(64+no_tile)%128;
@@ -159,7 +137,7 @@ inline void sgb_draw_one_tile(UINT16 *buf,int x,int y,UINT16 no_tile,UINT8 att) 
   no_tile=no_tile|((att&0x03)<<6);
 
   if (att&0x80) {    // yflip
-    for(sy=7;sy>=0;sy--,b+=SGB_WIDTH) {
+    for(sy=7;sy>=0;sy--,b+=pitch) {
       for(sx=0;sx<8;sx++) {
 	int wbit;
 	if (!xflip) wbit=sx;
@@ -173,7 +151,7 @@ inline void sgb_draw_one_tile(UINT16 *buf,int x,int y,UINT16 no_tile,UINT8 att) 
       }
     }
   } else {
-    for(sy=0;sy<8;sy++,b+=SGB_WIDTH) {
+    for(sy=0;sy<8;sy++,b+=pitch) {
       for(sx=0;sx<8;sx++) {
 	int wbit;
 	if (!xflip) wbit=sx;
@@ -189,60 +167,50 @@ inline void sgb_draw_one_tile(UINT16 *buf,int x,int y,UINT16 no_tile,UINT8 att) 
   }
 }
 
-inline void sgb_draw_tiles(void) {
+__inline__ void sgb_draw_tiles(void) {
   int i,j;
-  UINT16 *buf;
+  Uint16 *buf;
+  Uint16 pitch;
 
-#ifdef SDL_GL
-  if (conf.gl)
-    buf=(UINT16 *)sgb_tex.bmp;
-  else
-#endif
-    buf=(UINT16 *)sgb_buf->pixels;
+  buf=(Uint16 *)sgb_buf->pixels;
+  pitch=sgb_buf->pitch;
 
   for(j=0;j<28;j++) 
     for(i=0;i<32;i++) 
-      sgb_draw_one_tile(buf,i*8,j*8,sgb_map[i+j*32],sgb_att[i+j*32]);
-    
-#ifdef SDL_GL
-  if (conf.gl) {
-    glBindTexture(GL_TEXTURE_2D,sgb_tex.id);
-    glTexSubImage2D(GL_TEXTURE_2D,0,0,0,SGB_WIDTH,SGB_HEIGHT,
-		    GL_RGB,GL_UNSIGNED_SHORT_5_6_5,sgb_tex.bmp);
-  } else
-#endif    
-    SDL_BlitSurface(sgb_buf,NULL,gb_screen,NULL);
+      sgb_draw_one_tile(buf,i*8,j*8,sgb_map[i+j*32],sgb_att[i+j*32],pitch);
+
+  cur_mode->blit_sgb_mask();
 }
 
 /* Area Designation Mode Functions */
 
-inline void set_pal_Hline(int line,int pal) {
+__inline__ void set_pal_Hline(int line,int pal) {
   int i;
   for(i=0;i<20;i++)
     sgb_pal_map[i][line]=pal;
 }
 
-inline void set_pal_Vline(int line,int pal) {
+__inline__ void set_pal_Vline(int line,int pal) {
   int i;
   for(i=0;i<18;i++)
     sgb_pal_map[line][i]=pal; 
 }
 
-inline void set_pal_Hline_range(int l1,int l2,int pal) {
+__inline__ void set_pal_Hline_range(int l1,int l2,int pal) {
   int i,j;
   for(j=l1;j<=l2;j++)
     for(i=0;i<20;i++)
       sgb_pal_map[i][j]=pal;
 }
 
-inline void set_pal_Vline_range(int l1,int l2,int pal) {
+__inline__ void set_pal_Vline_range(int l1,int l2,int pal) {
   int i,j;
   for(i=l1;i<=l2;i++)
     for(j=0;j<18;j++)    
       sgb_pal_map[i][j]=pal;
 }
 
-inline void set_pal_inside_block(int x1,int y1,int x2,int y2,int pal) {
+__inline__ void set_pal_inside_block(int x1,int y1,int x2,int y2,int pal) {
   int x,y;
   if (x1<0) x1=0;
   if (x2>=20) x2=20;
@@ -253,7 +221,7 @@ inline void set_pal_inside_block(int x1,int y1,int x2,int y2,int pal) {
       sgb_pal_map[x][y]=pal;
 }
 
-inline void set_pal_outside_block(int x1,int y1,int x2,int y2,int pal) {
+__inline__ void set_pal_outside_block(int x1,int y1,int x2,int y2,int pal) {
   if (y1>0)
     set_pal_Hline_range(0,y1-1,pal);
   if (y2<17)
@@ -264,7 +232,7 @@ inline void set_pal_outside_block(int x1,int y1,int x2,int y2,int pal) {
     set_pal_Vline_range(x2+1,19,pal);
 }
 
-inline void set_pal_on_block(int x1,int y1,int x2,int y2,int pal) {
+__inline__ void set_pal_on_block(int x1,int y1,int x2,int y2,int pal) {
   int x,y;
   if (x1<0) x1=0;
   if (x2>=20) x2=19;
@@ -285,11 +253,11 @@ inline void set_pal_on_block(int x1,int y1,int x2,int y2,int pal) {
   }
 }
 
-inline void sgb_block_mode(void) {
-  static INT8 nb_dataset;
-  static UINT8 dataset[6];
-  static UINT8 ds_i; // dataset indice  
-  UINT8 p_i;   // packet indice
+__inline__ void sgb_block_mode(void) {
+  static Sint8 nb_dataset;
+  static Uint8 dataset[6];
+  static Uint8 ds_i; // dataset indice  
+  Uint8 p_i;   // packet indice
 
   if (sgb.nb_pack==-1) {  // first call
     //printf("Block mode\n");
@@ -303,8 +271,8 @@ inline void sgb_block_mode(void) {
   while(nb_dataset>0 && p_i<SGB_PACKSIZE) {
     dataset[ds_i++]=sgb.pack[p_i++];
     if (ds_i==6) { // on traite le dataset
-      INT8 SH,SV,EH,EV;
-      UINT8 px,py,pz;
+      Sint8 SH,SV,EH,EV;
+      Uint8 px,py,pz;
       SH=dataset[2]&0x1f;
       SV=dataset[3]&0x1f;
       EH=dataset[4]&0x1f;
@@ -353,9 +321,9 @@ inline void sgb_block_mode(void) {
   if (sgb.nb_pack==0) SGB_CMD_END();
 }
 
-inline void sgb_line_mode(void) {
+__inline__ void sgb_line_mode(void) {
   int i;
-  static INT16 nb_dataset;
+  static Sint16 nb_dataset;
 
   if (sgb.nb_pack==-1) {  // first call
     sgb.nb_pack=sgb.pack[0]&0x07;
@@ -385,7 +353,7 @@ inline void sgb_line_mode(void) {
   if (sgb.nb_pack==0) SGB_CMD_END();
 }
 
-inline void sgb_divide_mode(void) {
+__inline__ void sgb_divide_mode(void) {
   int line=sgb.pack[2]&0x1f;
   /*printf("Divide mode\n");
     printf(((sgb.pack[1]&0x40)?"Vertical\n":"Horizontal\n"));
@@ -405,10 +373,10 @@ inline void sgb_divide_mode(void) {
 }
 
 
-inline void sgb_1chr_mode(void) {
-  static UINT8 mode;
-  static UINT16 nb_dataset;
-  static UINT8 I,J;
+__inline__ void sgb_1chr_mode(void) {
+  static Uint8 mode;
+  static Uint16 nb_dataset;
+  static Uint8 I,J;
   static int i;
 
   if (sgb.nb_pack==-1) {  // first call
@@ -453,7 +421,7 @@ inline void sgb_1chr_mode(void) {
 
 void set_ATF_nf(int nf,int mode) {
   int i,j,n;
-  UINT8 *t=sgb_ATF[nf];
+  Uint8 *t=sgb_ATF[nf];
   /*printf("Set data from ATF \n");
     printf("Num file %d\n",nf);
     printf("Mode %d\n",mode);*/
@@ -472,7 +440,7 @@ void set_ATF_nf(int nf,int mode) {
 
 void sgb_set_ATF(void) {
   int i;
-  UINT8 *t=&vram_page[0][0x800];
+  Uint8 *t=&vram_page[0][0x800];
   
   //printf("Set ATF \n");
   for(i=0;i<45;i++,t+=90)
@@ -489,9 +457,9 @@ void sgb_set_data_ATF(void) {
 
 /* Pallete Functions */
 
-inline void sgb_set_scpal_data(void) {
+__inline__ void sgb_set_scpal_data(void) {
   int i,j;
-  UINT8 *t=&vram_page[0][0x800];
+  Uint8 *t=&vram_page[0][0x800];
   
   for(i=0;i<512;i++) 
     for(j=0;j<4;j++,t+=2)
@@ -507,7 +475,7 @@ inline void sgb_set_scpal_data(void) {
   SGB_CMD_END();
 }
 
-inline void sgb_set_pal_indirect(void) {
+__inline__ void sgb_set_pal_indirect(void) {
   
   memcpy(sgb_pal[0],sgb_scpal[((sgb.pack[2]&0x01)<<8)|sgb.pack[1]],2*4);
   memcpy(sgb_pal[1],sgb_scpal[((sgb.pack[4]&0x01)<<8)|sgb.pack[3]],2*4);
@@ -521,7 +489,7 @@ inline void sgb_set_pal_indirect(void) {
 }
 
 
-inline void sgb_setpal(int p1,int p2) {
+__inline__ void sgb_setpal(int p1,int p2) {
   int i;
   for(i=0;i<4;i++) 
     sgb_pal[i][0]=SGB_COLOR((sgb.pack[2]<<8)|sgb.pack[1]);
@@ -539,14 +507,14 @@ inline void sgb_setpal(int p1,int p2) {
 
 /* Misc Function */
 
-inline void sgb_function(void) {
+__inline__ void sgb_function(void) {
   switch(sgb.pack[1]) {
   case 0x01:/*sgb_flag=1;*/break; // Please if you know what do this function (email me)
   }
   SGB_CMD_END();
 }
 
-inline void sgb_window_mask(void) {
+__inline__ void sgb_window_mask(void) {
 
   /* je ne sais pas si c'est ca */
   /* apres quelque test: apparement nan :( */
@@ -555,11 +523,11 @@ inline void sgb_window_mask(void) {
   case 0x01:  // i dint know what it do
   case 0x02:
     /*for(i=0;i<4;i++)
-      memset(sgb_pal[i],0,sizeof(UINT16)*4);
+      memset(sgb_pal[i],0,sizeof(Uint16)*4);
       break;*/
   case 0x03:
     /*for(i=0;i<4;i++)
-      memset(sgb_pal[i],0xffff,sizeof(UINT16)*4);
+      memset(sgb_pal[i],0xffff,sizeof(Uint16)*4);
       break;*/
     sgb_mask=1;
     break;   
@@ -570,11 +538,13 @@ inline void sgb_window_mask(void) {
 void sgb_exec_cmd(void) {
   
   if (sgb.cmd==0xff) {
-    /*int i;
+    int i;
+    /*
       printf("sgb:%02x nb:%d pack: ",sgb.pack[0]>>3,sgb.pack[0]&0x07);
       for(i=0;i<SGB_PACKSIZE;i++)
       printf("%02x ",sgb.pack[i]);
-      putchar('\n');*/
+      putchar('\n');
+    */
 #ifdef DEBUG  
     add_sgb_msg("sgb:%02x nb:%d pack:\n",sgb.pack[0]>>3,sgb.pack[0]&0x07);
 #endif

@@ -12,6 +12,15 @@ show_fps 0
 # Rumble On ?
 rumble 1
 
+# filter mode (only for standard mode without sgb)
+# 0 NONE
+# 1 SCANLINE
+# 2 SCANLINE 50%
+# 3 smooth
+# 4 pseudo cell shading
+
+filter 0
+
 # GL Mode ?
 glmode 0
 gl_size_w 320

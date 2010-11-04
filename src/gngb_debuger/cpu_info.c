@@ -8,14 +8,18 @@ struct {
   GtkWidget *reg_entry[6];
 }cpu_info;
 
-GtkWidget *init_cpu_info(void) {
-  GtkWidget *frame;
+GtkWidget *dbg_cpu_win_create(void) {
+  GtkWidget *win;
   GtkWidget *vbox,*hbox;
   GtkWidget *label;
   char *reg_label[6]={"A","BC","DE","HL","SP","PC","Flag"};
   int i;
 
-  frame=gtk_frame_new("CPU");
+  win=gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_window_set_title(GTK_WINDOW(win),"Cpu");
+  gtk_signal_connect_object(GTK_OBJECT(win),"delete_event",
+			    GTK_SIGNAL_FUNC(gtk_widget_hide),GTK_OBJECT(win));
+  gtk_widget_show(win);
   
   /*hbox=gtk_hbox_new(FALSE,0);
   vbox=gtk_vbox_new(FALSE,0);
@@ -97,9 +101,9 @@ GtkWidget *init_cpu_info(void) {
   gtk_box_pack_start(GTK_BOX(vbox),hbox,FALSE,FALSE,2);    
   gtk_widget_show(hbox);
   
-  gtk_container_add(GTK_CONTAINER(frame),vbox);  
+  gtk_container_add(GTK_CONTAINER(win),vbox);  
   gtk_widget_show(vbox);
-  return frame;
+  return win;
 }
 
 void update_cpu_info(void) {
@@ -115,7 +119,8 @@ void update_cpu_info(void) {
   text[0]=0;
   if (!gbcpu->int_flag) strcat(text,"DI");
   else strcat(text,"EI");
-	
+  gtk_label_set_text(GTK_LABEL(cpu_info.ei_di_label),text);
+  
   //Flag
   text[0]=0;
   if (IS_SET(FLAG_Z)) text[0]='Z'; else text[0]='z';

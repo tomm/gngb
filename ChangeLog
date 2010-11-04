@@ -1,9 +1,45 @@
 
 WHAT'S NEW ?
 
+* Clean few code
+* Fix window current_line (only increment when window is on) (Fix PGAEuropean
+    PowerPuff Girl)
+* Implement a fast read write system (speed increase)
+* Add a minimal menu system (TAB to open it) (Most switchable option
+	are accessible within it)
+* SaveState save also a little screenshot
+* SGB support for YUV modes
+* Add some filter (--filter=X) such as scanline etc.
+* Fix sgb border color 0
+* Fix Stop Instruction (PC++ => fix konami2 collection)
+* Add getopt_long support for all platform
+* Fix a graphic bug with fbdev
+* Add the possibility to toggle sound on/off during play
+	
+20020114
+
+* replace all inline by __inline__
+* use #include <SDL.h> instead of #include <SDL/SDL.h>
+* Better precision in sound playing (digit in PerfectDark sound better)
+* Add support for getopt_long (ex: --sound)
+* Add SDL_OVERLAY_YUY2 support (use option yuv_type 1 )
+* YUV with normal gameboy now have same color that non-YUV mode
+* color_filter option added (SDLK_KP6 during game to switch)
+* Opengl mode now resizable (as YUV)
+* New option -R WxH : set the resolution for both yuv and opengl (don't use -O anymore)
+* Fix some problem with the show_fps option 
+* Configure: Fix check sdl-config,gtk-config,glib-config
+* Configure: now correctly configure endianess on sun4u platform
+* Debuger: Add a vram window info
+* Improve FrameSkip code (should be more accurate)
+* show_fps work even if autoframeskip is off
+* sleep_idle support added to the new frameskip code
+	
+20011212
+
 * Try a new frameskip code
 * Add YUV Mode Resizable (option -Y)
-* Clean Some Code
+* Clean up Some Code
 * Fix Segmentation Fault when can't init sound
 * Fix getenv segfault on some plateform
 * Fix bit 0x01 when go 2 double speed (demokart work)
@@ -25,8 +61,8 @@ WHAT'S NEW ?
 20010618
 
  * Try to implement sgb window mask
- * Fix GB_PAD read/write with SGB (PokeJaune and BMBERMAN work)
- * Fix RETI instruction (Magical Drop,Megaman5 work)
+ * Fix GB_PAD read/write with SGB (PokeJaune and BOMBERMAN works)
+ * Fix RETI instruction (Magical Drop,Megaman5 works)
  * Add a configuration file (see gngbrc)
  * Fix an interrupt bug (oracle of season works)
  * Implement gdma cycle (Magical drop works better but not perfectly)
@@ -51,7 +87,7 @@ WHAT'S NEW ?
 
 20010305
 
- * Fix a gb_pad bug, when pad is off return 0xff ( BMBERMAN work)
+ * Fix a gb_pad bug, when pad is off return 0xff ( BOMBERMAN work)
  * Fix a bug interrupt, update interrupt when write to CMPLINE (Mickey racing work)
 	
 	

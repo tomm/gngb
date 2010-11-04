@@ -23,7 +23,7 @@
 #include "global.h"
 
 /* rom type definition */
-#define UNKNOW_TYPE    -1
+#define UNKNOW_TYPE    0x00
 #define ROM_ONLY       0x01
 #define MBC1           0x02
 #define MBC2           0x04
@@ -34,20 +34,21 @@
 #define TIMER          0x80
 #define RUMBLE         0x100
 #define SRAM           0x200
+#define HUC1           0x400
 
 char *rom_name;
-extern INT16 rom_type;
+extern Sint16 rom_type;
 
 //  rom_gb_suport
 
-extern UINT8 rom_gb_type;
+extern Uint8 rom_gb_type;
 
 typedef struct {
-  UINT16 cycle;
-  UINT8 reg_sel;
-  UINT8 latch;
-  UINT8 reg[5];
-  UINT8 regl[5];   // register locked
+  Uint16 cycle;
+  Uint8 reg_sel;
+  Uint8 latch;
+  Uint8 reg[5];
+  Uint8 regl[5];   // register locked
 }ROM_TIMER; // MBC3
 
 ROM_TIMER *rom_timer;
@@ -58,6 +59,7 @@ int load_ram(void);
 int save_rom_timer(void);
 int load_rom_timer(void);
 
+SDL_Surface* get_surface_of_save_state(int n);
 int save_state(int n);
 int load_state(int n);
 

@@ -15,11 +15,17 @@
 /* Define if you can safely include both <sys/time.h> and <time.h>.  */
 #undef TIME_WITH_SYS_TIME
 
+/* Define if you have the getopt_long function.  */
+#undef HAVE_GETOPT_LONG
+
 /* Define if you have the gettimeofday function.  */
 #undef HAVE_GETTIMEOFDAY
 
 /* Define if you have the mkdir function.  */
 #undef HAVE_MKDIR
+
+/* Define if you have the sleep function.  */
+#undef HAVE_SLEEP
 
 /* Define if you have the socket function.  */
 #undef HAVE_SOCKET

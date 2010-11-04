@@ -28,9 +28,13 @@ static void cb_stop(GtkWidget *widget,gpointer data) {
   conf.gb_done=1;
 }
 
+static void cb_show_window(GtkWidget *widget,gpointer data) {
+  gtk_widget_show(GTK_WIDGET(data));
+}
+
 
 /* Return A Menu Bar */
-GtkWidget *init_menu(GtkWidget *window) {
+GtkWidget *init_dbg_menu(GtkWidget *window) {
   GtkWidget *menu;
   GtkWidget *menu_item;
   GtkWidget *menu_bar;
@@ -88,6 +92,51 @@ GtkWidget *init_menu(GtkWidget *window) {
 		     GTK_SIGNAL_FUNC(cb_stop),NULL);
 
   menu_item=gtk_menu_item_new_with_label("Emu");
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(menu_item),menu);
+  gtk_menu_bar_append(GTK_MENU_BAR(menu_bar),menu_item);
+  gtk_widget_show(menu_item);
+
+  // Win Menu
+  menu=gtk_menu_new();
+  
+  menu_item=gtk_menu_item_new_with_label("Msg");
+  gtk_menu_append(GTK_MENU(menu),menu_item);
+  gtk_widget_show(menu_item);
+  gtk_signal_connect(GTK_OBJECT(menu_item),"activate",
+		     GTK_SIGNAL_FUNC(cb_show_window),dbg_msg_win);
+  menu_item=gtk_menu_item_new_with_label("Vram");
+  gtk_menu_append(GTK_MENU(menu),menu_item);
+  gtk_widget_show(menu_item);
+  gtk_signal_connect(GTK_OBJECT(menu_item),"activate",
+		     GTK_SIGNAL_FUNC(cb_show_window),dbg_vram_win);
+  menu_item=gtk_menu_item_new_with_label("Interrupt");
+  gtk_menu_append(GTK_MENU(menu),menu_item);
+  gtk_widget_show(menu_item);
+  gtk_signal_connect(GTK_OBJECT(menu_item),"activate",
+		     GTK_SIGNAL_FUNC(cb_show_window),dbg_int_win);
+  menu_item=gtk_menu_item_new_with_label("Memory");
+  gtk_menu_append(GTK_MENU(menu),menu_item);
+  gtk_widget_show(menu_item);
+  gtk_signal_connect(GTK_OBJECT(menu_item),"activate",
+		     GTK_SIGNAL_FUNC(cb_show_window),dbg_mem_win);
+  menu_item=gtk_menu_item_new_with_label("Cpu");
+  gtk_menu_append(GTK_MENU(menu),menu_item);
+  gtk_widget_show(menu_item);
+  gtk_signal_connect(GTK_OBJECT(menu_item),"activate",
+		     GTK_SIGNAL_FUNC(cb_show_window),dbg_cpu_win);
+  menu_item=gtk_menu_item_new_with_label("Io");
+  gtk_menu_append(GTK_MENU(menu),menu_item);
+  gtk_widget_show(menu_item);
+  gtk_signal_connect(GTK_OBJECT(menu_item),"activate",
+		     GTK_SIGNAL_FUNC(cb_show_window),dbg_io_win);
+  menu_item=gtk_menu_item_new_with_label("Code");
+  gtk_menu_append(GTK_MENU(menu),menu_item);
+  gtk_widget_show(menu_item);
+  gtk_signal_connect(GTK_OBJECT(menu_item),"activate",
+		     GTK_SIGNAL_FUNC(cb_show_window),dbg_code_win);
+
+  
+  menu_item=gtk_menu_item_new_with_label("Window");
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(menu_item),menu);
   gtk_menu_bar_append(GTK_MENU_BAR(menu_bar),menu_item);
   gtk_widget_show(menu_item);

@@ -20,7 +20,7 @@
 #define EMU_H
 
 #include "global.h"
-#include <SDL/SDL_keysym.h>
+#include <SDL_keysym.h>
 
 // GAMEBOY TYPE
 
@@ -31,33 +31,40 @@
 #define COLOR_GAMEBOY_ONLY 0x0c
 
 typedef struct {
-  UINT8 autoframeskip;           /* auto frameskip */
-  UINT8 throttle;
-  UINT8 sleep_idle;
+  int autoframeskip;           /* auto frameskip */
+  int throttle;
+  int sleep_idle;
 
-  UINT8 fs;               /* fullscreen */  
-  UINT8 sound;
-  UINT8 rumble_on;
-  UINT8 serial_on;
-  UINT8 gb_done;
-  UINT8 joy_no;
-  UINT8 gl;
-  UINT8 yuv;
-  UINT8 delay_int;
-  UINT8 show_fps;
-  UINT8 show_keycode;
-  UINT16 gl_w,gl_h;
-  UINT16 yuv_w,yuv_h;
-  UINT16 yuv_interline_int;
-  UINT8 gb_type;
-  UINT8 const_cycle;
-  UINT8 gdma_cycle;
-  UINT32 pal[5][4];
+  int fs;               /* fullscreen */  
+  int sound;
+  int color_filter;
+  int rumble_on;
+  int serial_on;
+  int gb_done;
+  int joy_no;
+  int gl;
+  int yuv;
+  int yuv_type;
+  int filter;
+  int delay_int;
+  int show_fps;
+  int show_keycode;
+  int res_w,res_h;
+  int yuv_interline_int;
+  int sample_rate;
+  int gb_type;
+  int const_cycle;
+  int gdma_cycle;
+  Sint32 pal[5][4];
 }GNGB_CONF;
 
 GNGB_CONF conf;
 
-UINT16 key[SDLK_LAST];
+SDL_Joystick *sdl_joy;
+
+Uint16 key[SDLK_LAST];
+Sint16 *joy_axis;
+Uint8 *joy_but;
 
 #define PAD_UP 0
 #define PAD_DOWN 1
@@ -68,8 +75,8 @@ UINT16 key[SDLK_LAST];
 #define PAD_START 6
 #define PAD_SELECT 7
 
-extern UINT8 jmap[8];
-extern UINT16 kmap[8];
+extern Uint8 jmap[8];
+extern Uint16 kmap[8];
 
 void print_help(void);
 
@@ -78,6 +85,7 @@ void open_conf(void);
 void check_option(int argc,char *argv[]);
 void update_key(void);
 
+void emu_init(void);
 void emu_run(void);
 void emu_reset(void);
 void emu_pause(void);

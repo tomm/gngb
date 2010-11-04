@@ -17,7 +17,7 @@
  */
 
 #include <stdlib.h>
-#include <SDL/SDL.h>
+#include <SDL.h>
 #include "interrupt.h"
 #include "frame_skip.h"
 #include "memory.h"
@@ -30,65 +30,42 @@
 #include "gngb_debuger/debuger.h"
 #endif
 
-#define DELAY_CYCLE 12
+#define DELAY_CYCLE 72
 
-UINT16 tb_vram_cycle[2][11]={{169,182,195,208,221,234,246,259,272,285,298},
-                             {338,364,390,416,442,468,492,518,544,570,596}};
+static const Uint16 lcd_cycle_tab[2][5]={{204,456,80,172,80},              /* GB */
+					 {204*2,456*2,80*2,172*2,80*2}}; /* CGB */
 
-UINT16 tb_hblank_cycle[2][11]={{207,194,181,168,155,142,130,117,104,91,78},
-			       {414,388,362,336,310,284,260,234,208,182,156}};
+Uint32 nb_cycle=0;
+Uint8 vram_init_pal=0;
 
-static const UINT16 lcd_cycle_tab[2][4]={{204,456,80,172},              /* GB */
-					 {204*2,456*2,80*2,172*2}};	/* CGB */
-
-UINT32 nb_cycle=0;
-
-UINT8 vram_init_pal=0;
-
-UINT16 gblcdc_update1(void);
-UINT16 gblcdc_update2(void);
-
-UINT8 ISTAT=0;
-
-UINT16 (*gblcdc_update)(void)=gblcdc_update1;
-
-UINT32 get_nb_cycle(void)
+Uint32 get_nb_cycle(void)
 {
-  UINT32 t=nb_cycle;
+  Uint32 t=nb_cycle;
   SDL_LockAudio();
   nb_cycle=0;
   SDL_UnlockAudio();
   return t;
 }
 
-inline void set_interrupt(UINT8 n) {
-  static UINT8 old;
 
-  old=INT_FLAG;
-  INT_FLAG|=n;
-   
 #ifdef DEBUG
+
+__inline__ void set_interrupt(Uint8 n) {
+  INT_FLAG|=n;
   add_int_msg("set int %d CURLINE %02x CMPLINE %02x INT_ENABLE %02x\n",
 	    n,CURLINE,CMP_LINE,INT_ENABLE);
-#endif
-
-  /*if (((old&n)^(INT_FLAG&n)) && (INT_FLAG&INT_ENABLE)) {
-    if (gbcpu->state==HALT_STATE) {
-#ifdef DEBUG
-      add_msg("stop halt 0\n");
-#endif
-      gbcpu->state=0;
-      gbcpu->pc.w++;
-    } 
-    }*/
 }
 
-inline void unset_interrupt(UINT8 n) {
+__inline__ void unset_interrupt(Uint8 n) {
   INT_FLAG&=(~n);
+  add_int_msg("unset int %d CURLINE %02x CMPLINE %02x INT_ENABLE %02x\n",
+	      n,CURLINE,CMP_LINE,INT_ENABLE);
 }
 
-inline UINT8 make_interrupt(UINT8 n) {
- 
+#endif
+
+__inline__ Uint8 make_interrupt(Uint8 n) {
+
   if ((INT_ENABLE&n) && (gbcpu->int_flag)) {
     if (gbcpu->state==HALT_STATE) {
       gbcpu->state=0;
@@ -96,9 +73,9 @@ inline UINT8 make_interrupt(UINT8 n) {
     } 
     
 #ifdef DEBUG
-    add_int_msg("make int %d CURLINE %02x CMP_LINE %02x INT_ENABLE %02x\n",n,CURLINE,CMP_LINE,INT_ENABLE,LCDCSTAT);
+    add_int_msg("make int %d CURLINE %02x CMP_LINE %02x INT_ENABLE %02x\n",n,CURLINE,CMP_LINE,INT_ENABLE);
 #endif
-    
+
     INT_FLAG&=(~n);
     gbcpu->int_flag=0;
     push_stack_word(gbcpu->pc.w);
@@ -112,13 +89,6 @@ inline UINT8 make_interrupt(UINT8 n) {
   }
   return 0;
 }
-
-UINT8 request_interrupt(UINT8 n) {
-  if ((INT_ENABLE&n) && (gbcpu->int_flag)) 
-    return 1;
-  return 0;
-}
-
 
 void go2double_speed(void)
 {
@@ -162,14 +132,6 @@ void gblcdc_reset(void) {
   /* TRICK for emulate vic viper laser */
   gblcdc->vram_factor=1.0;
 
-  if (conf.const_cycle) 
-    for(i=0;i<11;i++) {
-      tb_hblank_cycle[0][i]=204;
-      tb_hblank_cycle[1][i]=204*2;
-      tb_vram_cycle[0][i]=172;
-      tb_vram_cycle[1][i]=172*2;
-    }
-  
   for(i=0;i<160;i++)
     gblcdc->vram_pal_line[i]=pal_bck;
 
@@ -177,162 +139,125 @@ void gblcdc_reset(void) {
 }
 
 void gblcdc_set_on(void) {
+  gblcdc->win_curline=0;
   CURLINE=0x00;
-  gblcdc->cycle=gblcdc->mode2cycle;
-  //gblcdc->cycle=lcd_cycle_tab[gblcdc->timing][2];
-  LCDCSTAT=(LCDCSTAT&0xf8)|0x02;
-  gblcdc->nb_spr=get_nb_spr();
+  LCDCCONT|=0x80;
   gblcdc->inc_line=0;
-  gblcdc->mode=VRAM_PER;
+  gblcdc->mode=END_VBLANK_PER;
   vram_init_pal=1;
-  //if (CURLINE==CMP_LINE && CURLINE!=0) LCDCSTAT|=0x04;
-  if (CHECK_LYC_LY) LCDCSTAT|=0x04;
-  if ((LCDCCONT&0x80) && ((LCDCSTAT&0x20) ||
-      (LCDCSTAT&0x40 && LCDCSTAT&0x04))) set_interrupt(LCDC_INT);  
   clear_screen();
   reset_frame_skip();
-  //frame_skip(1);
+  gblcdc->cycle=gblcdc_update(); 
 }
 
-/*int check_lcdstat_int(void) {
-  if (CHECK_LYC_LY) LCDCSTAT|=0x04;
-  else  LCDCSTAT&=~0x04;
-  if ((LCDCSTAT&0x40 && LCDCSTAT&0x04) ||
-  (LCDCSTAT&0x08 && (LCDCSTAT&0x03)==0x00) ||
-  (LCDCSTAT&0x10 && (LCDCSTAT&0x03)==0x01) ||
-  (LCDCSTAT&0x20 && (LCDCSTAT&0x03)==0x02)) return 1;
-  return 0;
-  }
-*/
-
-UINT16 gblcdc_update1(void)  // LCDC is on
+Uint16 gblcdc_update(void)  // LCDC is on
 {
-  UINT16 ret=0;
-  UINT8 skip_this_frame;
+  Uint16 ret=0;
+  Uint8 skip_this_frame;
   int x;
 
   if (!(LCDCCONT&0x80)) return 0;
-    
-  if (gblcdc->inc_line) CURLINE++;
+  
+  if (gblcdc->inc_line) {
+    CURLINE++;
+    LCDCSTAT&=0xf8;
+    if ((CURLINE && CURLINE==CMP_LINE) || 
+	((CURLINE==0x99 && CMP_LINE==0x00)))  LCDCSTAT|=0x04;
+  }
   
   if (CURLINE==0x90 && (gblcdc->mode==OAM_PER || gblcdc->mode==BEGIN_OAM_PER)) {
     if (!conf.delay_int) {
       gblcdc->mode=VBLANK_PER;
+#ifdef DEBUG
+      if (vblank_int_enable) set_interrupt(VBLANK_INT);
+#else
       set_interrupt(VBLANK_INT);
+#endif
     } else gblcdc->mode=LINE_90_BEGIN;
   }
 
   if (CURLINE==0x00 && gblcdc->mode==END_VBLANK_PER) {
-    if (conf.autoframeskip) {
-      skip_this_frame=skip_next_frame;
-      //skip_next_frame=barath_skip_next_frame(conf.show_fps);
-      //skip_next_frame=frame_skip(0);
-      if (!skip_this_frame) blit_screen();
-      skip_next_frame=frame_skip(0);
-      //skip_next_frame=barath_skip_next_frame(1);
-      //skip_next_frame=barath_skip_next_frame(conf.show_fps);
-    } else blit_screen();
-    if (!conf.delay_int) gblcdc->mode=OAM_PER;
+    LCDCSTAT&=0xf8;
+    
+    skip_this_frame=skip_next_frame;
+    if (!skip_this_frame) blit_screen();
+    skip_next_frame=frame_skip(0);
+    if (1/*!conf.delay_int*/) gblcdc->mode=OAM_PER;
     else gblcdc->mode=BEGIN_OAM_PER;
+    gblcdc->win_curline=0;
   }
   
   if (CURLINE==0x99 && gblcdc->mode==LINE_99) { 
     CURLINE=0x00;
     gblcdc->mode=END_VBLANK_PER;
   } else if (CURLINE==0x99) {   
-    // CURLINE=0;
-    /*if (conf.autoframeskip) {
-      skip_this_frame=skip_next_frame;
-      skip_next_frame=barath_skip_next_frame(conf.show_fps);
-      if (!skip_this_frame) blit_screen();
-      }
-      else blit_screen();
-      if (!conf.delay_int)
-      gblcdc->mode=OAM_PER;
-      else gblcdc->mode=BEGIN_OAM_PER;
-#ifdef DEBUG
-      if (active_log)
-	put_log("nb_cycle: %d\n",get_nb_cycle());
-	#endif*/
-    //gblcdc->mode=END_VBLANK_PER;
+    
     gblcdc->mode=LINE_99;
   }
- 
-  LCDCSTAT&=0xf8;
-  /* FIXME */
-  if (CHECK_LYC_LY)  LCDCSTAT|=0x04;
-  //if (CMP_LINE==CURLINE) LCDCSTAT|=0x04;
-  /*if (CMP_LINE==CURLINE && CMP_LINE!=0x00)  LCDCSTAT|=0x04;
-    if (CURLINE==0x99 && CMP_LINE==0x00) LCDCSTAT|=0x04;*/
-  /*if ((CMP_LINE!=0x00 && CMP_LINE==CURLINE) ||
-    (CMP_LINE==0x00 && gblcdc->mode==END_VBLANK_PER)) LCDCSTAT|=0x04;*/
   
   switch(gblcdc->mode) {
   case HBLANK_PER:       // HBLANK
+#ifdef DEBUG
+    if (lcd_hblank_int_enable && LCDCSTAT&0x08) set_interrupt(LCDC_INT);
+#else
     if (LCDCSTAT&0x08) set_interrupt(LCDC_INT);
-    if (conf.autoframeskip) {
-      if (!skip_next_frame) draw_screen();
-    } else draw_screen();
-    ret=tb_hblank_cycle[gblcdc->timing][gblcdc->nb_spr];
-    if (!conf.delay_int)
-      gblcdc->mode=OAM_PER;
+#endif
+    if (!skip_next_frame) draw_screen();
+    ret=lcd_cycle_tab[gblcdc->timing][0];
+    if (1/*!conf.delay_int*/) gblcdc->mode=OAM_PER;
     else gblcdc->mode=BEGIN_OAM_PER;
     if (dma_info.type==HDMA) do_hdma();
     gblcdc->inc_line=1;
+    LCDCSTAT&=0xfc;
     break;
   case LINE_90_BEGIN:
     gblcdc->inc_line=0;
-    ret=DELAY_CYCLE;
     LCDCSTAT|=0x01;
-    if ((LCDCSTAT&0x10) ||
-	(LCDCSTAT&0x40 && LCDCSTAT&0x04)) set_interrupt(LCDC_INT);
+    if (LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
+    ret=DELAY_CYCLE;
     gblcdc->mode=LINE_90_END;
     break;
   case LINE_90_END:
     gblcdc->inc_line=1;
-    ret=gblcdc->mode1cycle-DELAY_CYCLE;
+#ifdef DEBUG
+    if (lcd_vblank_int_enable && LCDCSTAT&0x10) set_interrupt(LCDC_INT);
+#else
+    if (LCDCSTAT&0x10) set_interrupt(LCDC_INT);
+#endif
+    ret=lcd_cycle_tab[gblcdc->timing][1]-DELAY_CYCLE-8;
     LCDCSTAT|=0x01;
     gblcdc->mode=VBLANK_PER;
-    /*if ((LCDCSTAT&0x10) || 
-      (LCDCSTAT&0x40 && LCDCSTAT&0x04)) set_interrupt(LCDC_INT);*/
+#ifdef DEBUG
+    if (vblank_int_enable) set_interrupt(VBLANK_INT);
+#else
     set_interrupt(VBLANK_INT);
+#endif
     break;
   case LINE_99:
-    if ((LCDCSTAT&0x40 && LCDCSTAT&0x04))
-#ifdef DEBUG 
-      {
-	add_int_msg("set LCDC_INT END_VBLANK_PER CURLINE %02x\n",CURLINE);
-	set_interrupt(LCDC_INT);
-      }
-#else
-    set_interrupt(LCDC_INT);
-#endif
     LCDCSTAT|=0x01;
     /* FIXME: Line 99 Timing */
-    ret=30;
+    ret=lcd_cycle_tab[gblcdc->timing][4];
     gblcdc->inc_line=0;
     break;
   case END_VBLANK_PER:
-    if ((LCDCSTAT&0x40 && LCDCSTAT&0x04))
-#ifdef DEBUG 
-      {
-	add_int_msg("set LCDC_INT END_VBLANK_PER CURLINE %02x\n",CURLINE);
-	set_interrupt(LCDC_INT);
-      }
-#else
-    set_interrupt(LCDC_INT);
-#endif
     LCDCSTAT|=0x01;
-    /* FIXME */
-    ret=gblcdc->mode1cycle-30;
+#ifdef DEBUG
+    if (lcd_lyc_int_enable && LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
+#else
+    if (LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
+#endif
+    ret=lcd_cycle_tab[gblcdc->timing][1]-lcd_cycle_tab[gblcdc->timing][4];
     gblcdc->inc_line=0;
     break;
   case VBLANK_PER:       // VBLANK
     /* FIXME => water.gbc */
-    if (/*(LCDCSTAT&0x10) || */
-	(LCDCSTAT&0x40 && LCDCSTAT&0x04)) set_interrupt(LCDC_INT);
+#ifdef DEBUG
+    if (lcd_lyc_int_enable && LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
+#else
+    if (LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
+#endif
     LCDCSTAT|=0x01;
-    ret=gblcdc->mode1cycle;
+    ret=lcd_cycle_tab[gblcdc->timing][1];
     gblcdc->inc_line=1;
     break;
   case BEGIN_OAM_PER:
@@ -340,37 +265,33 @@ UINT16 gblcdc_update1(void)  // LCDC is on
     gblcdc->inc_line=0;
     gblcdc->mode=OAM_PER;
     ret=DELAY_CYCLE;
+    ret=24;
+    if (LCDCSTAT&0x40 && LCDCSTAT&0x04)  set_interrupt(LCDC_INT);
     break;
-  case OAM_PER:       // OAM 
+   case OAM_PER:       // OAM 
     LCDCSTAT|=0x02;
     gblcdc->inc_line=0;
-    /* FIXME Pinball Deluxe */
-    if (LCDCSTAT&0x20) 
+    /* FIXME: Pinball Deluxe */
 #ifdef DEBUG
-     {
-       add_int_msg("set LCDC_INT OAM_PER\n");
-       set_interrupt(LCDC_INT);
-      } 
-#else 
-    set_interrupt(LCDC_INT);
-#endif
-    if (LCDCSTAT&0x40 && LCDCSTAT&0x04) 
-#ifdef DEBUG 
-      {
-	add_int_msg("set LCDC_INT OAM_PER CURLINE %02x\n",CURLINE);
-	set_interrupt(LCDC_INT);
-      }
+    if (lcd_oam_int_enable && LCDCSTAT&0x20) set_interrupt(LCDC_INT);
 #else
-    set_interrupt(LCDC_INT);
+    if (LCDCSTAT&0x20) set_interrupt(LCDC_INT);
 #endif
-    ret=gblcdc->mode2cycle;
-    if (conf.delay_int) ret-=DELAY_CYCLE;
+
+#ifdef DEBUG
+    if (lcd_lyc_int_enable && LCDCSTAT&0x40 && LCDCSTAT&0x04) set_interrupt(LCDC_INT);
+#else
+    if (LCDCSTAT&0x40 && LCDCSTAT&0x04)  set_interrupt(LCDC_INT);
+#endif
+
+    ret=lcd_cycle_tab[gblcdc->timing][2];
+    /*if (conf.delay_int) ret-=DELAY_CYCLE;*/
     gblcdc->mode=VRAM_PER;
     gblcdc->nb_spr=get_nb_spr();
     break;
   case VRAM_PER:       // VRAM
     LCDCSTAT|=0x03;
-    ret=tb_vram_cycle[gblcdc->timing][gblcdc->nb_spr];
+    ret=lcd_cycle_tab[gblcdc->timing][3];
     gblcdc->mode=HBLANK_PER;
     /* FIXME */
     gblcdc->mode3cycle=ret;
@@ -386,14 +307,13 @@ UINT16 gblcdc_update1(void)  // LCDC is on
     }
     break;
   }
+
   return ret;
 }
 
-
-
 /* FIXME */
-void gblcdc_addcycle(INT32 c) {
-  UINT8 v=0;
+void gblcdc_addcycle(Sint32 c) {
+  Uint8 v=0;
 
   if (!(LCDCCONT&0x80)) return;
   while(c>gblcdc->cycle) {
@@ -409,7 +329,7 @@ void gblcdc_addcycle(INT32 c) {
 }
 
 
-// GB TIMER
+/* GB TIMER */
 
 void gbtimer_init(void) {
   gbtimer=(GBTIMER *)malloc(sizeof(GBTIMER));
@@ -423,20 +343,18 @@ void gbtimer_reset(void) {
 
 void gbtimer_update(void)
 {
-  /*INT16 t=TIME_COUNTER+1;  //timer_inc;
-  if (t>0xff) {
-    TIME_COUNTER=TIME_MOD;
-    set_interrupt(TIMEOWFL_INT); 
-    } else TIME_COUNTER=((UINT16)(t))&0xff;*/
   TIME_COUNTER++;
-  /* FIXME ==0xff or ==0x00 */
-  if (TIME_COUNTER==0xff) {
+  if (TIME_COUNTER==0x00) {
     TIME_COUNTER=TIME_MOD;
+#ifdef DEBUG
+    if (timer_int_enable) set_interrupt(TIMEOWFL_INT); 
+#else
     set_interrupt(TIMEOWFL_INT); 
+#endif
   }
 }
 
-inline void halt_update(void) // gbcpu->state=HALT_STATE
+__inline__ void halt_update(void) // gbcpu->state=HALT_STATE
 { 
   if (INT_FLAG&INT_ENABLE) {
     gbcpu->state=0;
@@ -446,5 +364,3 @@ inline void halt_update(void) // gbcpu->state=HALT_STATE
 #endif
   }
 }
-
-

@@ -32,13 +32,13 @@
 
 GB_CPU *gbcpu=0;
 
-//extern INT32 gdma_cycle;
+//extern Sint32 gdma_cycle;
 
-static UINT8 t8;
-static INT8 st8;
-static UINT16 t16;
-static INT16 st16;
-static UINT32 t32;
+static Uint8 t8;
+static Sint8 st8;
+static Uint16 t16;
+static Sint16 st16;
+static Uint32 t32;
 
 // registre
 
@@ -63,28 +63,46 @@ static UINT32 t32;
 #define H (gbcpu->hl.b.h)
 #define L (gbcpu->hl.b.l)
 
-inline UINT16 get_word(void)
+__inline__ Uint16 get_word(void)
 {
-  UINT16 v=((UINT16)(mem_read(PC))|(UINT16)((mem_read(PC+1)<<8)));
-  PC+=2;
-  return v;
+  //Uint16 v=((Uint16)(mem_read(PC)));
+  Uint16 v1,v2;
+  mem_read_fast(PC,v1);
+  PC++;
+  //v|=(Uint16)((mem_read(PC)<<8));
+  mem_read_fast(PC,v2);
+  PC++;
+  return (v1|(v2<<8));
+  //return v;
 }
 
-inline UINT8 get_byte(void)
+__inline__ Uint8 get_byte(void)
 {
-  return mem_read(PC++);
+  //Uint8 t=mem_read(PC);
+  Uint8 t;
+  mem_read_fast(PC,t);
+  PC++;
+  return t;
 }
 
-inline void push_r(REG *r)
+__inline__ void push_r(REG *r)
 {
-  mem_write(--SP,(r)->b.h);
-  mem_write(--SP,(r)->b.l);
+  //mem_write(--SP,(r)->b.h);
+  //mem_write(--SP,(r)->b.l);
+  SP--;
+  mem_write_fast(SP,(r)->b.h);
+  SP--;
+  mem_write_fast(SP,(r)->b.l);
 }
 
-inline void pop_r(REG *r)
+__inline__ void pop_r(REG *r)
 {
-  (r)->b.l=mem_read(SP++);
-  (r)->b.h=mem_read(SP++);
+  //(r)->b.l=mem_read(SP);
+  mem_read_fast(SP,(r)->b.l);
+  SP++;
+  //(r)->b.h=mem_read(SP);
+  mem_read_fast(SP,(r)->b.h);
+  SP++;
 } 
 
 #define GET_BYTE get_byte()
@@ -99,511 +117,511 @@ inline void pop_r(REG *r)
 #define EI (gbcpu->ei_flag=1)
 #define DI (gbcpu->int_flag=0)
 
-inline UINT8 unknown(void);
-inline UINT8 nop(void);
-inline UINT8 ld_bc_nn(void);
-inline UINT8 ld_mem_bc_a(void);
-inline UINT8 inc_bc(void);
-inline UINT8 inc_b(void);
-inline UINT8 dec_b(void);
-inline UINT8 ld_b_n(void);
-inline UINT8 rlca(void);
-inline UINT8 ld_mem_nn_sp(void);
-inline UINT8 add_hl_bc(void);
-inline UINT8 ld_a_mem_bc(void);
-inline UINT8 dec_bc(void);
-inline UINT8 inc_c(void);
-inline UINT8 dec_c(void);
-inline UINT8 ld_c_n(void);
-inline UINT8 rrca(void);
-inline UINT8 stop(void);
-inline UINT8 ld_de_nn(void);
-inline UINT8 ld_mem_de_a(void);
-inline UINT8 inc_de(void);
-inline UINT8 inc_d(void);
-inline UINT8 dec_d(void);
-inline UINT8 ld_d_n(void);
-inline UINT8 rla(void);
-inline UINT8 jr_disp(void);
-inline UINT8 add_hl_de(void);
-inline UINT8 ld_a_mem_de(void);
-inline UINT8 dec_de(void);
-inline UINT8 inc_e(void);
-inline UINT8 dec_e(void);
-inline UINT8 ld_e_n(void);
-inline UINT8 rra(void);
-inline UINT8 jr_nz_disp(void);
-inline UINT8 ld_hl_nn(void);
-inline UINT8 ldi_mem_hl_a(void);
-inline UINT8 inc_hl(void);
-inline UINT8 inc_h(void);
-inline UINT8 dec_h(void);
-inline UINT8 ld_h_n(void);
-inline UINT8 daa(void);
-inline UINT8 jr_z_disp(void);
-inline UINT8 add_hl_hl(void);
-inline UINT8 ldi_a_mem_hl(void);
-inline UINT8 dec_hl(void);
-inline UINT8 inc_l(void);
-inline UINT8 dec_l(void);
-inline UINT8 ld_l_n(void);
-inline UINT8 cpl(void);
-inline UINT8 jr_nc_disp(void);
-inline UINT8 ld_sp_nn(void);
-inline UINT8 ldd_mem_hl_a(void);
-inline UINT8 inc_sp(void);
-inline UINT8 inc_mem_hl(void);
-inline UINT8 dec_mem_hl(void);
-inline UINT8 ld_mem_hl_n(void);
-inline UINT8 scf(void);
-inline UINT8 jr_c_disp(void);
-inline UINT8 add_hl_sp(void);
-inline UINT8 ldd_a_mem_hl(void);
-inline UINT8 dec_sp(void);
-inline UINT8 inc_a(void);
-inline UINT8 dec_a(void);
-inline UINT8 ld_a_n(void);
-inline UINT8 ccf(void);
-inline UINT8 ld_b_b(void);
-inline UINT8 ld_b_c(void);
-inline UINT8 ld_b_d(void);
-inline UINT8 ld_b_e(void);
-inline UINT8 ld_b_h(void);
-inline UINT8 ld_b_l(void);
-inline UINT8 ld_b_mem_hl(void);
-inline UINT8 ld_b_a(void);
-inline UINT8 ld_c_b(void);
-inline UINT8 ld_c_c(void);
-inline UINT8 ld_c_d(void);
-inline UINT8 ld_c_e(void);
-inline UINT8 ld_c_h(void);
-inline UINT8 ld_c_l(void);
-inline UINT8 ld_c_mem_hl(void);
-inline UINT8 ld_c_a(void);
-inline UINT8 ld_d_b(void);
-inline UINT8 ld_d_c(void);
-inline UINT8 ld_d_d(void);
-inline UINT8 ld_d_e(void);
-inline UINT8 ld_d_h(void);
-inline UINT8 ld_d_l(void);
-inline UINT8 ld_d_mem_hl(void);
-inline UINT8 ld_d_a(void);
-inline UINT8 ld_e_b(void);
-inline UINT8 ld_e_c(void);
-inline UINT8 ld_e_d(void);
-inline UINT8 ld_e_e(void);
-inline UINT8 ld_e_h(void);
-inline UINT8 ld_e_l(void);
-inline UINT8 ld_e_mem_hl(void);
-inline UINT8 ld_e_a(void);
-inline UINT8 ld_h_b(void);
-inline UINT8 ld_h_c(void);
-inline UINT8 ld_h_d(void);
-inline UINT8 ld_h_e(void);
-inline UINT8 ld_h_h(void);
-inline UINT8 ld_h_l(void);
-inline UINT8 ld_h_mem_hl(void);
-inline UINT8 ld_h_a(void);
-inline UINT8 ld_l_b(void);
-inline UINT8 ld_l_c(void);
-inline UINT8 ld_l_d(void);
-inline UINT8 ld_l_e(void);
-inline UINT8 ld_l_h(void);
-inline UINT8 ld_l_l(void);
-inline UINT8 ld_l_mem_hl(void);
-inline UINT8 ld_l_a(void);
-inline UINT8 ld_mem_hl_b(void);
-inline UINT8 ld_mem_hl_c(void);
-inline UINT8 ld_mem_hl_d(void);
-inline UINT8 ld_mem_hl_e(void);
-inline UINT8 ld_mem_hl_h(void);
-inline UINT8 ld_mem_hl_l(void);
-inline UINT8 halt(void);
-inline UINT8 ld_mem_hl_a(void);
-inline UINT8 ld_a_b(void);
-inline UINT8 ld_a_c(void);
-inline UINT8 ld_a_d(void);
-inline UINT8 ld_a_e(void);
-inline UINT8 ld_a_h(void);
-inline UINT8 ld_a_l(void);
-inline UINT8 ld_a_mem_hl(void);
-inline UINT8 ld_a_a(void);
-inline UINT8 add_a_b(void);
-inline UINT8 add_a_c(void);
-inline UINT8 add_a_d(void);
-inline UINT8 add_a_e(void);
-inline UINT8 add_a_h(void);
-inline UINT8 add_a_l(void);
-inline UINT8 add_a_mem_hl(void);
-inline UINT8 add_a_a(void);
-inline UINT8 adc_a_b(void);
-inline UINT8 adc_a_c(void);
-inline UINT8 adc_a_d(void);
-inline UINT8 adc_a_e(void);
-inline UINT8 adc_a_h(void);
-inline UINT8 adc_a_l(void);
-inline UINT8 adc_a_mem_hl(void);
-inline UINT8 adc_a_a(void);
-inline UINT8 sub_b(void);
-inline UINT8 sub_c(void);
-inline UINT8 sub_d(void);
-inline UINT8 sub_e(void);
-inline UINT8 sub_h(void);
-inline UINT8 sub_l(void);
-inline UINT8 sub_mem_hl(void);
-inline UINT8 sub_a(void);
-inline UINT8 sbc_a_b(void);
-inline UINT8 sbc_a_c(void);
-inline UINT8 sbc_a_d(void);
-inline UINT8 sbc_a_e(void);
-inline UINT8 sbc_a_h(void);
-inline UINT8 sbc_a_l(void);
-inline UINT8 sbc_a_mem_hl(void);
-inline UINT8 sbc_a_a(void);
-inline UINT8 and_b(void);
-inline UINT8 and_c(void);
-inline UINT8 and_d(void);
-inline UINT8 and_e(void);
-inline UINT8 and_h(void);
-inline UINT8 and_l(void);
-inline UINT8 and_mem_hl(void);
-inline UINT8 and_a(void);
-inline UINT8 xor_b(void);
-inline UINT8 xor_c(void);
-inline UINT8 xor_d(void);
-inline UINT8 xor_e(void);
-inline UINT8 xor_h(void);
-inline UINT8 xor_l(void);
-inline UINT8 xor_mem_hl(void);
-inline UINT8 xor_a(void);
-inline UINT8 or_b(void);
-inline UINT8 or_c(void);
-inline UINT8 or_d(void);
-inline UINT8 or_e(void);
-inline UINT8 or_h(void);
-inline UINT8 or_l(void);
-inline UINT8 or_mem_hl(void);
-inline UINT8 or_a(void);
-inline UINT8 cp_b(void);
-inline UINT8 cp_c(void);
-inline UINT8 cp_d(void);
-inline UINT8 cp_e(void);
-inline UINT8 cp_h(void);
-inline UINT8 cp_l(void);
-inline UINT8 cp_mem_hl(void);
-inline UINT8 cp_a(void);
-inline UINT8 ret_nz(void);
-inline UINT8 pop_bc(void);
-inline UINT8 jp_nz_nn(void);
-inline UINT8 jp_nn(void);
-inline UINT8 call_nz_nn(void);
-inline UINT8 push_bc(void);
-inline UINT8 add_a_n(void);
-inline UINT8 rst_00h(void);
-inline UINT8 ret_z(void);
-inline UINT8 ret(void);
-inline UINT8 jp_z_nn(void);
-inline UINT8 cb_inst(void);
-inline UINT8 call_z_nn(void);
-inline UINT8 call_nn(void);
-inline UINT8 adc_a_n(void);
-inline UINT8 rst_8h(void);
-inline UINT8 ret_nc(void);
-inline UINT8 pop_de(void);
-inline UINT8 jp_nc_nn(void);
-inline UINT8 call_nc_nn(void);
-inline UINT8 push_de(void);
-inline UINT8 sub_n(void);
-inline UINT8 rst_10h(void);
-inline UINT8 ret_c(void);
-inline UINT8 reti(void);
-inline UINT8 jp_c_nn(void);
-inline UINT8 call_c_nn(void);
-inline UINT8 sbc_a_n(void);
-inline UINT8 rst_18h(void);
-inline UINT8 ld_mem_ff00_n_a(void);
-inline UINT8 pop_hl(void);
-inline UINT8 ld_mem_ff00_c_a(void);
-inline UINT8 push_hl(void);
-inline UINT8 and_n(void);
-inline UINT8 rst_20h(void);
-inline UINT8 add_sp_dd(void);
-inline UINT8 jp_mem_hl(void);
-inline UINT8 ld_mem_nn_a(void);
-inline UINT8 xor_n(void);
-inline UINT8 rst_28h(void);
-inline UINT8 ld_a_mem_ff00_n(void);
-inline UINT8 pop_af(void);
-inline UINT8 ld_a_mem_c(void);
-inline UINT8 di(void);
-inline UINT8 push_af(void);
-inline UINT8 or_n(void);
-inline UINT8 rst_30h(void);
-inline UINT8 ld_hl_sp_dd(void);
-inline UINT8 ld_sp_hl(void);
-inline UINT8 ld_a_mem_nn(void);
-inline UINT8 ei(void);
-inline UINT8 cp_n(void);
-inline UINT8 rst_38h(void);
+__inline__ Uint8 unknown(void);
+__inline__ Uint8 nop(void);
+__inline__ Uint8 ld_bc_nn(void);
+__inline__ Uint8 ld_mem_bc_a(void);
+__inline__ Uint8 inc_bc(void);
+__inline__ Uint8 inc_b(void);
+__inline__ Uint8 dec_b(void);
+__inline__ Uint8 ld_b_n(void);
+__inline__ Uint8 rlca(void);
+__inline__ Uint8 ld_mem_nn_sp(void);
+__inline__ Uint8 add_hl_bc(void);
+__inline__ Uint8 ld_a_mem_bc(void);
+__inline__ Uint8 dec_bc(void);
+__inline__ Uint8 inc_c(void);
+__inline__ Uint8 dec_c(void);
+__inline__ Uint8 ld_c_n(void);
+__inline__ Uint8 rrca(void);
+__inline__ Uint8 stop(void);
+__inline__ Uint8 ld_de_nn(void);
+__inline__ Uint8 ld_mem_de_a(void);
+__inline__ Uint8 inc_de(void);
+__inline__ Uint8 inc_d(void);
+__inline__ Uint8 dec_d(void);
+__inline__ Uint8 ld_d_n(void);
+__inline__ Uint8 rla(void);
+__inline__ Uint8 jr_disp(void);
+__inline__ Uint8 add_hl_de(void);
+__inline__ Uint8 ld_a_mem_de(void);
+__inline__ Uint8 dec_de(void);
+__inline__ Uint8 inc_e(void);
+__inline__ Uint8 dec_e(void);
+__inline__ Uint8 ld_e_n(void);
+__inline__ Uint8 rra(void);
+__inline__ Uint8 jr_nz_disp(void);
+__inline__ Uint8 ld_hl_nn(void);
+__inline__ Uint8 ldi_mem_hl_a(void);
+__inline__ Uint8 inc_hl(void);
+__inline__ Uint8 inc_h(void);
+__inline__ Uint8 dec_h(void);
+__inline__ Uint8 ld_h_n(void);
+__inline__ Uint8 daa(void);
+__inline__ Uint8 jr_z_disp(void);
+__inline__ Uint8 add_hl_hl(void);
+__inline__ Uint8 ldi_a_mem_hl(void);
+__inline__ Uint8 dec_hl(void);
+__inline__ Uint8 inc_l(void);
+__inline__ Uint8 dec_l(void);
+__inline__ Uint8 ld_l_n(void);
+__inline__ Uint8 cpl(void);
+__inline__ Uint8 jr_nc_disp(void);
+__inline__ Uint8 ld_sp_nn(void);
+__inline__ Uint8 ldd_mem_hl_a(void);
+__inline__ Uint8 inc_sp(void);
+__inline__ Uint8 inc_mem_hl(void);
+__inline__ Uint8 dec_mem_hl(void);
+__inline__ Uint8 ld_mem_hl_n(void);
+__inline__ Uint8 scf(void);
+__inline__ Uint8 jr_c_disp(void);
+__inline__ Uint8 add_hl_sp(void);
+__inline__ Uint8 ldd_a_mem_hl(void);
+__inline__ Uint8 dec_sp(void);
+__inline__ Uint8 inc_a(void);
+__inline__ Uint8 dec_a(void);
+__inline__ Uint8 ld_a_n(void);
+__inline__ Uint8 ccf(void);
+__inline__ Uint8 ld_b_b(void);
+__inline__ Uint8 ld_b_c(void);
+__inline__ Uint8 ld_b_d(void);
+__inline__ Uint8 ld_b_e(void);
+__inline__ Uint8 ld_b_h(void);
+__inline__ Uint8 ld_b_l(void);
+__inline__ Uint8 ld_b_mem_hl(void);
+__inline__ Uint8 ld_b_a(void);
+__inline__ Uint8 ld_c_b(void);
+__inline__ Uint8 ld_c_c(void);
+__inline__ Uint8 ld_c_d(void);
+__inline__ Uint8 ld_c_e(void);
+__inline__ Uint8 ld_c_h(void);
+__inline__ Uint8 ld_c_l(void);
+__inline__ Uint8 ld_c_mem_hl(void);
+__inline__ Uint8 ld_c_a(void);
+__inline__ Uint8 ld_d_b(void);
+__inline__ Uint8 ld_d_c(void);
+__inline__ Uint8 ld_d_d(void);
+__inline__ Uint8 ld_d_e(void);
+__inline__ Uint8 ld_d_h(void);
+__inline__ Uint8 ld_d_l(void);
+__inline__ Uint8 ld_d_mem_hl(void);
+__inline__ Uint8 ld_d_a(void);
+__inline__ Uint8 ld_e_b(void);
+__inline__ Uint8 ld_e_c(void);
+__inline__ Uint8 ld_e_d(void);
+__inline__ Uint8 ld_e_e(void);
+__inline__ Uint8 ld_e_h(void);
+__inline__ Uint8 ld_e_l(void);
+__inline__ Uint8 ld_e_mem_hl(void);
+__inline__ Uint8 ld_e_a(void);
+__inline__ Uint8 ld_h_b(void);
+__inline__ Uint8 ld_h_c(void);
+__inline__ Uint8 ld_h_d(void);
+__inline__ Uint8 ld_h_e(void);
+__inline__ Uint8 ld_h_h(void);
+__inline__ Uint8 ld_h_l(void);
+__inline__ Uint8 ld_h_mem_hl(void);
+__inline__ Uint8 ld_h_a(void);
+__inline__ Uint8 ld_l_b(void);
+__inline__ Uint8 ld_l_c(void);
+__inline__ Uint8 ld_l_d(void);
+__inline__ Uint8 ld_l_e(void);
+__inline__ Uint8 ld_l_h(void);
+__inline__ Uint8 ld_l_l(void);
+__inline__ Uint8 ld_l_mem_hl(void);
+__inline__ Uint8 ld_l_a(void);
+__inline__ Uint8 ld_mem_hl_b(void);
+__inline__ Uint8 ld_mem_hl_c(void);
+__inline__ Uint8 ld_mem_hl_d(void);
+__inline__ Uint8 ld_mem_hl_e(void);
+__inline__ Uint8 ld_mem_hl_h(void);
+__inline__ Uint8 ld_mem_hl_l(void);
+__inline__ Uint8 halt(void);
+__inline__ Uint8 ld_mem_hl_a(void);
+__inline__ Uint8 ld_a_b(void);
+__inline__ Uint8 ld_a_c(void);
+__inline__ Uint8 ld_a_d(void);
+__inline__ Uint8 ld_a_e(void);
+__inline__ Uint8 ld_a_h(void);
+__inline__ Uint8 ld_a_l(void);
+__inline__ Uint8 ld_a_mem_hl(void);
+__inline__ Uint8 ld_a_a(void);
+__inline__ Uint8 add_a_b(void);
+__inline__ Uint8 add_a_c(void);
+__inline__ Uint8 add_a_d(void);
+__inline__ Uint8 add_a_e(void);
+__inline__ Uint8 add_a_h(void);
+__inline__ Uint8 add_a_l(void);
+__inline__ Uint8 add_a_mem_hl(void);
+__inline__ Uint8 add_a_a(void);
+__inline__ Uint8 adc_a_b(void);
+__inline__ Uint8 adc_a_c(void);
+__inline__ Uint8 adc_a_d(void);
+__inline__ Uint8 adc_a_e(void);
+__inline__ Uint8 adc_a_h(void);
+__inline__ Uint8 adc_a_l(void);
+__inline__ Uint8 adc_a_mem_hl(void);
+__inline__ Uint8 adc_a_a(void);
+__inline__ Uint8 sub_b(void);
+__inline__ Uint8 sub_c(void);
+__inline__ Uint8 sub_d(void);
+__inline__ Uint8 sub_e(void);
+__inline__ Uint8 sub_h(void);
+__inline__ Uint8 sub_l(void);
+__inline__ Uint8 sub_mem_hl(void);
+__inline__ Uint8 sub_a(void);
+__inline__ Uint8 sbc_a_b(void);
+__inline__ Uint8 sbc_a_c(void);
+__inline__ Uint8 sbc_a_d(void);
+__inline__ Uint8 sbc_a_e(void);
+__inline__ Uint8 sbc_a_h(void);
+__inline__ Uint8 sbc_a_l(void);
+__inline__ Uint8 sbc_a_mem_hl(void);
+__inline__ Uint8 sbc_a_a(void);
+__inline__ Uint8 and_b(void);
+__inline__ Uint8 and_c(void);
+__inline__ Uint8 and_d(void);
+__inline__ Uint8 and_e(void);
+__inline__ Uint8 and_h(void);
+__inline__ Uint8 and_l(void);
+__inline__ Uint8 and_mem_hl(void);
+__inline__ Uint8 and_a(void);
+__inline__ Uint8 xor_b(void);
+__inline__ Uint8 xor_c(void);
+__inline__ Uint8 xor_d(void);
+__inline__ Uint8 xor_e(void);
+__inline__ Uint8 xor_h(void);
+__inline__ Uint8 xor_l(void);
+__inline__ Uint8 xor_mem_hl(void);
+__inline__ Uint8 xor_a(void);
+__inline__ Uint8 or_b(void);
+__inline__ Uint8 or_c(void);
+__inline__ Uint8 or_d(void);
+__inline__ Uint8 or_e(void);
+__inline__ Uint8 or_h(void);
+__inline__ Uint8 or_l(void);
+__inline__ Uint8 or_mem_hl(void);
+__inline__ Uint8 or_a(void);
+__inline__ Uint8 cp_b(void);
+__inline__ Uint8 cp_c(void);
+__inline__ Uint8 cp_d(void);
+__inline__ Uint8 cp_e(void);
+__inline__ Uint8 cp_h(void);
+__inline__ Uint8 cp_l(void);
+__inline__ Uint8 cp_mem_hl(void);
+__inline__ Uint8 cp_a(void);
+__inline__ Uint8 ret_nz(void);
+__inline__ Uint8 pop_bc(void);
+__inline__ Uint8 jp_nz_nn(void);
+__inline__ Uint8 jp_nn(void);
+__inline__ Uint8 call_nz_nn(void);
+__inline__ Uint8 push_bc(void);
+__inline__ Uint8 add_a_n(void);
+__inline__ Uint8 rst_00h(void);
+__inline__ Uint8 ret_z(void);
+__inline__ Uint8 ret(void);
+__inline__ Uint8 jp_z_nn(void);
+__inline__ Uint8 cb_inst(void);
+__inline__ Uint8 call_z_nn(void);
+__inline__ Uint8 call_nn(void);
+__inline__ Uint8 adc_a_n(void);
+__inline__ Uint8 rst_8h(void);
+__inline__ Uint8 ret_nc(void);
+__inline__ Uint8 pop_de(void);
+__inline__ Uint8 jp_nc_nn(void);
+__inline__ Uint8 call_nc_nn(void);
+__inline__ Uint8 push_de(void);
+__inline__ Uint8 sub_n(void);
+__inline__ Uint8 rst_10h(void);
+__inline__ Uint8 ret_c(void);
+__inline__ Uint8 reti(void);
+__inline__ Uint8 jp_c_nn(void);
+__inline__ Uint8 call_c_nn(void);
+__inline__ Uint8 sbc_a_n(void);
+__inline__ Uint8 rst_18h(void);
+__inline__ Uint8 ld_mem_ff00_n_a(void);
+__inline__ Uint8 pop_hl(void);
+__inline__ Uint8 ld_mem_ff00_c_a(void);
+__inline__ Uint8 push_hl(void);
+__inline__ Uint8 and_n(void);
+__inline__ Uint8 rst_20h(void);
+__inline__ Uint8 add_sp_dd(void);
+__inline__ Uint8 jp_mem_hl(void);
+__inline__ Uint8 ld_mem_nn_a(void);
+__inline__ Uint8 xor_n(void);
+__inline__ Uint8 rst_28h(void);
+__inline__ Uint8 ld_a_mem_ff00_n(void);
+__inline__ Uint8 pop_af(void);
+__inline__ Uint8 ld_a_mem_c(void);
+__inline__ Uint8 di(void);
+__inline__ Uint8 push_af(void);
+__inline__ Uint8 or_n(void);
+__inline__ Uint8 rst_30h(void);
+__inline__ Uint8 ld_hl_sp_dd(void);
+__inline__ Uint8 ld_sp_hl(void);
+__inline__ Uint8 ld_a_mem_nn(void);
+__inline__ Uint8 ei(void);
+__inline__ Uint8 cp_n(void);
+__inline__ Uint8 rst_38h(void);
 
 /* CB instruction */
 
-inline UINT8 rlc_b(void);
-inline UINT8 rlc_c(void);
-inline UINT8 rlc_d(void);
-inline UINT8 rlc_e(void);
-inline UINT8 rlc_h(void);
-inline UINT8 rlc_l(void);
-inline UINT8 rlc_mem_hl(void);
-inline UINT8 rlc_a(void);
-inline UINT8 rrc_b(void);
-inline UINT8 rrc_c(void);
-inline UINT8 rrc_d(void);
-inline UINT8 rrc_e(void);
-inline UINT8 rrc_h(void);
-inline UINT8 rrc_l(void);
-inline UINT8 rrc_mem_hl(void);
-inline UINT8 rrc_a(void);
-inline UINT8 rl_b(void);
-inline UINT8 rl_c(void);
-inline UINT8 rl_d(void);
-inline UINT8 rl_e(void);
-inline UINT8 rl_h(void);
-inline UINT8 rl_l(void);
-inline UINT8 rl_mem_hl(void);
-inline UINT8 rl_a(void);
-inline UINT8 rr_b(void);
-inline UINT8 rr_c(void);
-inline UINT8 rr_d(void);
-inline UINT8 rr_e(void);
-inline UINT8 rr_h(void);
-inline UINT8 rr_l(void);
-inline UINT8 rr_mem_hl(void);
-inline UINT8 rr_a(void);
-inline UINT8 sla_b(void);
-inline UINT8 sla_c(void);
-inline UINT8 sla_d(void);
-inline UINT8 sla_e(void);
-inline UINT8 sla_h(void);
-inline UINT8 sla_l(void);
-inline UINT8 sla_mem_hl(void);
-inline UINT8 sla_a(void);
-inline UINT8 sra_b(void);
-inline UINT8 sra_c(void);
-inline UINT8 sra_d(void);
-inline UINT8 sra_e(void);
-inline UINT8 sra_h(void);
-inline UINT8 sra_l(void);
-inline UINT8 sra_mem_hl(void);
-inline UINT8 sra_a(void);
-inline UINT8 swap_b(void);
-inline UINT8 swap_c(void);
-inline UINT8 swap_d(void);
-inline UINT8 swap_e(void);
-inline UINT8 swap_h(void);
-inline UINT8 swap_l(void);
-inline UINT8 swap_mem_hl(void);
-inline UINT8 swap_a(void);
-inline UINT8 srl_b(void);
-inline UINT8 srl_c(void);
-inline UINT8 srl_d(void);
-inline UINT8 srl_e(void);
-inline UINT8 srl_h(void);
-inline UINT8 srl_l(void);
-inline UINT8 srl_mem_hl(void);
-inline UINT8 srl_a(void);
-inline UINT8 bit_0_b(void);
-inline UINT8 bit_0_c(void);
-inline UINT8 bit_0_d(void);
-inline UINT8 bit_0_e(void);
-inline UINT8 bit_0_h(void);
-inline UINT8 bit_0_l(void);
-inline UINT8 bit_0_mem_hl(void);
-inline UINT8 bit_0_a(void);
-inline UINT8 bit_1_b(void);
-inline UINT8 bit_1_c(void);
-inline UINT8 bit_1_d(void);
-inline UINT8 bit_1_e(void);
-inline UINT8 bit_1_h(void);
-inline UINT8 bit_1_l(void);
-inline UINT8 bit_1_mem_hl(void);
-inline UINT8 bit_1_a(void);
-inline UINT8 bit_2_b(void);
-inline UINT8 bit_2_c(void);
-inline UINT8 bit_2_d(void);
-inline UINT8 bit_2_e(void);
-inline UINT8 bit_2_h(void);
-inline UINT8 bit_2_l(void);
-inline UINT8 bit_2_mem_hl(void);
-inline UINT8 bit_2_a(void);
-inline UINT8 bit_3_b(void);
-inline UINT8 bit_3_c(void);
-inline UINT8 bit_3_d(void);
-inline UINT8 bit_3_e(void);
-inline UINT8 bit_3_h(void);
-inline UINT8 bit_3_l(void);
-inline UINT8 bit_3_mem_hl(void);
-inline UINT8 bit_3_a(void);
-inline UINT8 bit_4_b(void);
-inline UINT8 bit_4_c(void);
-inline UINT8 bit_4_d(void);
-inline UINT8 bit_4_e(void);
-inline UINT8 bit_4_h(void);
-inline UINT8 bit_4_l(void);
-inline UINT8 bit_4_mem_hl(void);
-inline UINT8 bit_4_a(void);
-inline UINT8 bit_5_b(void);
-inline UINT8 bit_5_c(void);
-inline UINT8 bit_5_d(void);
-inline UINT8 bit_5_e(void);
-inline UINT8 bit_5_h(void);
-inline UINT8 bit_5_l(void);
-inline UINT8 bit_5_mem_hl(void);
-inline UINT8 bit_5_a(void);
-inline UINT8 bit_6_b(void);
-inline UINT8 bit_6_c(void);
-inline UINT8 bit_6_d(void);
-inline UINT8 bit_6_e(void);
-inline UINT8 bit_6_h(void);
-inline UINT8 bit_6_l(void);
-inline UINT8 bit_6_mem_hl(void);
-inline UINT8 bit_6_a(void);
-inline UINT8 bit_7_b(void);
-inline UINT8 bit_7_c(void);
-inline UINT8 bit_7_d(void);
-inline UINT8 bit_7_e(void);
-inline UINT8 bit_7_h(void);
-inline UINT8 bit_7_l(void);
-inline UINT8 bit_7_mem_hl(void);
-inline UINT8 bit_7_a(void);
-inline UINT8 res_0_b(void);
-inline UINT8 res_0_c(void);
-inline UINT8 res_0_d(void);
-inline UINT8 res_0_e(void);
-inline UINT8 res_0_h(void);
-inline UINT8 res_0_l(void);
-inline UINT8 res_0_mem_hl(void);
-inline UINT8 res_0_a(void);
-inline UINT8 res_1_b(void);
-inline UINT8 res_1_c(void);
-inline UINT8 res_1_d(void);
-inline UINT8 res_1_e(void);
-inline UINT8 res_1_h(void);
-inline UINT8 res_1_l(void);
-inline UINT8 res_1_mem_hl(void);
-inline UINT8 res_1_a(void);
-inline UINT8 res_2_b(void);
-inline UINT8 res_2_c(void);
-inline UINT8 res_2_d(void);
-inline UINT8 res_2_e(void);
-inline UINT8 res_2_h(void);
-inline UINT8 res_2_l(void);
-inline UINT8 res_2_mem_hl(void);
-inline UINT8 res_2_a(void);
-inline UINT8 res_3_b(void);
-inline UINT8 res_3_c(void);
-inline UINT8 res_3_d(void);
-inline UINT8 res_3_e(void);
-inline UINT8 res_3_h(void);
-inline UINT8 res_3_l(void);
-inline UINT8 res_3_mem_hl(void);
-inline UINT8 res_3_a(void);
-inline UINT8 res_4_b(void);
-inline UINT8 res_4_c(void);
-inline UINT8 res_4_d(void);
-inline UINT8 res_4_e(void);
-inline UINT8 res_4_h(void);
-inline UINT8 res_4_l(void);
-inline UINT8 res_4_mem_hl(void);
-inline UINT8 res_4_a(void);
-inline UINT8 res_5_b(void);
-inline UINT8 res_5_c(void);
-inline UINT8 res_5_d(void);
-inline UINT8 res_5_e(void);
-inline UINT8 res_5_h(void);
-inline UINT8 res_5_l(void);
-inline UINT8 res_5_mem_hl(void);
-inline UINT8 res_5_a(void);
-inline UINT8 res_6_b(void);
-inline UINT8 res_6_c(void);
-inline UINT8 res_6_d(void);
-inline UINT8 res_6_e(void);
-inline UINT8 res_6_h(void);
-inline UINT8 res_6_l(void);
-inline UINT8 res_6_mem_hl(void);
-inline UINT8 res_6_a(void);
-inline UINT8 res_7_b(void);
-inline UINT8 res_7_c(void);
-inline UINT8 res_7_d(void);
-inline UINT8 res_7_e(void);
-inline UINT8 res_7_h(void);
-inline UINT8 res_7_l(void);
-inline UINT8 res_7_mem_hl(void);
-inline UINT8 res_7_a(void);
-inline UINT8 set_0_b(void);
-inline UINT8 set_0_c(void);
-inline UINT8 set_0_d(void);
-inline UINT8 set_0_e(void);
-inline UINT8 set_0_h(void);
-inline UINT8 set_0_l(void);
-inline UINT8 set_0_mem_hl(void);
-inline UINT8 set_0_a(void);
-inline UINT8 set_1_b(void);
-inline UINT8 set_1_c(void);
-inline UINT8 set_1_d(void);
-inline UINT8 set_1_e(void);
-inline UINT8 set_1_h(void);
-inline UINT8 set_1_l(void);
-inline UINT8 set_1_mem_hl(void);
-inline UINT8 set_1_a(void);
-inline UINT8 set_2_b(void);
-inline UINT8 set_2_c(void);
-inline UINT8 set_2_d(void);
-inline UINT8 set_2_e(void);
-inline UINT8 set_2_h(void);
-inline UINT8 set_2_l(void);
-inline UINT8 set_2_mem_hl(void);
-inline UINT8 set_2_a(void);
-inline UINT8 set_3_b(void);
-inline UINT8 set_3_c(void);
-inline UINT8 set_3_d(void);
-inline UINT8 set_3_e(void);
-inline UINT8 set_3_h(void);
-inline UINT8 set_3_l(void);
-inline UINT8 set_3_mem_hl(void);
-inline UINT8 set_3_a(void);
-inline UINT8 set_4_b(void);
-inline UINT8 set_4_c(void);
-inline UINT8 set_4_d(void);
-inline UINT8 set_4_e(void);
-inline UINT8 set_4_h(void);
-inline UINT8 set_4_l(void);
-inline UINT8 set_4_mem_hl(void);
-inline UINT8 set_4_a(void);
-inline UINT8 set_5_b(void);
-inline UINT8 set_5_c(void);
-inline UINT8 set_5_d(void);
-inline UINT8 set_5_e(void);
-inline UINT8 set_5_h(void);
-inline UINT8 set_5_l(void);
-inline UINT8 set_5_mem_hl(void);
-inline UINT8 set_5_a(void);
-inline UINT8 set_6_b(void);
-inline UINT8 set_6_c(void);
-inline UINT8 set_6_d(void);
-inline UINT8 set_6_e(void);
-inline UINT8 set_6_h(void);
-inline UINT8 set_6_l(void);
-inline UINT8 set_6_mem_hl(void);
-inline UINT8 set_6_a(void);
-inline UINT8 set_7_b(void);
-inline UINT8 set_7_c(void);
-inline UINT8 set_7_d(void);
-inline UINT8 set_7_e(void);
-inline UINT8 set_7_h(void);
-inline UINT8 set_7_l(void);
-inline UINT8 set_7_mem_hl(void);
-inline UINT8 set_7_a(void);
+__inline__ Uint8 rlc_b(void);
+__inline__ Uint8 rlc_c(void);
+__inline__ Uint8 rlc_d(void);
+__inline__ Uint8 rlc_e(void);
+__inline__ Uint8 rlc_h(void);
+__inline__ Uint8 rlc_l(void);
+__inline__ Uint8 rlc_mem_hl(void);
+__inline__ Uint8 rlc_a(void);
+__inline__ Uint8 rrc_b(void);
+__inline__ Uint8 rrc_c(void);
+__inline__ Uint8 rrc_d(void);
+__inline__ Uint8 rrc_e(void);
+__inline__ Uint8 rrc_h(void);
+__inline__ Uint8 rrc_l(void);
+__inline__ Uint8 rrc_mem_hl(void);
+__inline__ Uint8 rrc_a(void);
+__inline__ Uint8 rl_b(void);
+__inline__ Uint8 rl_c(void);
+__inline__ Uint8 rl_d(void);
+__inline__ Uint8 rl_e(void);
+__inline__ Uint8 rl_h(void);
+__inline__ Uint8 rl_l(void);
+__inline__ Uint8 rl_mem_hl(void);
+__inline__ Uint8 rl_a(void);
+__inline__ Uint8 rr_b(void);
+__inline__ Uint8 rr_c(void);
+__inline__ Uint8 rr_d(void);
+__inline__ Uint8 rr_e(void);
+__inline__ Uint8 rr_h(void);
+__inline__ Uint8 rr_l(void);
+__inline__ Uint8 rr_mem_hl(void);
+__inline__ Uint8 rr_a(void);
+__inline__ Uint8 sla_b(void);
+__inline__ Uint8 sla_c(void);
+__inline__ Uint8 sla_d(void);
+__inline__ Uint8 sla_e(void);
+__inline__ Uint8 sla_h(void);
+__inline__ Uint8 sla_l(void);
+__inline__ Uint8 sla_mem_hl(void);
+__inline__ Uint8 sla_a(void);
+__inline__ Uint8 sra_b(void);
+__inline__ Uint8 sra_c(void);
+__inline__ Uint8 sra_d(void);
+__inline__ Uint8 sra_e(void);
+__inline__ Uint8 sra_h(void);
+__inline__ Uint8 sra_l(void);
+__inline__ Uint8 sra_mem_hl(void);
+__inline__ Uint8 sra_a(void);
+__inline__ Uint8 swap_b(void);
+__inline__ Uint8 swap_c(void);
+__inline__ Uint8 swap_d(void);
+__inline__ Uint8 swap_e(void);
+__inline__ Uint8 swap_h(void);
+__inline__ Uint8 swap_l(void);
+__inline__ Uint8 swap_mem_hl(void);
+__inline__ Uint8 swap_a(void);
+__inline__ Uint8 srl_b(void);
+__inline__ Uint8 srl_c(void);
+__inline__ Uint8 srl_d(void);
+__inline__ Uint8 srl_e(void);
+__inline__ Uint8 srl_h(void);
+__inline__ Uint8 srl_l(void);
+__inline__ Uint8 srl_mem_hl(void);
+__inline__ Uint8 srl_a(void);
+__inline__ Uint8 bit_0_b(void);
+__inline__ Uint8 bit_0_c(void);
+__inline__ Uint8 bit_0_d(void);
+__inline__ Uint8 bit_0_e(void);
+__inline__ Uint8 bit_0_h(void);
+__inline__ Uint8 bit_0_l(void);
+__inline__ Uint8 bit_0_mem_hl(void);
+__inline__ Uint8 bit_0_a(void);
+__inline__ Uint8 bit_1_b(void);
+__inline__ Uint8 bit_1_c(void);
+__inline__ Uint8 bit_1_d(void);
+__inline__ Uint8 bit_1_e(void);
+__inline__ Uint8 bit_1_h(void);
+__inline__ Uint8 bit_1_l(void);
+__inline__ Uint8 bit_1_mem_hl(void);
+__inline__ Uint8 bit_1_a(void);
+__inline__ Uint8 bit_2_b(void);
+__inline__ Uint8 bit_2_c(void);
+__inline__ Uint8 bit_2_d(void);
+__inline__ Uint8 bit_2_e(void);
+__inline__ Uint8 bit_2_h(void);
+__inline__ Uint8 bit_2_l(void);
+__inline__ Uint8 bit_2_mem_hl(void);
+__inline__ Uint8 bit_2_a(void);
+__inline__ Uint8 bit_3_b(void);
+__inline__ Uint8 bit_3_c(void);
+__inline__ Uint8 bit_3_d(void);
+__inline__ Uint8 bit_3_e(void);
+__inline__ Uint8 bit_3_h(void);
+__inline__ Uint8 bit_3_l(void);
+__inline__ Uint8 bit_3_mem_hl(void);
+__inline__ Uint8 bit_3_a(void);
+__inline__ Uint8 bit_4_b(void);
+__inline__ Uint8 bit_4_c(void);
+__inline__ Uint8 bit_4_d(void);
+__inline__ Uint8 bit_4_e(void);
+__inline__ Uint8 bit_4_h(void);
+__inline__ Uint8 bit_4_l(void);
+__inline__ Uint8 bit_4_mem_hl(void);
+__inline__ Uint8 bit_4_a(void);
+__inline__ Uint8 bit_5_b(void);
+__inline__ Uint8 bit_5_c(void);
+__inline__ Uint8 bit_5_d(void);
+__inline__ Uint8 bit_5_e(void);
+__inline__ Uint8 bit_5_h(void);
+__inline__ Uint8 bit_5_l(void);
+__inline__ Uint8 bit_5_mem_hl(void);
+__inline__ Uint8 bit_5_a(void);
+__inline__ Uint8 bit_6_b(void);
+__inline__ Uint8 bit_6_c(void);
+__inline__ Uint8 bit_6_d(void);
+__inline__ Uint8 bit_6_e(void);
+__inline__ Uint8 bit_6_h(void);
+__inline__ Uint8 bit_6_l(void);
+__inline__ Uint8 bit_6_mem_hl(void);
+__inline__ Uint8 bit_6_a(void);
+__inline__ Uint8 bit_7_b(void);
+__inline__ Uint8 bit_7_c(void);
+__inline__ Uint8 bit_7_d(void);
+__inline__ Uint8 bit_7_e(void);
+__inline__ Uint8 bit_7_h(void);
+__inline__ Uint8 bit_7_l(void);
+__inline__ Uint8 bit_7_mem_hl(void);
+__inline__ Uint8 bit_7_a(void);
+__inline__ Uint8 res_0_b(void);
+__inline__ Uint8 res_0_c(void);
+__inline__ Uint8 res_0_d(void);
+__inline__ Uint8 res_0_e(void);
+__inline__ Uint8 res_0_h(void);
+__inline__ Uint8 res_0_l(void);
+__inline__ Uint8 res_0_mem_hl(void);
+__inline__ Uint8 res_0_a(void);
+__inline__ Uint8 res_1_b(void);
+__inline__ Uint8 res_1_c(void);
+__inline__ Uint8 res_1_d(void);
+__inline__ Uint8 res_1_e(void);
+__inline__ Uint8 res_1_h(void);
+__inline__ Uint8 res_1_l(void);
+__inline__ Uint8 res_1_mem_hl(void);
+__inline__ Uint8 res_1_a(void);
+__inline__ Uint8 res_2_b(void);
+__inline__ Uint8 res_2_c(void);
+__inline__ Uint8 res_2_d(void);
+__inline__ Uint8 res_2_e(void);
+__inline__ Uint8 res_2_h(void);
+__inline__ Uint8 res_2_l(void);
+__inline__ Uint8 res_2_mem_hl(void);
+__inline__ Uint8 res_2_a(void);
+__inline__ Uint8 res_3_b(void);
+__inline__ Uint8 res_3_c(void);
+__inline__ Uint8 res_3_d(void);
+__inline__ Uint8 res_3_e(void);
+__inline__ Uint8 res_3_h(void);
+__inline__ Uint8 res_3_l(void);
+__inline__ Uint8 res_3_mem_hl(void);
+__inline__ Uint8 res_3_a(void);
+__inline__ Uint8 res_4_b(void);
+__inline__ Uint8 res_4_c(void);
+__inline__ Uint8 res_4_d(void);
+__inline__ Uint8 res_4_e(void);
+__inline__ Uint8 res_4_h(void);
+__inline__ Uint8 res_4_l(void);
+__inline__ Uint8 res_4_mem_hl(void);
+__inline__ Uint8 res_4_a(void);
+__inline__ Uint8 res_5_b(void);
+__inline__ Uint8 res_5_c(void);
+__inline__ Uint8 res_5_d(void);
+__inline__ Uint8 res_5_e(void);
+__inline__ Uint8 res_5_h(void);
+__inline__ Uint8 res_5_l(void);
+__inline__ Uint8 res_5_mem_hl(void);
+__inline__ Uint8 res_5_a(void);
+__inline__ Uint8 res_6_b(void);
+__inline__ Uint8 res_6_c(void);
+__inline__ Uint8 res_6_d(void);
+__inline__ Uint8 res_6_e(void);
+__inline__ Uint8 res_6_h(void);
+__inline__ Uint8 res_6_l(void);
+__inline__ Uint8 res_6_mem_hl(void);
+__inline__ Uint8 res_6_a(void);
+__inline__ Uint8 res_7_b(void);
+__inline__ Uint8 res_7_c(void);
+__inline__ Uint8 res_7_d(void);
+__inline__ Uint8 res_7_e(void);
+__inline__ Uint8 res_7_h(void);
+__inline__ Uint8 res_7_l(void);
+__inline__ Uint8 res_7_mem_hl(void);
+__inline__ Uint8 res_7_a(void);
+__inline__ Uint8 set_0_b(void);
+__inline__ Uint8 set_0_c(void);
+__inline__ Uint8 set_0_d(void);
+__inline__ Uint8 set_0_e(void);
+__inline__ Uint8 set_0_h(void);
+__inline__ Uint8 set_0_l(void);
+__inline__ Uint8 set_0_mem_hl(void);
+__inline__ Uint8 set_0_a(void);
+__inline__ Uint8 set_1_b(void);
+__inline__ Uint8 set_1_c(void);
+__inline__ Uint8 set_1_d(void);
+__inline__ Uint8 set_1_e(void);
+__inline__ Uint8 set_1_h(void);
+__inline__ Uint8 set_1_l(void);
+__inline__ Uint8 set_1_mem_hl(void);
+__inline__ Uint8 set_1_a(void);
+__inline__ Uint8 set_2_b(void);
+__inline__ Uint8 set_2_c(void);
+__inline__ Uint8 set_2_d(void);
+__inline__ Uint8 set_2_e(void);
+__inline__ Uint8 set_2_h(void);
+__inline__ Uint8 set_2_l(void);
+__inline__ Uint8 set_2_mem_hl(void);
+__inline__ Uint8 set_2_a(void);
+__inline__ Uint8 set_3_b(void);
+__inline__ Uint8 set_3_c(void);
+__inline__ Uint8 set_3_d(void);
+__inline__ Uint8 set_3_e(void);
+__inline__ Uint8 set_3_h(void);
+__inline__ Uint8 set_3_l(void);
+__inline__ Uint8 set_3_mem_hl(void);
+__inline__ Uint8 set_3_a(void);
+__inline__ Uint8 set_4_b(void);
+__inline__ Uint8 set_4_c(void);
+__inline__ Uint8 set_4_d(void);
+__inline__ Uint8 set_4_e(void);
+__inline__ Uint8 set_4_h(void);
+__inline__ Uint8 set_4_l(void);
+__inline__ Uint8 set_4_mem_hl(void);
+__inline__ Uint8 set_4_a(void);
+__inline__ Uint8 set_5_b(void);
+__inline__ Uint8 set_5_c(void);
+__inline__ Uint8 set_5_d(void);
+__inline__ Uint8 set_5_e(void);
+__inline__ Uint8 set_5_h(void);
+__inline__ Uint8 set_5_l(void);
+__inline__ Uint8 set_5_mem_hl(void);
+__inline__ Uint8 set_5_a(void);
+__inline__ Uint8 set_6_b(void);
+__inline__ Uint8 set_6_c(void);
+__inline__ Uint8 set_6_d(void);
+__inline__ Uint8 set_6_e(void);
+__inline__ Uint8 set_6_h(void);
+__inline__ Uint8 set_6_l(void);
+__inline__ Uint8 set_6_mem_hl(void);
+__inline__ Uint8 set_6_a(void);
+__inline__ Uint8 set_7_b(void);
+__inline__ Uint8 set_7_c(void);
+__inline__ Uint8 set_7_d(void);
+__inline__ Uint8 set_7_e(void);
+__inline__ Uint8 set_7_h(void);
+__inline__ Uint8 set_7_l(void);
+__inline__ Uint8 set_7_mem_hl(void);
+__inline__ Uint8 set_7_a(void);
 
 void gbcpu_init(void)
 {
@@ -636,7 +654,7 @@ void gbcpu_reset(void) {
 
 // GAMEBOY OPERANDE 
 
-inline UINT8 unknown(void){
+__inline__ Uint8 unknown(void){
 #ifdef DEBUG
   if (active_msg)
     add_msg("unknow opcode");
@@ -644,26 +662,27 @@ inline UINT8 unknown(void){
   return 0;
 }
 
-inline UINT8 nop(void){
+__inline__ Uint8 nop(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_bc_nn(void){
+__inline__ Uint8 ld_bc_nn(void){
   BC=GET_WORD;
   SUB_CYCLE(12);
 }
 
-inline UINT8 ld_mem_bc_a(void){
-  mem_write(BC,A);
+__inline__ Uint8 ld_mem_bc_a(void){
+  //mem_write(BC,A);
+  mem_write_fast(BC,A);
   SUB_CYCLE(8);
 }
 
-inline UINT8 inc_bc(void){
+__inline__ Uint8 inc_bc(void){
   BC++;
   SUB_CYCLE(8);
 }
 
-inline UINT8 inc_b(void){
+__inline__ Uint8 inc_b(void){
   ((B^0x0f)? UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   B++;
   ((B) ? UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
@@ -671,7 +690,7 @@ inline UINT8 inc_b(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 dec_b(void){
+__inline__ Uint8 dec_b(void){
   ((B&0x0f)?UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   B--;
   ((B)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
@@ -679,30 +698,32 @@ inline UINT8 dec_b(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_b_n(void){
+__inline__ Uint8 ld_b_n(void){
   B=GET_BYTE;
   SUB_CYCLE(8);
 }
 
-inline UINT8 rlca(void){
-  //  UINT8 v;
+__inline__ Uint8 rlca(void){
+  //  Uint8 v;
   ((t8=(A&0x80))?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   UNSET_FLAG(FLAG_NN&FLAG_NZ&FLAG_NH);
   A=((A<<1)|(t8>>7));
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_mem_nn_sp(void){
-  //  UINT16 v=GET_WORD;
+__inline__ Uint8 ld_mem_nn_sp(void){
+  //  Uint16 v=GET_WORD;
   t16=GET_WORD;
-  mem_write(t16,REG_SP.b.l);
-  mem_write(t16+1,REG_SP.b.h);  
+  mem_write_fast(t16,REG_SP.b.l);
+  mem_write_fast(t16+1,REG_SP.b.h);
+  /*mem_write(t16,REG_SP.b.l);
+    mem_write(t16+1,REG_SP.b.h);*/
   SUB_CYCLE(20);
 }
 
-inline UINT8 add_hl_bc(void){
-  //  UINT32 r=HL+BC;
-  UINT32 t32=HL+BC;
+__inline__ Uint8 add_hl_bc(void){
+  //  Uint32 r=HL+BC;
+  Uint32 t32=HL+BC;
   ((t32&0x00010000)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   //((((L&0x10)^(C&0x10))^(r&0x10))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
   (((HL&0x0f)+(BC&0x0f))>0x0f)?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH);
@@ -711,17 +732,18 @@ inline UINT8 add_hl_bc(void){
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_a_mem_bc(void){
-  A=mem_read(BC);
+__inline__ Uint8 ld_a_mem_bc(void){
+  //A=mem_read(BC);
+  mem_read_fast(BC,A);
   SUB_CYCLE(8);
 }
 
-inline UINT8 dec_bc(void){
+__inline__ Uint8 dec_bc(void){
   BC--;
   SUB_CYCLE(8);
 }
 
-inline UINT8 inc_c(void){
+__inline__ Uint8 inc_c(void){
   ((C^0x0f)? UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   C++;
   ((C) ? UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
@@ -729,7 +751,7 @@ inline UINT8 inc_c(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 dec_c(void){
+__inline__ Uint8 dec_c(void){
   ((C&0x0f)?UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   C--;
   ((C)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
@@ -737,39 +759,43 @@ inline UINT8 dec_c(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_c_n(void){
+__inline__ Uint8 ld_c_n(void){
   C=GET_BYTE;
   SUB_CYCLE(8);
 }
 
-inline UINT8 rrca(void){
-  //  UINT8 v;
+__inline__ Uint8 rrca(void){
+  //  Uint8 v;
   ((t8=(A&0x01))?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   UNSET_FLAG(FLAG_NN&FLAG_NZ&FLAG_NH);
   A=((A>>1)|(t8<<7));
   SUB_CYCLE(4);
 }
 
-inline UINT8 stop(void){
+__inline__ Uint8 stop(void){
+  /* FIXME: Stop=>PC++ fix konami2 collection */
+  PC++;
+  //printf("Stop Instruction at %04x",PC);
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_de_nn(void){
+__inline__ Uint8 ld_de_nn(void){
   DE=GET_WORD;
   SUB_CYCLE(12);
 }
 
-inline UINT8 ld_mem_de_a(void){
-  mem_write(DE,A);
+__inline__ Uint8 ld_mem_de_a(void){
+  //mem_write(DE,A);
+  mem_write_fast(DE,A);
   SUB_CYCLE(8);
 }
 
-inline UINT8 inc_de(void){
+__inline__ Uint8 inc_de(void){
   DE++;
   SUB_CYCLE(8);
 }
 
-inline UINT8 inc_d(void){
+__inline__ Uint8 inc_d(void){
   ((D^0x0f)? UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   D++;
   ((D) ? UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
@@ -777,7 +803,7 @@ inline UINT8 inc_d(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 dec_d(void){
+__inline__ Uint8 dec_d(void){
   ((D&0x0f)?UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   D--;
   ((D)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
@@ -785,13 +811,13 @@ inline UINT8 dec_d(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_d_n(void){
+__inline__ Uint8 ld_d_n(void){
   D=GET_BYTE;
   SUB_CYCLE(8);
 }
 
-inline UINT8 rla(void){
-  //UINT8 v=((IS_SET(FLAG_C))?1:0);
+__inline__ Uint8 rla(void){
+  //Uint8 v=((IS_SET(FLAG_C))?1:0);
   t8=((IS_SET(FLAG_C))?1:0);
   ((A&0x80)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   UNSET_FLAG(FLAG_NN&FLAG_NZ&FLAG_NH);
@@ -799,13 +825,13 @@ inline UINT8 rla(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 jr_disp(void){
-  PC+=(INT8)GET_BYTE;
+__inline__ Uint8 jr_disp(void){
+  PC+=(Sint8)GET_BYTE;
   SUB_CYCLE(12);
 }
 
-inline UINT8 add_hl_de(void){
-  //UINT32 r=HL+DE;
+__inline__ Uint8 add_hl_de(void){
+  //Uint32 r=HL+DE;
   t32=HL+DE;
   ((t32&0x00010000)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   //((((L&0x10)^(E&0x10))^(r&0x10))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -815,17 +841,18 @@ inline UINT8 add_hl_de(void){
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_a_mem_de(void){
-  A=mem_read(DE);
+__inline__ Uint8 ld_a_mem_de(void){
+  //A=mem_read(DE);
+  mem_read_fast(DE,A);
   SUB_CYCLE(8);
 }
 
-inline UINT8 dec_de(void){
+__inline__ Uint8 dec_de(void){
   DE--;
   SUB_CYCLE(8);
 }
 
-inline UINT8 inc_e(void){
+__inline__ Uint8 inc_e(void){
   ((E^0x0f)? UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   E++;
   ((E) ? UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
@@ -833,7 +860,7 @@ inline UINT8 inc_e(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 dec_e(void){
+__inline__ Uint8 dec_e(void){
   ((E&0x0f)?UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   E--;
   ((E)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
@@ -841,13 +868,13 @@ inline UINT8 dec_e(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_e_n(void){
+__inline__ Uint8 ld_e_n(void){
   E=GET_BYTE;
   SUB_CYCLE(8);
 }
 
-inline UINT8 rra(void){
-  //UINT8 v=((IS_SET(FLAG_C))?1:0);
+__inline__ Uint8 rra(void){
+  //Uint8 v=((IS_SET(FLAG_C))?1:0);
   t8=((IS_SET(FLAG_C))?1:0);
   ((A&0x01)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   UNSET_FLAG(FLAG_NN&FLAG_NZ&FLAG_NH);
@@ -855,32 +882,34 @@ inline UINT8 rra(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 jr_nz_disp(void){
+__inline__ Uint8 jr_nz_disp(void){
   if (IS_SET(FLAG_Z)) {
     PC++;
     SUB_CYCLE(8);
   } else {
-    PC+=(INT8)GET_BYTE;
+    PC+=(Sint8)GET_BYTE;
     SUB_CYCLE(12);
   }
 }
 
-inline UINT8 ld_hl_nn(void){
+__inline__ Uint8 ld_hl_nn(void){
   HL=GET_WORD;
   SUB_CYCLE(12);
 }
 
-inline UINT8 ldi_mem_hl_a(void){
-  mem_write(HL++,A);
-  SUB_CYCLE(8);
-}
-
-inline UINT8 inc_hl(void){
+__inline__ Uint8 ldi_mem_hl_a(void){
+  //mem_write(HL++,A);
+  mem_write_fast(HL,A);
   HL++;
   SUB_CYCLE(8);
 }
 
-inline UINT8 inc_h(void){
+__inline__ Uint8 inc_hl(void){
+  HL++;
+  SUB_CYCLE(8);
+}
+
+__inline__ Uint8 inc_h(void){
   ((H^0x0f)? UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   H++;
   ((H) ? UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
@@ -888,7 +917,7 @@ inline UINT8 inc_h(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 dec_h(void){
+__inline__ Uint8 dec_h(void){
   ((H&0x0f)?UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   H--;
   ((H)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
@@ -896,13 +925,13 @@ inline UINT8 dec_h(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_h_n(void){
+__inline__ Uint8 ld_h_n(void){
   H=GET_BYTE;
   SUB_CYCLE(8);
 }
 
-inline UINT8 daa(void){
-  //UINT16  v=A;
+__inline__ Uint8 daa(void){
+  //Uint16  v=A;
   t16=A;
 
   if ((t16&0x0f) > 0x09) {	
@@ -921,9 +950,9 @@ inline UINT8 daa(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 jr_z_disp(void){
+__inline__ Uint8 jr_z_disp(void){
   if (IS_SET(FLAG_Z)) {
-    PC+=(INT8)GET_BYTE;
+    PC+=(Sint8)GET_BYTE;
     SUB_CYCLE(12);
   } else {
     PC++;
@@ -931,8 +960,8 @@ inline UINT8 jr_z_disp(void){
   }
 }
 
-inline UINT8 add_hl_hl(void){
-  //  UINT32 r=HL+HL;
+__inline__ Uint8 add_hl_hl(void){
+  //  Uint32 r=HL+HL;
   t32=HL+HL;
   ((t32&0x00010000)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   //((((L&0x10)^(L&0x10))^(r&0x10))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -942,17 +971,19 @@ inline UINT8 add_hl_hl(void){
   SUB_CYCLE(8);
 }
 
-inline UINT8 ldi_a_mem_hl(void){
-  A=mem_read(HL++);
+__inline__ Uint8 ldi_a_mem_hl(void){
+  //A=mem_read(HL);
+  mem_read_fast(HL,A);
+  HL++;
   SUB_CYCLE(8);
 }
 
-inline UINT8 dec_hl(void){
+__inline__ Uint8 dec_hl(void){
   HL--;
   SUB_CYCLE(8);
 }
 
-inline UINT8 inc_l(void){
+__inline__ Uint8 inc_l(void){
   ((L^0x0f)? UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   L++;
   ((L) ? UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
@@ -960,7 +991,7 @@ inline UINT8 inc_l(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 dec_l(void){
+__inline__ Uint8 dec_l(void){
   ((L&0x0f)?UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   L--;
   ((L)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
@@ -968,78 +999,86 @@ inline UINT8 dec_l(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_l_n(void){
+__inline__ Uint8 ld_l_n(void){
   L=GET_BYTE;
   SUB_CYCLE(8);
 }
 
-inline UINT8 cpl(void){
+__inline__ Uint8 cpl(void){
   A=(~A);
   SET_FLAG(FLAG_N|FLAG_H);
   SUB_CYCLE(4);
 }
 
-inline UINT8 jr_nc_disp(void){
+__inline__ Uint8 jr_nc_disp(void){
   if (IS_SET(FLAG_C)) {
     PC++;
     SUB_CYCLE(8);
   } else {
-    PC+=(INT8)GET_BYTE;
+    PC+=(Sint8)GET_BYTE;
     SUB_CYCLE(12);
   }
 }
 
-inline UINT8 ld_sp_nn(void){
+__inline__ Uint8 ld_sp_nn(void){
   SP=GET_WORD;
   SUB_CYCLE(12);
 }
 
-inline UINT8 ldd_mem_hl_a(void){
-  mem_write(HL--,A);
+__inline__ Uint8 ldd_mem_hl_a(void){
+  //mem_write(HL--,A);
+  mem_write_fast(HL,A);
+  HL--;
   SUB_CYCLE(8);
 }
 
-inline UINT8 inc_sp(void){
+__inline__ Uint8 inc_sp(void){
   SP++;
   SUB_CYCLE(8);
 }
 
-inline UINT8 inc_mem_hl(void){
-  //UINT8 v=mem_read(HL);	
-  t8=mem_read(HL);
+__inline__ Uint8 inc_mem_hl(void){
+  //Uint8 v=mem_read(HL);	
+  //t8=mem_read(HL);
+  mem_read_fast(HL,t8);
   ((t8^0x0f)? UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   t8++;
   ((t8) ? UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   UNSET_FLAG(FLAG_NN);
-  mem_write(HL,t8);
+  //mem_write(HL,t8);
+  mem_write_fast(HL,t8);
   SUB_CYCLE(12);
 }
 
-inline UINT8 dec_mem_hl(void){
-  //UINT8 v=mem_read(HL);
-  t8=mem_read(HL);
+__inline__ Uint8 dec_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  //t8=mem_read(HL);
+  mem_read_fast(HL,t8);
   ((t8&0x0f)?UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   t8--;
   ((t8)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
   SET_FLAG(FLAG_N);
-  mem_write(HL,t8);
+  //mem_write(HL,t8);
+  mem_write_fast(HL,t8);
   SUB_CYCLE(12);
 }
 
-inline UINT8 ld_mem_hl_n(void){
-  mem_write(HL,GET_BYTE);
+__inline__ Uint8 ld_mem_hl_n(void){
+  //mem_write(HL,GET_BYTE);
+  t8=GET_BYTE;
+  mem_write_fast(HL,t8);
   SUB_CYCLE(12);
 }
 
-inline UINT8 scf(void){
+__inline__ Uint8 scf(void){
   SET_FLAG(FLAG_C);
   UNSET_FLAG(FLAG_NN&FLAG_NH);
   SUB_CYCLE(4);
 }
 
-inline UINT8 jr_c_disp(void){
+__inline__ Uint8 jr_c_disp(void){
   if (IS_SET(FLAG_C)) {
-    PC+=(INT8)GET_BYTE;
+    PC+=(Sint8)GET_BYTE;
     SUB_CYCLE(12);
   } else {
     PC++;
@@ -1047,8 +1086,8 @@ inline UINT8 jr_c_disp(void){
   }
 }
 
-inline UINT8 add_hl_sp(void){
-  //UINT32 r=HL+SP;
+__inline__ Uint8 add_hl_sp(void){
+  //Uint32 r=HL+SP;
   t32=HL+SP;
   ((t32&0x00010000)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   //((((L&0x10)^(SP&0x10))^(r&0x10))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1058,17 +1097,19 @@ inline UINT8 add_hl_sp(void){
   SUB_CYCLE(8);
 }
 
-inline UINT8 ldd_a_mem_hl(void){
-  A=mem_read(HL--);
+__inline__ Uint8 ldd_a_mem_hl(void){
+  //A=mem_read(HL);
+  mem_read_fast(HL,A);
+  HL--;
   SUB_CYCLE(8);
 }
 
-inline UINT8 dec_sp(void){
+__inline__ Uint8 dec_sp(void){
   SP--;
   SUB_CYCLE(8);
 }
 
-inline UINT8 inc_a(void){
+__inline__ Uint8 inc_a(void){
   ((A^0x0f)? UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   A++;
   ((A) ? UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
@@ -1076,7 +1117,7 @@ inline UINT8 inc_a(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 dec_a(void){
+__inline__ Uint8 dec_a(void){
   ((A&0x0f)?UNSET_FLAG(FLAG_NH):SET_FLAG(FLAG_H));
   A--;
   ((A)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z));
@@ -1084,12 +1125,12 @@ inline UINT8 dec_a(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_a_n(void){
+__inline__ Uint8 ld_a_n(void){
   A=GET_BYTE;
   SUB_CYCLE(8);
 }
 
-inline UINT8 ccf(void){
+__inline__ Uint8 ccf(void){
   F^=FLAG_C;
   UNSET_FLAG(FLAG_NN&FLAG_NH);
   SUB_CYCLE(4);
@@ -1097,343 +1138,353 @@ inline UINT8 ccf(void){
 
 /********************************/
 
-inline UINT8 ld_b_b(void){
+__inline__ Uint8 ld_b_b(void){
   //B=B;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_b_c(void){
+__inline__ Uint8 ld_b_c(void){
   B=C;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_b_d(void){
+__inline__ Uint8 ld_b_d(void){
   B=D;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_b_e(void){
+__inline__ Uint8 ld_b_e(void){
   B=E;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_b_h(void){
+__inline__ Uint8 ld_b_h(void){
   B=H;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_b_l(void){
+__inline__ Uint8 ld_b_l(void){
   B=L;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_b_mem_hl(void){
-  B=mem_read(HL);
+__inline__ Uint8 ld_b_mem_hl(void){
+  //B=mem_read(HL);
+  mem_read_fast(HL,B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_b_a(void){
+__inline__ Uint8 ld_b_a(void){
   B=A;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_c_b(void){
+__inline__ Uint8 ld_c_b(void){
   C=B;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_c_c(void){
+__inline__ Uint8 ld_c_c(void){
   //  C=C;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_c_d(void){
+__inline__ Uint8 ld_c_d(void){
   C=D;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_c_e(void){
+__inline__ Uint8 ld_c_e(void){
   C=E;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_c_h(void){
+__inline__ Uint8 ld_c_h(void){
   C=H;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_c_l(void){
+__inline__ Uint8 ld_c_l(void){
   C=L;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_c_mem_hl(void){
-  C=mem_read(HL);
+__inline__ Uint8 ld_c_mem_hl(void){
+  //C=mem_read(HL);
+  mem_read_fast(HL,C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_c_a(void){
+__inline__ Uint8 ld_c_a(void){
   C=A;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_d_b(void){
+__inline__ Uint8 ld_d_b(void){
   D=B;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_d_c(void){
+__inline__ Uint8 ld_d_c(void){
   D=C;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_d_d(void){
+__inline__ Uint8 ld_d_d(void){
   //D=D;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_d_e(void){
+__inline__ Uint8 ld_d_e(void){
   D=E;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_d_h(void){
+__inline__ Uint8 ld_d_h(void){
   D=H;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_d_l(void){
+__inline__ Uint8 ld_d_l(void){
   D=L;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_d_mem_hl(void){
-  D=mem_read(HL);
+__inline__ Uint8 ld_d_mem_hl(void){
+  //D=mem_read(HL);
+  mem_read_fast(HL,D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_d_a(void){
+__inline__ Uint8 ld_d_a(void){
   D=A;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_e_b(void){
+__inline__ Uint8 ld_e_b(void){
   E=B;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_e_c(void){
+__inline__ Uint8 ld_e_c(void){
   E=C;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_e_d(void){
+__inline__ Uint8 ld_e_d(void){
   E=D;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_e_e(void){
+__inline__ Uint8 ld_e_e(void){
   //	E=E;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_e_h(void){
+__inline__ Uint8 ld_e_h(void){
   E=H;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_e_l(void){
+__inline__ Uint8 ld_e_l(void){
   E=L;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_e_mem_hl(void){
-  E=mem_read(HL);
+__inline__ Uint8 ld_e_mem_hl(void){
+  //E=mem_read(HL);
+  mem_read_fast(HL,E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_e_a(void){
+__inline__ Uint8 ld_e_a(void){
   E=A;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_h_b(void){
+__inline__ Uint8 ld_h_b(void){
   H=B;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_h_c(void){
+__inline__ Uint8 ld_h_c(void){
   H=C;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_h_d(void){
+__inline__ Uint8 ld_h_d(void){
   H=D;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_h_e(void){
+__inline__ Uint8 ld_h_e(void){
   H=E;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_h_h(void){
+__inline__ Uint8 ld_h_h(void){
   //  H=H;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_h_l(void){
+__inline__ Uint8 ld_h_l(void){
   H=L;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_h_mem_hl(void){
-  H=mem_read(HL);
+__inline__ Uint8 ld_h_mem_hl(void){
+  //H=mem_read(HL);
+  mem_read_fast(HL,H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_h_a(void){
+__inline__ Uint8 ld_h_a(void){
   H=A;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_l_b(void){
+__inline__ Uint8 ld_l_b(void){
   L=B;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_l_c(void){
+__inline__ Uint8 ld_l_c(void){
   L=C;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_l_d(void){
+__inline__ Uint8 ld_l_d(void){
   L=D;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_l_e(void){
+__inline__ Uint8 ld_l_e(void){
   L=E;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_l_h(void){
+__inline__ Uint8 ld_l_h(void){
   L=H;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_l_l(void){
+__inline__ Uint8 ld_l_l(void){
   //  L=L;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_l_mem_hl(void){
-  L=mem_read(HL);
+__inline__ Uint8 ld_l_mem_hl(void){
+  //L=mem_read(HL);
+  mem_read_fast(HL,L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_l_a(void){
+__inline__ Uint8 ld_l_a(void){
   L=A;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_mem_hl_b(void){
-  mem_write(HL,B);
+__inline__ Uint8 ld_mem_hl_b(void){
+  //mem_write(HL,B);
+  mem_write_fast(HL,B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_mem_hl_c(void){
-  mem_write(HL,C);
+__inline__ Uint8 ld_mem_hl_c(void){
+  //mem_write(HL,C);
+  mem_write_fast(HL,C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_mem_hl_d(void){
-  mem_write(HL,D);
+__inline__ Uint8 ld_mem_hl_d(void){
+  //mem_write(HL,D);
+  mem_write_fast(HL,D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_mem_hl_e(void){
-  mem_write(HL,E);
+__inline__ Uint8 ld_mem_hl_e(void){
+  //mem_write(HL,E);
+  mem_write_fast(HL,E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_mem_hl_h(void){
-  mem_write(HL,H);
+__inline__ Uint8 ld_mem_hl_h(void){
+  //mem_write(HL,H);
+  mem_write_fast(HL,H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_mem_hl_l(void){
-  mem_write(HL,L);
+__inline__ Uint8 ld_mem_hl_l(void){
+  //mem_write(HL,L);
+  mem_write_fast(HL,L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 halt(void){
+__inline__ Uint8 halt(void){
   if (gbcpu->int_flag) {
 #ifdef DEBUG
     add_cpu_msg("set halt \n");
 #endif
     gbcpu->state=HALT_STATE;
     gbcpu->pc.w--;
-  } /*else {
-    UINT16 p=gbcpu->pc.w;
-    printf("here\n");
-    gbcpu->pc.w--;
-    mem_write(gbcpu->pc.w,mem_read(p));
-    gbcpu_exec_one();
-    mem_write(p,0x76);
-    }*/
+  } else {
+    printf("WARNING Halt with DI\n");
+
+  }
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_mem_hl_a(void){
-  mem_write(HL,A);
+__inline__ Uint8 ld_mem_hl_a(void){
+  //mem_write(HL,A);
+  mem_write_fast(HL,A);
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_a_b(void){
+__inline__ Uint8 ld_a_b(void){
   A=B;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_a_c(void){
+__inline__ Uint8 ld_a_c(void){
   A=C;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_a_d(void){
+__inline__ Uint8 ld_a_d(void){
   A=D;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_a_e(void){
+__inline__ Uint8 ld_a_e(void){
   A=E;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_a_h(void){
+__inline__ Uint8 ld_a_h(void){
   A=H;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_a_l(void){
+__inline__ Uint8 ld_a_l(void){
   A=L;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_a_mem_hl(void){
-  A=mem_read(HL);
+__inline__ Uint8 ld_a_mem_hl(void){
+  //A=mem_read(HL);
+  mem_read_fast(HL,A);
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_a_a(void){
+__inline__ Uint8 ld_a_a(void){
   //A=A;
   SUB_CYCLE(4);
 }
 
 /*****************************************/
 
-inline UINT8 add_a_b(void){
-  //INT16 r=A+B;
+__inline__ Uint8 add_a_b(void){
+  //Sint16 r=A+B;
   st16=A+B;
   ((st16&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   //  ((((A&0x10)^(B&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1444,8 +1495,8 @@ inline UINT8 add_a_b(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 add_a_c(void){
-  //INT16 r=A+C;
+__inline__ Uint8 add_a_c(void){
+  //Sint16 r=A+C;
   st16=A+C;
   ((st16&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
 //((((A&0x10)^(C&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1456,8 +1507,8 @@ inline UINT8 add_a_c(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 add_a_d(void){
-  //INT16 r=A+D;
+__inline__ Uint8 add_a_d(void){
+  //Sint16 r=A+D;
   st16=A+D;
   ((st16&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   //((((A&0x10)^(D&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1468,8 +1519,8 @@ inline UINT8 add_a_d(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 add_a_e(void){
-  //INT16 r=A+E;
+__inline__ Uint8 add_a_e(void){
+  //Sint16 r=A+E;
   st16=A+E;
   ((st16&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   //((((A&0x10)^(E&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1480,8 +1531,8 @@ inline UINT8 add_a_e(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 add_a_h(void){
-  //INT16 r=A+H;
+__inline__ Uint8 add_a_h(void){
+  //Sint16 r=A+H;
   st16=A+H;
   ((st16&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   //((((A&0x10)^(H&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1492,8 +1543,8 @@ inline UINT8 add_a_h(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 add_a_l(void){
-  //INT16 r=A+L;
+__inline__ Uint8 add_a_l(void){
+  //Sint16 r=A+L;
   st16=A+L;
   ((st16&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   //((((A&0x10)^(L&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1504,10 +1555,11 @@ inline UINT8 add_a_l(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 add_a_mem_hl(void){
-  //UINT8 v=mem_read(HL);
-  //INT16 r=A+v;
-  t8=mem_read(HL);
+__inline__ Uint8 add_a_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  //Sint16 r=A+v;
+  //t8=mem_read(HL);
+  mem_read_fast(HL,t8);
   st16=A+t8;
   ((st16&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   //((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1518,8 +1570,8 @@ inline UINT8 add_a_mem_hl(void){
   SUB_CYCLE(8);
 }
 
-inline UINT8 add_a_a(void){
-  //INT16 r=A+A;
+__inline__ Uint8 add_a_a(void){
+  //Sint16 r=A+A;
   st16=A+A;
   ((st16&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   //((((A&0x10)^(A&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1530,9 +1582,9 @@ inline UINT8 add_a_a(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 adc_a_b(void){
-  //  UINT16 v=B+(IS_SET(FLAG_C)?(1):(0));
-  //  UINT16 r=A+v;
+__inline__ Uint8 adc_a_b(void){
+  //  Uint16 v=B+(IS_SET(FLAG_C)?(1):(0));
+  //  Uint16 r=A+v;
   t16=B+(IS_SET(FLAG_C)?(1):(0));
   t32=A+t16;
   ((t32&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
@@ -1544,9 +1596,9 @@ inline UINT8 adc_a_b(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 adc_a_c(void){
-  //UINT16 v=C+(IS_SET(FLAG_C)?(1):(0));
-  //UINT16 r=A+v;
+__inline__ Uint8 adc_a_c(void){
+  //Uint16 v=C+(IS_SET(FLAG_C)?(1):(0));
+  //Uint16 r=A+v;
   t16=C+(IS_SET(FLAG_C)?(1):(0));
   t32=A+t16;
   ((t32&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
@@ -1558,9 +1610,9 @@ inline UINT8 adc_a_c(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 adc_a_d(void){
-  //UINT16 v=D+(IS_SET(FLAG_C)?(1):(0));
-  //UINT16 r=A+v;
+__inline__ Uint8 adc_a_d(void){
+  //Uint16 v=D+(IS_SET(FLAG_C)?(1):(0));
+  //Uint16 r=A+v;
   t16=D+(IS_SET(FLAG_C)?(1):(0));
   t32=A+t16;
   ((t32&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
@@ -1572,9 +1624,9 @@ inline UINT8 adc_a_d(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 adc_a_e(void){
-  //UINT16 v=E+(IS_SET(FLAG_C)?(1):(0));
-  //UINT16 r=A+v;
+__inline__ Uint8 adc_a_e(void){
+  //Uint16 v=E+(IS_SET(FLAG_C)?(1):(0));
+  //Uint16 r=A+v;
   t16=E+(IS_SET(FLAG_C)?(1):(0));
   t32=A+t16;
   ((t32&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
@@ -1586,9 +1638,9 @@ inline UINT8 adc_a_e(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 adc_a_h(void){
-  //UINT16 v=H+(IS_SET(FLAG_C)?(1):(0));
-  //UINT16 r=A+v;
+__inline__ Uint8 adc_a_h(void){
+  //Uint16 v=H+(IS_SET(FLAG_C)?(1):(0));
+  //Uint16 r=A+v;
   t16=H+(IS_SET(FLAG_C)?(1):(0));
   t32=A+t16;
   ((t32&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
@@ -1600,9 +1652,9 @@ inline UINT8 adc_a_h(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 adc_a_l(void){
-  //UINT16 v=L+(IS_SET(FLAG_C)?(1):(0));
-  //UINT16 r=A+v;
+__inline__ Uint8 adc_a_l(void){
+  //Uint16 v=L+(IS_SET(FLAG_C)?(1):(0));
+  //Uint16 r=A+v;
   t16=L+(IS_SET(FLAG_C)?(1):(0));
   t32=A+t16;
   ((t32&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
@@ -1614,10 +1666,12 @@ inline UINT8 adc_a_l(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 adc_a_mem_hl(void){
-  //UINT16 v=mem_read(HL)+(IS_SET(FLAG_C)?(1):(0));
-  //UINT16 r=A+v;
-  t16=mem_read(HL)+(IS_SET(FLAG_C)?(1):(0));
+__inline__ Uint8 adc_a_mem_hl(void){
+  //Uint16 v=mem_read(HL)+(IS_SET(FLAG_C)?(1):(0));
+  //Uint16 r=A+v;
+  //t16=mem_read(HL)+(IS_SET(FLAG_C)?(1):(0));
+  mem_read_fast(HL,t16);
+  t16+=(IS_SET(FLAG_C)?(1):(0));
   t32=A+t16;
   ((t32&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   //((((A&0x10)^(v&0x10))^(r&0x10)) ? SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1628,9 +1682,9 @@ inline UINT8 adc_a_mem_hl(void){
   SUB_CYCLE(8);
 }
 
-inline UINT8 adc_a_a(void){
-  //UINT16 v=A+(IS_SET(FLAG_C)?(1):(0));
-  //UINT16 r=A+v;
+__inline__ Uint8 adc_a_a(void){
+  //Uint16 v=A+(IS_SET(FLAG_C)?(1):(0));
+  //Uint16 r=A+v;
   t16=A+(IS_SET(FLAG_C)?(1):(0));
   t32=A+t16;
   ((t32&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
@@ -1642,7 +1696,7 @@ inline UINT8 adc_a_a(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 sub_b(void){
+__inline__ Uint8 sub_b(void){
   ((B>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((B&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
   A-=B;
@@ -1651,7 +1705,7 @@ inline UINT8 sub_b(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 sub_c(void){
+__inline__ Uint8 sub_c(void){
   ((C>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((C&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
   A-=C;
@@ -1660,7 +1714,7 @@ inline UINT8 sub_c(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 sub_d(void){
+__inline__ Uint8 sub_d(void){
   ((D>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((D&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
   A-=D;
@@ -1669,7 +1723,7 @@ inline UINT8 sub_d(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 sub_e(void){
+__inline__ Uint8 sub_e(void){
   ((E>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((E&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
   A-=E;
@@ -1678,7 +1732,7 @@ inline UINT8 sub_e(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 sub_h(void){
+__inline__ Uint8 sub_h(void){
   ((H>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((H&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
   A-=H;
@@ -1687,7 +1741,7 @@ inline UINT8 sub_h(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 sub_l(void){
+__inline__ Uint8 sub_l(void){
   ((L>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((L&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
   A-=L;
@@ -1696,9 +1750,10 @@ inline UINT8 sub_l(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 sub_mem_hl(void) {
-  //UINT8 v=mem_read(HL);
-  t8=mem_read(HL);
+__inline__ Uint8 sub_mem_hl(void) {
+  //Uint8 v=mem_read(HL);
+  //t8=mem_read(HL);
+  mem_read_fast(HL,t8);
   ((t8>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((t8&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
   A-=t8;
@@ -1707,7 +1762,7 @@ inline UINT8 sub_mem_hl(void) {
   SUB_CYCLE(8);
 }
 
-inline UINT8 sub_a(void){
+__inline__ Uint8 sub_a(void){
   ((A>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((A&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
   A-=A;
@@ -1716,8 +1771,8 @@ inline UINT8 sub_a(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 sbc_a_b(void){
-  //UINT16 v=B+((IS_SET(FLAG_C))?(1):(0));
+__inline__ Uint8 sbc_a_b(void){
+  //Uint16 v=B+((IS_SET(FLAG_C))?(1):(0));
   t16=B+((IS_SET(FLAG_C))?(1):(0));
   ((t16>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((t16&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1727,8 +1782,8 @@ inline UINT8 sbc_a_b(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 sbc_a_c(void){
-  //UINT16 v=C+((IS_SET(FLAG_C))?(1):(0));
+__inline__ Uint8 sbc_a_c(void){
+  //Uint16 v=C+((IS_SET(FLAG_C))?(1):(0));
   t16=C+((IS_SET(FLAG_C))?(1):(0));
   ((t16>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((t16&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1738,8 +1793,8 @@ inline UINT8 sbc_a_c(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 sbc_a_d(void){
-  //UINT16 v=D+((IS_SET(FLAG_C))?(1):(0));
+__inline__ Uint8 sbc_a_d(void){
+  //Uint16 v=D+((IS_SET(FLAG_C))?(1):(0));
   t16=D+((IS_SET(FLAG_C))?(1):(0));
   ((t16>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((t16&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1749,8 +1804,8 @@ inline UINT8 sbc_a_d(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 sbc_a_e(void){
-  //UINT16 v=E+((IS_SET(FLAG_C))?(1):(0));
+__inline__ Uint8 sbc_a_e(void){
+  //Uint16 v=E+((IS_SET(FLAG_C))?(1):(0));
   t16=E+((IS_SET(FLAG_C))?(1):(0));
   ((t16>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((t16&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1760,8 +1815,8 @@ inline UINT8 sbc_a_e(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 sbc_a_h(void){
-  //UINT16 v=H+((IS_SET(FLAG_C))?(1):(0));
+__inline__ Uint8 sbc_a_h(void){
+  //Uint16 v=H+((IS_SET(FLAG_C))?(1):(0));
   t16=H+((IS_SET(FLAG_C))?(1):(0));
   ((t16>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((t16&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1771,8 +1826,8 @@ inline UINT8 sbc_a_h(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 sbc_a_l(void){
-  //UINT16 v=L+((IS_SET(FLAG_C))?(1):(0));
+__inline__ Uint8 sbc_a_l(void){
+  //Uint16 v=L+((IS_SET(FLAG_C))?(1):(0));
   t16=L+((IS_SET(FLAG_C))?(1):(0));
   ((t16>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((t16&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1782,9 +1837,11 @@ inline UINT8 sbc_a_l(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 sbc_a_mem_hl(void){
-  //UINT16 v=mem_read(HL)+((IS_SET(FLAG_C))?(1):(0));
-  t16=mem_read(HL)+((IS_SET(FLAG_C))?(1):(0));
+__inline__ Uint8 sbc_a_mem_hl(void){
+  //Uint16 v=mem_read(HL)+((IS_SET(FLAG_C))?(1):(0));
+  //t16=mem_read(HL)+((IS_SET(FLAG_C))?(1):(0));
+  mem_read_fast(HL,t16);
+  t16+=((IS_SET(FLAG_C))?(1):(0));
   ((t16>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((t16&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
   A-=t16;
@@ -1793,8 +1850,8 @@ inline UINT8 sbc_a_mem_hl(void){
   SUB_CYCLE(8);
 }
 
-inline UINT8 sbc_a_a(void){
-  //UINT16 v=A+((IS_SET(FLAG_C))?(1):(0));
+__inline__ Uint8 sbc_a_a(void){
+  //Uint16 v=A+((IS_SET(FLAG_C))?(1):(0));
   t16=A+((IS_SET(FLAG_C))?(1):(0));
   ((t16>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((t16&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -1804,7 +1861,7 @@ inline UINT8 sbc_a_a(void){
   SUB_CYCLE(4);
 }    
 
-inline UINT8 and_b(void){
+__inline__ Uint8 and_b(void){
   A&=B;
   if (A) {
     UNSET_FLAG(FLAG_NZ&FLAG_NN&FLAG_NC);
@@ -1816,7 +1873,7 @@ inline UINT8 and_b(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 and_c(void){
+__inline__ Uint8 and_c(void){
   A&=C;
   if (A) {
     UNSET_FLAG(FLAG_NZ&FLAG_NN&FLAG_NC);
@@ -1828,7 +1885,7 @@ inline UINT8 and_c(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 and_d(void){
+__inline__ Uint8 and_d(void){
   A&=D;
   if (A) {
     UNSET_FLAG(FLAG_NZ&FLAG_NN&FLAG_NC);
@@ -1840,7 +1897,7 @@ inline UINT8 and_d(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 and_e(void){
+__inline__ Uint8 and_e(void){
   A&=E;
   if (A) {
     UNSET_FLAG(FLAG_NZ&FLAG_NN&FLAG_NC);
@@ -1852,7 +1909,7 @@ inline UINT8 and_e(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 and_h(void){
+__inline__ Uint8 and_h(void){
   A&=H;
   if (A) {
     UNSET_FLAG(FLAG_NZ&FLAG_NN&FLAG_NC);
@@ -1864,7 +1921,7 @@ inline UINT8 and_h(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 and_l(void){
+__inline__ Uint8 and_l(void){
   A&=L;
   if (A) {
     UNSET_FLAG(FLAG_NZ&FLAG_NN&FLAG_NC);
@@ -1876,8 +1933,10 @@ inline UINT8 and_l(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 and_mem_hl(void){
-  A&=mem_read(HL);
+__inline__ Uint8 and_mem_hl(void){
+  //A&=mem_read(HL);
+  mem_read_fast(HL,t8);
+  A&=t8;
   if (A) {
     UNSET_FLAG(FLAG_NZ&FLAG_NN&FLAG_NC);
     SET_FLAG(FLAG_H);
@@ -1888,7 +1947,7 @@ inline UINT8 and_mem_hl(void){
   SUB_CYCLE(8);
 }
 
-inline UINT8 and_a(void){
+__inline__ Uint8 and_a(void){
   A&=A;
   if (A) {
     UNSET_FLAG(FLAG_NZ&FLAG_NN&FLAG_NC);
@@ -1900,7 +1959,7 @@ inline UINT8 and_a(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 xor_b(void){
+__inline__ Uint8 xor_b(void){
   A^=B;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -1908,7 +1967,7 @@ inline UINT8 xor_b(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 xor_c(void){
+__inline__ Uint8 xor_c(void){
   A^=C;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -1916,7 +1975,7 @@ inline UINT8 xor_c(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 xor_d(void){
+__inline__ Uint8 xor_d(void){
   A^=D;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -1924,7 +1983,7 @@ inline UINT8 xor_d(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 xor_e(void){
+__inline__ Uint8 xor_e(void){
   A^=E;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -1932,7 +1991,7 @@ inline UINT8 xor_e(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 xor_h(void){
+__inline__ Uint8 xor_h(void){
   A^=H;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -1940,7 +1999,7 @@ inline UINT8 xor_h(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 xor_l(void){
+__inline__ Uint8 xor_l(void){
   A^=L;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -1948,15 +2007,17 @@ inline UINT8 xor_l(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 xor_mem_hl(void){
-  A^=mem_read(HL);
+__inline__ Uint8 xor_mem_hl(void){
+  //A^=mem_read(HL);
+  mem_read_fast(HL,t8);
+  A^=t8;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
   else SET_FLAG(FLAG_Z);
   SUB_CYCLE(8);
 }
 
-inline UINT8 xor_a(void){
+__inline__ Uint8 xor_a(void){
   A^=A;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -1964,7 +2025,7 @@ inline UINT8 xor_a(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 or_b(void){
+__inline__ Uint8 or_b(void){
   A|=B;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -1972,7 +2033,7 @@ inline UINT8 or_b(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 or_c(void){
+__inline__ Uint8 or_c(void){
   A|=C;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -1980,7 +2041,7 @@ inline UINT8 or_c(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 or_d(void){
+__inline__ Uint8 or_d(void){
   A|=D;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -1988,7 +2049,7 @@ inline UINT8 or_d(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 or_e(void){
+__inline__ Uint8 or_e(void){
   A|=E;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -1996,7 +2057,7 @@ inline UINT8 or_e(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 or_h(void){
+__inline__ Uint8 or_h(void){
   A|=H;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -2004,7 +2065,7 @@ inline UINT8 or_h(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 or_l(void){
+__inline__ Uint8 or_l(void){
   A|=L;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -2012,15 +2073,17 @@ inline UINT8 or_l(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 or_mem_hl(void){
-  A|=mem_read(HL);
+__inline__ Uint8 or_mem_hl(void){
+  //A|=mem_read(HL);
+  mem_read_fast(HL,t8);
+  A|=t8;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
   else SET_FLAG(FLAG_Z);
   SUB_CYCLE(8);
 }
 
-inline UINT8 or_a(void){
+__inline__ Uint8 or_a(void){
   A|=A;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -2030,51 +2093,52 @@ inline UINT8 or_a(void){
 
 #define CP_A_R(v) {t16=A-(v); ((t16&0x0100)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC)); ((t16&0xff)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z)); ((((v&0x0f)>((A)&0x0f)))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH)); SET_FLAG(FLAG_N); } 
 
-inline UINT8 cp_b(void){
+__inline__ Uint8 cp_b(void){
   CP_A_R(B);
   SUB_CYCLE(4);
 }   
 
-inline UINT8 cp_c(void){
+__inline__ Uint8 cp_c(void){
   CP_A_R(C);
   SUB_CYCLE(4);
 }
 
-inline UINT8 cp_d(void){
+__inline__ Uint8 cp_d(void){
   CP_A_R(D);
   SUB_CYCLE(4);
 }
 
-inline UINT8 cp_e(void){
+__inline__ Uint8 cp_e(void){
   CP_A_R(E);
   SUB_CYCLE(4);
 }
 
-inline UINT8 cp_h(void){
+__inline__ Uint8 cp_h(void){
   CP_A_R(H);
   SUB_CYCLE(4);
 }
 
-inline UINT8 cp_l(void){
+__inline__ Uint8 cp_l(void){
   CP_A_R(L);
   SUB_CYCLE(4);
 }
 
-inline UINT8 cp_mem_hl(void){
-  //UINT8 a=mem_read(HL);
-  t8=mem_read(HL);
+__inline__ Uint8 cp_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  //t8=mem_read(HL);
+  mem_read_fast(HL,t8);
   CP_A_R(t8);
   SUB_CYCLE(8);
 }
 
-inline UINT8 cp_a(void){
+__inline__ Uint8 cp_a(void){
   CP_A_R(A);
   SUB_CYCLE(4);
 }
 
 /**************************************/
 
-inline UINT8 ret_nz(void){
+__inline__ Uint8 ret_nz(void){
   if (IS_SET(FLAG_Z)) SUB_CYCLE(8);
   else {
     POP_R(REG_PC);
@@ -2082,12 +2146,12 @@ inline UINT8 ret_nz(void){
   }
 }
 
-inline UINT8 pop_bc(void){
+__inline__ Uint8 pop_bc(void){
   POP_R(REG_BC);
   SUB_CYCLE(12);
 }
 
-inline UINT8 jp_nz_nn(void){
+__inline__ Uint8 jp_nz_nn(void){
   if (IS_SET(FLAG_Z)) {
     PC+=2;
     SUB_CYCLE(12);
@@ -2098,31 +2162,31 @@ inline UINT8 jp_nz_nn(void){
   }
 }
 
-inline UINT8 jp_nn(void){
+__inline__ Uint8 jp_nn(void){
   PC=GET_WORD;
   SUB_CYCLE(16);
 }
 
-inline UINT8 call_nz_nn(void){
+__inline__ Uint8 call_nz_nn(void){
   if (IS_SET(FLAG_Z)) {
     PC+=2;
     SUB_CYCLE(12);
   } else {
-    UINT16 v=GET_WORD;
+    Uint16 v=GET_WORD;
     PUSH_R(REG_PC);
     PC=v;
     SUB_CYCLE(24);
   }
 }
 
-inline UINT8 push_bc(void){
+__inline__ Uint8 push_bc(void){
   PUSH_R(REG_BC);
   SUB_CYCLE(16);
 }
 
-inline UINT8 add_a_n(void){
-  //UINT16 v=GET_BYTE;
-  //UINT16 r=A+v;
+__inline__ Uint8 add_a_n(void){
+  //Uint16 v=GET_BYTE;
+  //Uint16 r=A+v;
   t8=GET_BYTE;
   t16=A+t8;
   ((t16&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
@@ -2134,25 +2198,25 @@ inline UINT8 add_a_n(void){
   SUB_CYCLE(8);
 }
 
-inline UINT8 rst_00h(void){
+__inline__ Uint8 rst_00h(void){
   PUSH_R(REG_PC);
   PC=0x0000;
   SUB_CYCLE(16);
 }
 
-inline UINT8 ret_z(void){
+__inline__ Uint8 ret_z(void){
   if (IS_SET(FLAG_Z)) {
     POP_R(REG_PC);
     SUB_CYCLE(20);
   }else SUB_CYCLE(8);
 }
 
-inline UINT8 ret(void){
+__inline__ Uint8 ret(void){
   POP_R(REG_PC);
   SUB_CYCLE(16);
 }
 
-inline UINT8 jp_z_nn(void){
+__inline__ Uint8 jp_z_nn(void){
   if (IS_SET(FLAG_Z)) {
     PC=GET_WORD;
     SUB_CYCLE(16);
@@ -2162,9 +2226,9 @@ inline UINT8 jp_z_nn(void){
   }
 }
 
-inline UINT8 call_z_nn(void){
+__inline__ Uint8 call_z_nn(void){
   if (IS_SET(FLAG_Z)) {
-    //UINT16 v=GET_WORD;
+    //Uint16 v=GET_WORD;
     t16=GET_WORD;
     PUSH_R(REG_PC);
     PC=t16;
@@ -2175,17 +2239,17 @@ inline UINT8 call_z_nn(void){
   }
 }
 
-inline UINT8 call_nn(void){
-  //UINT16 v=GET_WORD;
+__inline__ Uint8 call_nn(void){
+  //Uint16 v=GET_WORD;
   t16=GET_WORD;
   PUSH_R(REG_PC);
   PC=t16;
   SUB_CYCLE(24);
 }
 
-inline UINT8 adc_a_n(void){
-  //UINT16 v=GET_BYTE+(IS_SET(FLAG_C)?(1):(0));
-  //UINT16 r=A+v;
+__inline__ Uint8 adc_a_n(void){
+  //Uint16 v=GET_BYTE+(IS_SET(FLAG_C)?(1):(0));
+  //Uint16 r=A+v;
   t16=GET_BYTE+(IS_SET(FLAG_C)?(1):(0));
   t32=A+t16;
   ((t32&0x0100) ? SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
@@ -2197,13 +2261,13 @@ inline UINT8 adc_a_n(void){
   SUB_CYCLE(8);
 }
 
-inline UINT8 rst_8h(void){
+__inline__ Uint8 rst_8h(void){
   PUSH_R(REG_PC);
   PC=0x0008;
   SUB_CYCLE(16);
 }
 
-inline UINT8 ret_nc(void){
+__inline__ Uint8 ret_nc(void){
   if (IS_SET(FLAG_C)) SUB_CYCLE(8);
   else {
     POP_R(REG_PC);
@@ -2211,12 +2275,12 @@ inline UINT8 ret_nc(void){
   }		
 }
 
-inline UINT8 pop_de(void){
+__inline__ Uint8 pop_de(void){
   POP_R(REG_DE);
   SUB_CYCLE(12);
 }
 
-inline UINT8 jp_nc_nn(void){
+__inline__ Uint8 jp_nc_nn(void){
   if (IS_SET(FLAG_C)) {
     PC+=2;
     SUB_CYCLE(12);
@@ -2226,12 +2290,12 @@ inline UINT8 jp_nc_nn(void){
   }
 }
 
-inline UINT8 call_nc_nn(void){
+__inline__ Uint8 call_nc_nn(void){
   if (IS_SET(FLAG_C)) {
     PC+=2;
     SUB_CYCLE(12);
   } else {
-    //UINT16 v=GET_WORD;
+    //Uint16 v=GET_WORD;
     t16=GET_WORD;
     PUSH_R(REG_PC);
     PC=t16;
@@ -2239,13 +2303,13 @@ inline UINT8 call_nc_nn(void){
   }
 }
 
-inline UINT8 push_de(void){
+__inline__ Uint8 push_de(void){
   PUSH_R(REG_DE);
   SUB_CYCLE(16);
 }
 
-inline UINT8 sub_n(void){
-  //UINT8 v=GET_BYTE;
+__inline__ Uint8 sub_n(void){
+  //Uint8 v=GET_BYTE;
   t8=GET_BYTE;
   ((t8>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((t8&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -2255,20 +2319,20 @@ inline UINT8 sub_n(void){
   SUB_CYCLE(8);
 }
 
-inline UINT8 rst_10h(void){
+__inline__ Uint8 rst_10h(void){
   PUSH_R(REG_PC);
   PC=0x0010;
   SUB_CYCLE(16);
 }
 
-inline UINT8 ret_c(void){
+__inline__ Uint8 ret_c(void){
   if (IS_SET(FLAG_C)) {
     POP_R(REG_PC);
     SUB_CYCLE(20);
   }else SUB_CYCLE(8);	
 }
 
-inline UINT8 reti(void){
+__inline__ Uint8 reti(void){
 #ifdef DEBUG
   add_cpu_msg("RETI\n");
 #endif 
@@ -2278,7 +2342,7 @@ inline UINT8 reti(void){
   SUB_CYCLE(16);
 }
 
-inline UINT8 jp_c_nn(void){
+__inline__ Uint8 jp_c_nn(void){
   if (IS_SET(FLAG_C)) {
     PC=GET_WORD;
     SUB_CYCLE(16);
@@ -2288,9 +2352,9 @@ inline UINT8 jp_c_nn(void){
   }
 }
 
-inline UINT8 call_c_nn(void){
+__inline__ Uint8 call_c_nn(void){
   if (IS_SET(FLAG_C)) {
-    //UINT16 v=GET_WORD;
+    //Uint16 v=GET_WORD;
     t16=GET_WORD;
     PUSH_R(REG_PC);
     PC=t16;
@@ -2301,8 +2365,8 @@ inline UINT8 call_c_nn(void){
   }
 }
 
-inline UINT8 sbc_a_n(void){
-  //UINT16 v=GET_BYTE+((IS_SET(FLAG_C))?(1):(0));
+__inline__ Uint8 sbc_a_n(void){
+  //Uint16 v=GET_BYTE+((IS_SET(FLAG_C))?(1):(0));
   t16=GET_BYTE+((IS_SET(FLAG_C))?(1):(0));
   ((t16>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
   (((t16&0x0f)>(A&0x0f))?SET_FLAG(FLAG_H):UNSET_FLAG(FLAG_NH));
@@ -2312,33 +2376,33 @@ inline UINT8 sbc_a_n(void){
   SUB_CYCLE(8);
 }
 
-inline UINT8 rst_18h(void){
+__inline__ Uint8 rst_18h(void){
   PUSH_R(REG_PC);
   PC=0x0018;
   SUB_CYCLE(16);
 }
 
-inline UINT8 ld_mem_ff00_n_a(void){
+__inline__ Uint8 ld_mem_ff00_n_a(void){
   mem_write_ff(0xff00+GET_BYTE,A);
   SUB_CYCLE(12);
 }
 
-inline UINT8 pop_hl(void){
+__inline__ Uint8 pop_hl(void){
   POP_R(REG_HL);
   SUB_CYCLE(12);
 }
 
-inline UINT8 ld_mem_ff00_c_a(void){
+__inline__ Uint8 ld_mem_ff00_c_a(void){
   mem_write_ff(0xff00+C,A);
   SUB_CYCLE(8);
 }
 
-inline UINT8 push_hl(void){
+__inline__ Uint8 push_hl(void){
   PUSH_R(REG_HL);
   SUB_CYCLE(16);
 }
 
-inline UINT8 and_n(void){
+__inline__ Uint8 and_n(void){
   A&=GET_BYTE;
   if (A) {
     UNSET_FLAG(FLAG_NZ&FLAG_NN&FLAG_NC);
@@ -2350,15 +2414,15 @@ inline UINT8 and_n(void){
   SUB_CYCLE(8);
 }
 
-inline UINT8 rst_20h(void){
+__inline__ Uint8 rst_20h(void){
   PUSH_R(REG_PC);
   PC=0x0020;
   SUB_CYCLE(16);
 }
 
-inline UINT8 add_sp_dd(void){
-  //INT8 v=GET_BYTE;
-  //UINT32 r=SP+v;
+__inline__ Uint8 add_sp_dd(void){
+  //Sint8 v=GET_BYTE;
+  //Uint32 r=SP+v;
   st8=GET_BYTE;
   t32=SP+st8;
   ((t32&0x00010000)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
@@ -2368,17 +2432,19 @@ inline UINT8 add_sp_dd(void){
   SUB_CYCLE(16);
 }
 
-inline UINT8 jp_mem_hl(void){
+__inline__ Uint8 jp_mem_hl(void){
   PC=HL;
   SUB_CYCLE(4);
 }
 
-inline UINT8 ld_mem_nn_a(void){
-  mem_write(GET_WORD,A);
+__inline__ Uint8 ld_mem_nn_a(void){
+  t16=GET_WORD;
+  mem_write_fast(t16,A);
+  //mem_write(GET_WORD,A);
   SUB_CYCLE(16);
 }
 
-inline UINT8 xor_n(void){
+__inline__ Uint8 xor_n(void){
   A^=GET_BYTE;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -2386,28 +2452,28 @@ inline UINT8 xor_n(void){
   SUB_CYCLE(8);
 }
 
-inline UINT8 rst_28h(void){
+__inline__ Uint8 rst_28h(void){
   PUSH_R(REG_PC);
   PC=0x0028;
   SUB_CYCLE(16);
 }
 
-inline UINT8 ld_a_mem_ff00_n(void){
+__inline__ Uint8 ld_a_mem_ff00_n(void){
   A=mem_read_ff(0xff00+GET_BYTE);
   SUB_CYCLE(12);
 }
 
-inline UINT8 pop_af(void){
+__inline__ Uint8 pop_af(void){
   POP_R(REG_AF);
   SUB_CYCLE(12);
 }
 
-inline UINT8 ld_a_mem_c(void){
+__inline__ Uint8 ld_a_mem_c(void){
   A=mem_read_ff(0xff00+C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 di(void){
+__inline__ Uint8 di(void){
 #ifdef DEBUG
   add_cpu_msg("DI\n");
 #endif
@@ -2415,12 +2481,12 @@ inline UINT8 di(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 push_af(void){
+__inline__ Uint8 push_af(void){
   PUSH_R(REG_AF);
   SUB_CYCLE(16);
 }
 
-inline UINT8 or_n(void){
+__inline__ Uint8 or_n(void){
   A|=GET_BYTE;
   UNSET_FLAG(FLAG_NN&FLAG_NC&FLAG_NH);
   if (A) UNSET_FLAG(FLAG_NZ);
@@ -2428,15 +2494,15 @@ inline UINT8 or_n(void){
   SUB_CYCLE(8);
 }
 
-inline UINT8 rst_30h(void){
+__inline__ Uint8 rst_30h(void){
   PUSH_R(REG_PC);
   PC=0x0030;
   SUB_CYCLE(16);
 }
 
-inline UINT8 ld_hl_sp_dd(void){
-  //INT8 v=GET_BYTE;
-  //UINT32 r=SP+v;
+__inline__ Uint8 ld_hl_sp_dd(void){
+  //Sint8 v=GET_BYTE;
+  //Uint32 r=SP+v;
   st8=GET_BYTE;
   t32=SP+st8;
   ((t32&0x00010000)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
@@ -2447,17 +2513,20 @@ inline UINT8 ld_hl_sp_dd(void){
   SUB_CYCLE(12);
 }
 
-inline UINT8 ld_sp_hl(void){
+__inline__ Uint8 ld_sp_hl(void){
   SP=HL;
   SUB_CYCLE(8);
 }
 
-inline UINT8 ld_a_mem_nn(void){
-  A=mem_read(GET_WORD);
+__inline__ Uint8 ld_a_mem_nn(void){
+  //A=mem_read(GET_WORD);
+  //mem_read_fast(GET_WORD,A);
+  t16=GET_WORD;
+  mem_read_fast(t16,A);
   SUB_CYCLE(16);
 }
 
-inline UINT8 ei(void){
+__inline__ Uint8 ei(void){
 #ifdef DEBUG
   add_cpu_msg("EI\n");
 #endif
@@ -2465,14 +2534,14 @@ inline UINT8 ei(void){
   SUB_CYCLE(4);
 }
 
-inline UINT8 cp_n(void){
-  //UINT8 a=GET_BYTE;
+__inline__ Uint8 cp_n(void){
+  //Uint8 a=GET_BYTE;
   t8=GET_BYTE;
   CP_A_R(t8);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rst_38h(void){
+__inline__ Uint8 rst_38h(void){
   PUSH_R(REG_PC);
   PC=0x0038;
   SUB_CYCLE(16);
@@ -2485,44 +2554,47 @@ inline UINT8 rst_38h(void){
 #define RLC_R(r) {t8=((r)&0x80)>>7; (r)=((r)<<1)|t8; ((t8)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC)); ((r)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z)); UNSET_FLAG(FLAG_NN&FLAG_NH);}
 
 
-inline UINT8 rlc_b(void){
+__inline__ Uint8 rlc_b(void){
   RLC_R(B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rlc_c(void){
+__inline__ Uint8 rlc_c(void){
   RLC_R(C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rlc_d(void){
+__inline__ Uint8 rlc_d(void){
   RLC_R(D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rlc_e(void){
+__inline__ Uint8 rlc_e(void){
   RLC_R(E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rlc_h(void){
+__inline__ Uint8 rlc_h(void){
   RLC_R(H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rlc_l(void){
+__inline__ Uint8 rlc_l(void){
   RLC_R(L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rlc_mem_hl(void){
-  UINT8 a=mem_read(HL); // laisse le
+__inline__ Uint8 rlc_mem_hl(void){
+  //Uint8 a=mem_read(HL); // laisse le
+  Uint8 a;
+  mem_read_fast(HL,a);
   RLC_R(a);
-  mem_write(HL,a);
+  //mem_write(HL,a);
+  mem_write_fast(HL,a);
   SUB_CYCLE(16);
 }
 
-inline UINT8 rlc_a(void){
+__inline__ Uint8 rlc_a(void){
   RLC_R(A);
   SUB_CYCLE(8);
 }
@@ -2530,308 +2602,329 @@ inline UINT8 rlc_a(void){
 #define RRC_R(r) {t8=((r)&0x01)<<7; (r)=((r)>>1)|t8; ((t8)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC)); ((r)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z)); UNSET_FLAG(FLAG_NN&FLAG_NH);}
 
 
-inline UINT8 rrc_b(void){
+__inline__ Uint8 rrc_b(void){
   RRC_R(B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rrc_c(void){
+__inline__ Uint8 rrc_c(void){
   RRC_R(C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rrc_d(void){
+__inline__ Uint8 rrc_d(void){
   RRC_R(D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rrc_e(void){
+__inline__ Uint8 rrc_e(void){
   RRC_R(E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rrc_h(void){
+__inline__ Uint8 rrc_h(void){
   RRC_R(H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rrc_l(void){
+__inline__ Uint8 rrc_l(void){
   RRC_R(L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rrc_mem_hl(void){
-  UINT8 a=mem_read(HL);
+__inline__ Uint8 rrc_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  Uint8 a;
+  mem_read_fast(HL,a);
   RRC_R(a);
-  mem_write(HL,a);
+  //mem_write(HL,a);
+  mem_write_fast(HL,a);
   SUB_CYCLE(16);
 }
 
-inline UINT8 rrc_a(void){
+__inline__ Uint8 rrc_a(void){
   RRC_R(A);
   SUB_CYCLE(8);
 }
 
 #define RL_R(r) {t8=(IS_SET(FLAG_C)?(1):(0)); (((r)&0x80)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC)); (r)=((r)<<1)|t8; ((r)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z)); UNSET_FLAG(FLAG_NN&FLAG_NH); }
 
-inline UINT8 rl_b(void){
+__inline__ Uint8 rl_b(void){
   RL_R(B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rl_c(void){
+__inline__ Uint8 rl_c(void){
   RL_R(C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rl_d(void){
+__inline__ Uint8 rl_d(void){
   RL_R(D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rl_e(void){
+__inline__ Uint8 rl_e(void){
   RL_R(E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rl_h(void){
+__inline__ Uint8 rl_h(void){
   RL_R(H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rl_l(void){
+__inline__ Uint8 rl_l(void){
   RL_R(L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rl_mem_hl(void){
-  UINT8 a=mem_read(HL);
+__inline__ Uint8 rl_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  Uint8 a;
+  mem_read_fast(HL,a);
   RL_R(a);
-  mem_write(HL,a);
+  //mem_write(HL,a);
+  mem_write_fast(HL,a);
   SUB_CYCLE(16);
 }
 
-inline UINT8 rl_a(void){
+__inline__ Uint8 rl_a(void){
   RL_R(A);
   SUB_CYCLE(8);
 }
 
 #define RR_R(r) {t8=(IS_SET(FLAG_C)?(0x80):(0x00)); (((r)&0x01)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC)); (r)=((r)>>1)|t8; ((r)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z)); UNSET_FLAG(FLAG_NN&FLAG_NH);}
 
-inline UINT8 rr_b(void){
+__inline__ Uint8 rr_b(void){
   RR_R(B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rr_c(void){
+__inline__ Uint8 rr_c(void){
   RR_R(C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rr_d(void){
+__inline__ Uint8 rr_d(void){
   RR_R(D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rr_e(void){
+__inline__ Uint8 rr_e(void){
   RR_R(E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rr_h(void){
+__inline__ Uint8 rr_h(void){
   RR_R(H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rr_l(void){
+__inline__ Uint8 rr_l(void){
   RR_R(L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 rr_mem_hl(void){
-  UINT8 a=mem_read(HL);
+__inline__ Uint8 rr_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  Uint8 a;
+  mem_read_fast(HL,a);
   RR_R(a);
-  mem_write(HL,a);
+  //mem_write(HL,a);
+  mem_write_fast(HL,a);
   SUB_CYCLE(16);
 }
 
-inline UINT8 rr_a(void){
+__inline__ Uint8 rr_a(void){
   RR_R(A);
   SUB_CYCLE(8);
 }
 
 #define SLA_R(r) {(((r)&0x80)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC)); (r)<<=1; ((r)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z)); UNSET_FLAG(FLAG_NN&FLAG_NH);}
 
-inline UINT8 sla_b(void){
+__inline__ Uint8 sla_b(void){
   SLA_R(B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 sla_c(void){
+__inline__ Uint8 sla_c(void){
   SLA_R(C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 sla_d(void){
+__inline__ Uint8 sla_d(void){
   SLA_R(D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 sla_e(void){
+__inline__ Uint8 sla_e(void){
   SLA_R(E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 sla_h(void){
+__inline__ Uint8 sla_h(void){
   SLA_R(H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 sla_l(void){
+__inline__ Uint8 sla_l(void){
   SLA_R(L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 sla_mem_hl(void){
-  UINT8 a=mem_read(HL);
+__inline__ Uint8 sla_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  Uint8 a;
+  mem_read_fast(HL,a);
   SLA_R(a);
-  mem_write(HL,a);
+  //mem_write(HL,a);
+  mem_write_fast(HL,a);
   SUB_CYCLE(16);
 }
 
-inline UINT8 sla_a(void){
+__inline__ Uint8 sla_a(void){
   SLA_R(A);
   SUB_CYCLE(8);
 }
 
 #define SRA_R(r) {(((r)&0x01)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC)); (r)=((r)&0x80)|((r)>>1); ((r)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z)); UNSET_FLAG(FLAG_NN&FLAG_NH);}
 
-inline UINT8 sra_b(void){
+__inline__ Uint8 sra_b(void){
   SRA_R(B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 sra_c(void){
+__inline__ Uint8 sra_c(void){
   SRA_R(C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 sra_d(void){
+__inline__ Uint8 sra_d(void){
   SRA_R(D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 sra_e(void){
+__inline__ Uint8 sra_e(void){
   SRA_R(E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 sra_h(void){
+__inline__ Uint8 sra_h(void){
   SRA_R(H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 sra_l(void){
+__inline__ Uint8 sra_l(void){
   SRA_R(L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 sra_mem_hl(void){
-  UINT8 a=mem_read(HL);
+__inline__ Uint8 sra_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  Uint8 a;
+  mem_read_fast(HL,a);
   SRA_R(a);
-  mem_write(HL,a);
+  //mem_write(HL,a);
+  mem_write_fast(HL,a);
   SUB_CYCLE(16);
 }
 
-inline UINT8 sra_a(void){
+__inline__ Uint8 sra_a(void){
   SRA_R(A);
   SUB_CYCLE(8);
 }
 
 #define SWAP_R(r) {(r)=(((r)&0xf0)>>4)|(((r)&0x0f)<<4); ((r)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z)); UNSET_FLAG(FLAG_NN&FLAG_NH&FLAG_NC);}
 
-inline UINT8 swap_b(void){
+__inline__ Uint8 swap_b(void){
   SWAP_R(B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 swap_c(void){
+__inline__ Uint8 swap_c(void){
   SWAP_R(C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 swap_d(void){
+__inline__ Uint8 swap_d(void){
   SWAP_R(D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 swap_e(void){
+__inline__ Uint8 swap_e(void){
   SWAP_R(E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 swap_h(void){
+__inline__ Uint8 swap_h(void){
   SWAP_R(H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 swap_l(void){
+__inline__ Uint8 swap_l(void){
   SWAP_R(L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 swap_mem_hl(void){
-  UINT8 a=mem_read(HL);
+__inline__ Uint8 swap_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  Uint8 a;
+  mem_read_fast(HL,a);
   SWAP_R(a);
-  mem_write(HL,a);
+  //mem_write(HL,a);
+  mem_write_fast(HL,a);
   SUB_CYCLE(16);
 }
 
-inline UINT8 swap_a(void){
+__inline__ Uint8 swap_a(void){
   SWAP_R(A);
   SUB_CYCLE(8);
 }
 
 #define SRL_R(r) {(((r)&0x01)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC)); (r)>>=1; ((r)?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z)); UNSET_FLAG(FLAG_NN&FLAG_NH);}
  
-inline UINT8 srl_b(void){
+__inline__ Uint8 srl_b(void){
   SRL_R(B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 srl_c(void){
+__inline__ Uint8 srl_c(void){
   SRL_R(C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 srl_d(void){
+__inline__ Uint8 srl_d(void){
   SRL_R(D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 srl_e(void){
+__inline__ Uint8 srl_e(void){
   SRL_R(E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 srl_h(void){
+__inline__ Uint8 srl_h(void){
   SRL_R(H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 srl_l(void){
+__inline__ Uint8 srl_l(void){
   SRL_R(L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 srl_mem_hl(void){
-  UINT8 a=mem_read(HL);
+__inline__ Uint8 srl_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  Uint8 a;
+  mem_read_fast(HL,a);
   SRL_R(a);
-  mem_write(HL,a);
+  //mem_write(HL,a);
+  mem_write_fast(HL,a);
   SUB_CYCLE(16);
 }
 
-inline UINT8 srl_a(void){
+__inline__ Uint8 srl_a(void){
   SRL_R(A);
   SUB_CYCLE(8);
 }
@@ -2839,1007 +2932,1071 @@ inline UINT8 srl_a(void){
 #define BIT_N_R(n,r) {(((r)&(n))?UNSET_FLAG(FLAG_NZ):SET_FLAG(FLAG_Z)); SET_FLAG(FLAG_H); UNSET_FLAG(FLAG_NN);}
   
 
-inline UINT8 bit_0_b(void){
+__inline__ Uint8 bit_0_b(void){
   BIT_N_R(0x01,B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_0_c(void){
+__inline__ Uint8 bit_0_c(void){
   BIT_N_R(0x01,C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_0_d(void){
+__inline__ Uint8 bit_0_d(void){
   BIT_N_R(0x01,D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_0_e(void){
+__inline__ Uint8 bit_0_e(void){
   BIT_N_R(0x01,E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_0_h(void){
+__inline__ Uint8 bit_0_h(void){
   BIT_N_R(0x01,H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_0_l(void){
+__inline__ Uint8 bit_0_l(void){
   BIT_N_R(0x01,L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_0_mem_hl(void){
-  UINT8 a=mem_read(HL);
+__inline__ Uint8 bit_0_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  Uint8 a;
+  mem_read_fast(HL,a);
   BIT_N_R(0x01,a);
   SUB_CYCLE(12);
 }
 
-inline UINT8 bit_0_a(void){
+__inline__ Uint8 bit_0_a(void){
   BIT_N_R(0x01,A);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_1_b(void){
+__inline__ Uint8 bit_1_b(void){
   BIT_N_R(0x02,B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_1_c(void){
+__inline__ Uint8 bit_1_c(void){
   BIT_N_R(0x02,C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_1_d(void){
+__inline__ Uint8 bit_1_d(void){
   BIT_N_R(0x02,D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_1_e(void){
+__inline__ Uint8 bit_1_e(void){
   BIT_N_R(0x02,E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_1_h(void){
+__inline__ Uint8 bit_1_h(void){
   BIT_N_R(0x02,H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_1_l(void){
+__inline__ Uint8 bit_1_l(void){
   BIT_N_R(0x02,L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_1_mem_hl(void){
-  UINT8 a=mem_read(HL);
+__inline__ Uint8 bit_1_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  Uint8 a;
+  mem_read_fast(HL,a);
   BIT_N_R(0x02,a);
   SUB_CYCLE(12);
 }
 
-inline UINT8 bit_1_a(void){
+__inline__ Uint8 bit_1_a(void){
   BIT_N_R(0x02,A);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_2_b(void){
+__inline__ Uint8 bit_2_b(void){
   BIT_N_R(0x04,B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_2_c(void){
+__inline__ Uint8 bit_2_c(void){
   BIT_N_R(0x04,C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_2_d(void){
+__inline__ Uint8 bit_2_d(void){
   BIT_N_R(0x04,D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_2_e(void){
+__inline__ Uint8 bit_2_e(void){
   BIT_N_R(0x04,E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_2_h(void){
+__inline__ Uint8 bit_2_h(void){
   BIT_N_R(0x04,H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_2_l(void){
+__inline__ Uint8 bit_2_l(void){
   BIT_N_R(0x04,L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_2_mem_hl(void){
-  UINT8 a=mem_read(HL);
+__inline__ Uint8 bit_2_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  Uint8 a;
+  mem_read_fast(HL,a);
   BIT_N_R(0x04,a);
   SUB_CYCLE(12);
 }
 
-inline UINT8 bit_2_a(void){
+__inline__ Uint8 bit_2_a(void){
   BIT_N_R(0x04,A);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_3_b(void){
+__inline__ Uint8 bit_3_b(void){
   BIT_N_R(0x08,B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_3_c(void){
+__inline__ Uint8 bit_3_c(void){
   BIT_N_R(0x08,C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_3_d(void){
+__inline__ Uint8 bit_3_d(void){
   BIT_N_R(0x08,D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_3_e(void){
+__inline__ Uint8 bit_3_e(void){
   BIT_N_R(0x08,E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_3_h(void){
+__inline__ Uint8 bit_3_h(void){
   BIT_N_R(0x08,H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_3_l(void){
+__inline__ Uint8 bit_3_l(void){
   BIT_N_R(0x08,L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_3_mem_hl(void){
-  UINT8 a=mem_read(HL);
+__inline__ Uint8 bit_3_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  Uint8 a;
+  mem_read_fast(HL,a);
   BIT_N_R(0x08,a);
   SUB_CYCLE(12);
 }
 
-inline UINT8 bit_3_a(void){
+__inline__ Uint8 bit_3_a(void){
   BIT_N_R(0x08,A);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_4_b(void){
+__inline__ Uint8 bit_4_b(void){
   BIT_N_R(0x10,B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_4_c(void){
+__inline__ Uint8 bit_4_c(void){
   BIT_N_R(0x10,C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_4_d(void){
+__inline__ Uint8 bit_4_d(void){
   BIT_N_R(0x10,D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_4_e(void){
+__inline__ Uint8 bit_4_e(void){
   BIT_N_R(0x10,E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_4_h(void){
+__inline__ Uint8 bit_4_h(void){
   BIT_N_R(0x10,H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_4_l(void){
+__inline__ Uint8 bit_4_l(void){
   BIT_N_R(0x10,L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_4_mem_hl(void){
-  UINT8 a=mem_read(HL);
+__inline__ Uint8 bit_4_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  Uint8 a;
+  mem_read_fast(HL,a);
   BIT_N_R(0x10,a);
   SUB_CYCLE(12);
 }
 
-inline UINT8 bit_4_a(void){
+__inline__ Uint8 bit_4_a(void){
   BIT_N_R(0x10,A);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_5_b(void){
+__inline__ Uint8 bit_5_b(void){
   BIT_N_R(0x20,B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_5_c(void){
+__inline__ Uint8 bit_5_c(void){
   BIT_N_R(0x20,C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_5_d(void){
+__inline__ Uint8 bit_5_d(void){
   BIT_N_R(0x20,D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_5_e(void){
+__inline__ Uint8 bit_5_e(void){
   BIT_N_R(0x20,E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_5_h(void){
+__inline__ Uint8 bit_5_h(void){
   BIT_N_R(0x20,H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_5_l(void){
+__inline__ Uint8 bit_5_l(void){
   BIT_N_R(0x20,L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_5_mem_hl(void){
-  UINT8 a=mem_read(HL);
+__inline__ Uint8 bit_5_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  Uint8 a;
+  mem_read_fast(HL,a);
   BIT_N_R(0x20,a);
   SUB_CYCLE(12);
 }
 
-inline UINT8 bit_5_a(void){
+__inline__ Uint8 bit_5_a(void){
   BIT_N_R(0x20,A);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_6_b(void){
+__inline__ Uint8 bit_6_b(void){
   BIT_N_R(0x40,B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_6_c(void){
+__inline__ Uint8 bit_6_c(void){
   BIT_N_R(0x40,C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_6_d(void){
+__inline__ Uint8 bit_6_d(void){
   BIT_N_R(0x40,D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_6_e(void){
+__inline__ Uint8 bit_6_e(void){
   BIT_N_R(0x40,E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_6_h(void){
+__inline__ Uint8 bit_6_h(void){
   BIT_N_R(0x40,H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_6_l(void){
+__inline__ Uint8 bit_6_l(void){
   BIT_N_R(0x40,L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_6_mem_hl(void){
-  UINT8 a=mem_read(HL);
+__inline__ Uint8 bit_6_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  Uint8 a;
+  mem_read_fast(HL,a);
   BIT_N_R(0x40,a);
   SUB_CYCLE(12);
 }
 
-inline UINT8 bit_6_a(void){
+__inline__ Uint8 bit_6_a(void){
   BIT_N_R(0x40,A);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_7_b(void){
+__inline__ Uint8 bit_7_b(void){
   BIT_N_R(0x80,B);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_7_c(void){
+__inline__ Uint8 bit_7_c(void){
   BIT_N_R(0x80,C);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_7_d(void){
+__inline__ Uint8 bit_7_d(void){
   BIT_N_R(0x80,D);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_7_e(void){
+__inline__ Uint8 bit_7_e(void){
   BIT_N_R(0x80,E);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_7_h(void){
+__inline__ Uint8 bit_7_h(void){
   BIT_N_R(0x80,H);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_7_l(void){
+__inline__ Uint8 bit_7_l(void){
   BIT_N_R(0x80,L);
   SUB_CYCLE(8);
 }
 
-inline UINT8 bit_7_mem_hl(void){
-  UINT8 a=mem_read(HL);
+__inline__ Uint8 bit_7_mem_hl(void){
+  //Uint8 a=mem_read(HL);
+  Uint8 a;
+  mem_read_fast(HL,a);
   BIT_N_R(0x80,a);
   SUB_CYCLE(12);
 }
 
-inline UINT8 bit_7_a(void){
+__inline__ Uint8 bit_7_a(void){
   BIT_N_R(0x80,A);
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_0_b(void){
+__inline__ Uint8 res_0_b(void){
   B&=0xfe;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_0_c(void){
+__inline__ Uint8 res_0_c(void){
   C&=0xfe;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_0_d(void){
+__inline__ Uint8 res_0_d(void){
   D&=0xfe;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_0_e(void){
+__inline__ Uint8 res_0_e(void){
   E&=0xfe;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_0_h(void){
+__inline__ Uint8 res_0_h(void){
   H&=0xfe;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_0_l(void){
+__inline__ Uint8 res_0_l(void){
   L&=0xfe;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_0_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 res_0_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v&=0xfe;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 res_0_a(void){
+__inline__ Uint8 res_0_a(void){
   A&=0xfe;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_1_b(void){
+__inline__ Uint8 res_1_b(void){
   B&=0xfd;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_1_c(void){
+__inline__ Uint8 res_1_c(void){
   C&=0xfd;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_1_d(void){
+__inline__ Uint8 res_1_d(void){
   D&=0xfd;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_1_e(void){
+__inline__ Uint8 res_1_e(void){
   E&=0xfd;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_1_h(void){
+__inline__ Uint8 res_1_h(void){
   H&=0xfd;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_1_l(void){
+__inline__ Uint8 res_1_l(void){
   L&=0xfd;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_1_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 res_1_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v&=0xfd;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 res_1_a(void){
+__inline__ Uint8 res_1_a(void){
   A&=0xfd;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_2_b(void){
+__inline__ Uint8 res_2_b(void){
   B&=0xfb;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_2_c(void){
+__inline__ Uint8 res_2_c(void){
   C&=0xfb;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_2_d(void){
+__inline__ Uint8 res_2_d(void){
   D&=0xfb;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_2_e(void){
+__inline__ Uint8 res_2_e(void){
   E&=0xfb;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_2_h(void){
+__inline__ Uint8 res_2_h(void){
   H&=0xfb;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_2_l(void){
+__inline__ Uint8 res_2_l(void){
   L&=0xfb;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_2_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 res_2_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v&=0xfb;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 res_2_a(void){
+__inline__ Uint8 res_2_a(void){
   A&=0xfb;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_3_b(void){
+__inline__ Uint8 res_3_b(void){
   B&=0xf7;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_3_c(void){
+__inline__ Uint8 res_3_c(void){
   C&=0xf7;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_3_d(void){
+__inline__ Uint8 res_3_d(void){
   D&=0xf7;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_3_e(void){
+__inline__ Uint8 res_3_e(void){
   E&=0xf7;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_3_h(void){
+__inline__ Uint8 res_3_h(void){
   H&=0xf7;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_3_l(void){
+__inline__ Uint8 res_3_l(void){
   L&=0xf7;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_3_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 res_3_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v&=0xf7;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 res_3_a(void){
+__inline__ Uint8 res_3_a(void){
   A&=0xf7;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_4_b(void){
+__inline__ Uint8 res_4_b(void){
   B&=0xef;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_4_c(void){
+__inline__ Uint8 res_4_c(void){
   C&=0xef;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_4_d(void){
+__inline__ Uint8 res_4_d(void){
   D&=0xef;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_4_e(void){
+__inline__ Uint8 res_4_e(void){
   E&=0xef;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_4_h(void){
+__inline__ Uint8 res_4_h(void){
   H&=0xef;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_4_l(void){
+__inline__ Uint8 res_4_l(void){
   L&=0xef;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_4_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 res_4_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v&=0xef;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 res_4_a(void){
+__inline__ Uint8 res_4_a(void){
   A&=0xef;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_5_b(void){
+__inline__ Uint8 res_5_b(void){
   B&=0xdf;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_5_c(void){
+__inline__ Uint8 res_5_c(void){
   C&=0xdf;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_5_d(void){
+__inline__ Uint8 res_5_d(void){
   D&=0xdf;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_5_e(void){
+__inline__ Uint8 res_5_e(void){
   E&=0xdf;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_5_h(void){
+__inline__ Uint8 res_5_h(void){
   H&=0xdf;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_5_l(void){
+__inline__ Uint8 res_5_l(void){
   L&=0xdf;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_5_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 res_5_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v&=0xdf;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 res_5_a(void){
+__inline__ Uint8 res_5_a(void){
   A&=0xdf;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_6_b(void){
+__inline__ Uint8 res_6_b(void){
   B&=0xbf;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_6_c(void){
+__inline__ Uint8 res_6_c(void){
   C&=0xbf;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_6_d(void){
+__inline__ Uint8 res_6_d(void){
   D&=0xbf;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_6_e(void){
+__inline__ Uint8 res_6_e(void){
   E&=0xbf;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_6_h(void){
+__inline__ Uint8 res_6_h(void){
   H&=0xbf;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_6_l(void){
+__inline__ Uint8 res_6_l(void){
   L&=0xbf;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_6_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 res_6_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v&=0xbf;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 res_6_a(void){
+__inline__ Uint8 res_6_a(void){
   A&=0xbf;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_7_b(void){
+__inline__ Uint8 res_7_b(void){
   B&=0x7f;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_7_c(void){
+__inline__ Uint8 res_7_c(void){
   C&=0x7f;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_7_d(void){
+__inline__ Uint8 res_7_d(void){
   D&=0x7f;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_7_e(void){
+__inline__ Uint8 res_7_e(void){
   E&=0x7f;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_7_h(void){
+__inline__ Uint8 res_7_h(void){
   H&=0x7f;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_7_l(void){
+__inline__ Uint8 res_7_l(void){
   L&=0x7f;
   SUB_CYCLE(8);
 }
 
-inline UINT8 res_7_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 res_7_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v&=0x7f;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 res_7_a(void){
+__inline__ Uint8 res_7_a(void){
   A&=0x7f;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_0_b(void){
+__inline__ Uint8 set_0_b(void){
   B|=0x01;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_0_c(void){
+__inline__ Uint8 set_0_c(void){
   C|=0x01;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_0_d(void){
+__inline__ Uint8 set_0_d(void){
   D|=0x01;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_0_e(void){
+__inline__ Uint8 set_0_e(void){
   E|=0x01;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_0_h(void){
+__inline__ Uint8 set_0_h(void){
   H|=0x01;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_0_l(void){
+__inline__ Uint8 set_0_l(void){
   L|=0x01;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_0_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 set_0_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v|=0x01;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 set_0_a(void){
+__inline__ Uint8 set_0_a(void){
   A|=0x01;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_1_b(void){
+__inline__ Uint8 set_1_b(void){
   B|=0x02;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_1_c(void){
+__inline__ Uint8 set_1_c(void){
   C|=0x02;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_1_d(void){
+__inline__ Uint8 set_1_d(void){
   D|=0x02;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_1_e(void){
+__inline__ Uint8 set_1_e(void){
   E|=0x02;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_1_h(void){
+__inline__ Uint8 set_1_h(void){
   H|=0x02;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_1_l(void){
+__inline__ Uint8 set_1_l(void){
   L|=0x02;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_1_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 set_1_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v|=0x02;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 set_1_a(void){
+__inline__ Uint8 set_1_a(void){
   A|=0x02;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_2_b(void){
+__inline__ Uint8 set_2_b(void){
   B|=0x04;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_2_c(void){
+__inline__ Uint8 set_2_c(void){
   C|=0x04;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_2_d(void){
+__inline__ Uint8 set_2_d(void){
   D|=0x04;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_2_e(void){
+__inline__ Uint8 set_2_e(void){
   E|=0x04;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_2_h(void){
+__inline__ Uint8 set_2_h(void){
   H|=0x04;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_2_l(void){
+__inline__ Uint8 set_2_l(void){
   L|=0x04;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_2_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 set_2_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v|=0x04;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 set_2_a(void){
+__inline__ Uint8 set_2_a(void){
   A|=0x04;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_3_b(void){
+__inline__ Uint8 set_3_b(void){
   B|=0x08;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_3_c(void){
+__inline__ Uint8 set_3_c(void){
   C|=0x08;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_3_d(void){
+__inline__ Uint8 set_3_d(void){
   D|=0x08;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_3_e(void){
+__inline__ Uint8 set_3_e(void){
   E|=0x08;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_3_h(void){
+__inline__ Uint8 set_3_h(void){
   H|=0x08;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_3_l(void){
+__inline__ Uint8 set_3_l(void){
   L|=0x08;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_3_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 set_3_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v|=0x08;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 set_3_a(void){
+__inline__ Uint8 set_3_a(void){
   A|=0x08;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_4_b(void){
+__inline__ Uint8 set_4_b(void){
   B|=0x10;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_4_c(void){
+__inline__ Uint8 set_4_c(void){
   C|=0x10;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_4_d(void){
+__inline__ Uint8 set_4_d(void){
   D|=0x10;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_4_e(void){
+__inline__ Uint8 set_4_e(void){
   E|=0x10;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_4_h(void){
+__inline__ Uint8 set_4_h(void){
   H|=0x10;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_4_l(void){
+__inline__ Uint8 set_4_l(void){
   L|=0x10;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_4_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 set_4_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v|=0x10;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 set_4_a(void){
+__inline__ Uint8 set_4_a(void){
   A|=0x10;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_5_b(void){
+__inline__ Uint8 set_5_b(void){
   B|=0x20;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_5_c(void){
+__inline__ Uint8 set_5_c(void){
   C|=0x20;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_5_d(void){
+__inline__ Uint8 set_5_d(void){
   D|=0x20;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_5_e(void){
+__inline__ Uint8 set_5_e(void){
   E|=0x20;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_5_h(void){
+__inline__ Uint8 set_5_h(void){
   H|=0x20;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_5_l(void){
+__inline__ Uint8 set_5_l(void){
   L|=0x20;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_5_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 set_5_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v|=0x20;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 set_5_a(void){
+__inline__ Uint8 set_5_a(void){
   A|=0x20;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_6_b(void){
+__inline__ Uint8 set_6_b(void){
   B|=0x40;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_6_c(void){
+__inline__ Uint8 set_6_c(void){
   C|=0x40;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_6_d(void){
+__inline__ Uint8 set_6_d(void){
   D|=0x40;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_6_e(void){
+__inline__ Uint8 set_6_e(void){
   E|=0x40;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_6_h(void){
+__inline__ Uint8 set_6_h(void){
   H|=0x40;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_6_l(void){
+__inline__ Uint8 set_6_l(void){
   L|=0x40;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_6_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 set_6_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v|=0x40;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 set_6_a(void){
+__inline__ Uint8 set_6_a(void){
   A|=0x40;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_7_b(void){
+__inline__ Uint8 set_7_b(void){
   B|=0x80;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_7_c(void){
+__inline__ Uint8 set_7_c(void){
   C|=0x80;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_7_d(void){
+__inline__ Uint8 set_7_d(void){
   D|=0x80;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_7_e(void){
+__inline__ Uint8 set_7_e(void){
   E|=0x80;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_7_h(void){
+__inline__ Uint8 set_7_h(void){
   H|=0x80;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_7_l(void){
+__inline__ Uint8 set_7_l(void){
   L|=0x80;
   SUB_CYCLE(8);
 }
 
-inline UINT8 set_7_mem_hl(void){
-  UINT8 v=mem_read(HL);
+__inline__ Uint8 set_7_mem_hl(void){
+  //Uint8 v=mem_read(HL);
+  Uint8 v;
+  mem_read_fast(HL,v);
   v|=0x80;
-  mem_write(HL,v);
+  //mem_write(HL,v);
+  mem_write_fast(HL,v);
   SUB_CYCLE(16);
 }
 
-inline UINT8 set_7_a(void){
+__inline__ Uint8 set_7_a(void){
   A|=0x80;
   SUB_CYCLE(8);
 }
 
-inline UINT8 cb_inst(void){
+__inline__ Uint8 cb_inst(void){
   switch(GET_BYTE) {
   case 0x00: return rlc_b();
   case 0x01: return rlc_c();
@@ -4101,14 +4258,18 @@ inline UINT8 cb_inst(void){
   return 0;
 }
 
-inline UINT8 gbcpu_exec_one(void)
+__inline__ Uint8 gbcpu_exec_one(void)
 {
+  static Uint8 opcode;
   /* FIXME */
   if (gbcpu->ei_flag==1) {
     gbcpu->int_flag=1;  
     gbcpu->ei_flag=0;
   }
-  switch(mem_read(PC++)) {
+  //opcode=mem_read(PC);
+  mem_read_fast(PC,opcode);
+  PC++;
+  switch(opcode) {
   case 0x00: return nop();
   case 0x01: return ld_bc_nn();
   case 0x02: return ld_mem_bc_a();
@@ -4369,7 +4530,7 @@ inline UINT8 gbcpu_exec_one(void)
   return 0;
 }
 
-inline void rom_timer_inc(void) {
+__inline__ void rom_timer_inc(void) {
   rom_timer->reg[0]=(rom_timer->reg[0]+1)%60;
   if (!rom_timer->reg[0]) {
     rom_timer->reg[1]=(rom_timer->reg[1]+1)%60;
@@ -4387,24 +4548,24 @@ inline void rom_timer_inc(void) {
   }
 }
 
-inline void update_gb(void) {
-  static UINT8 a;
-  static UINT32 divid_cycle;
-  static UINT32 key_cycle;
-  //static INT16 serial_cycle;
+__inline__ void update_gb(void) {
+  static Uint32 divid_cycle;
+  static Uint32 key_cycle;
+  //static Sint16 serial_cycle;
   int v=0;
+  Uint8 a;
 
-  //#ifndef DEBUG
   do {
-    //#endif
     
     v=0;
 
-    //if (gbcpu->state==HALT_STATE) halt_update();
-    if (INT_FLAG&VBLANK_INT)  v=make_interrupt(VBLANK_INT);
-    if (INT_FLAG&LCDC_INT && !v) v=make_interrupt(LCDC_INT);
-    if (INT_FLAG&TIMEOWFL_INT && !v) v=make_interrupt(TIMEOWFL_INT); 
-    if (INT_FLAG&SERIAL_INT && !v) v=make_interrupt(SERIAL_INT); 
+    /*FIXME: GDMA and interrupt */
+    if (dma_info.type!=GDMA) {
+      if (INT_FLAG&VBLANK_INT)  v=make_interrupt(VBLANK_INT);
+      if (INT_FLAG&LCDC_INT && !v) v=make_interrupt(LCDC_INT);
+      if (INT_FLAG&TIMEOWFL_INT && !v) v=make_interrupt(TIMEOWFL_INT); 
+      if (INT_FLAG&SERIAL_INT && !v) v=make_interrupt(SERIAL_INT); 
+    }
 
     //if (v) a+=24;
     
@@ -4438,20 +4599,24 @@ inline void update_gb(void) {
       divid_cycle=0;
     }
     
-    //if (LCDCCONT&0x80) 
-      GBLCDC_ADD_CYCLE(a);
-
-    /*gblcdc->cycle-=a;
-      if (gblcdc->cycle<=0) lcdc_trans();*/
-    
+    if (LCDCCONT&0x80) GBLCDC_ADD_CYCLE(a)
+    else {
+      key_cycle+=a;
+      if (key_cycle>=gblcdc->vblank_cycle) {
+	update_key();
+	key_cycle=0;
+      }
+    }
+       
     if (TIME_CONTROL&0x04) {
-      gbtimer->cycle-=a;
-      if (gbtimer->cycle<=0) {
+      gbtimer->cycle+=a;
+      if (gbtimer->cycle>=gbtimer->clk_inc) {
 	gbtimer_update();
-	gbtimer->cycle+=gbtimer->clk_inc;
+	gbtimer->cycle-=gbtimer->clk_inc;
       }
     }
 
+    /* FIXME: MBC3 timing */
     if (rom_type&TIMER && rom_timer->reg[4]&0x40) {
       rom_timer->cycle+=a;
       if (rom_timer->cycle>111) {
@@ -4459,37 +4624,26 @@ inline void update_gb(void) {
 	rom_timer->cycle=0;
       }
     }
-    /* FIXME: serial is experimentale */
 
-    /*if (conf.serial_on) {
-      if (serial_cycle_todo<=0 && (SC&0x80)) {
-	int n;
-	if ((n=recept_byte())>=0) {
-	  if (!(SC&0x01)) send_byte(SB);
-	  SB=(UINT8)n;
+    /* FIXME: serial is experimentale */
+    if (conf.serial_on) {
+      if (serial_cycle_todo>0) {
+	serial_cycle_todo-=a;
+	if (serial_cycle_todo<=0) {
+	  send_byte(SB);
+	  SB=recept_byte();
 	  SC&=0x7f;
 	  set_interrupt(SERIAL_INT);
+	  serial_cycle_todo=0;
 	}
-      } else serial_cycle_todo-=a;
-      }*/
-    
-    //if (gbcpu->state==HALT_STATE) halt_update();
-    /*if (INT_FLAG&VBLANK_INT)  v=make_interrupt(VBLANK_INT);
-      if (INT_FLAG&LCDC_INT && !v) v=make_interrupt(LCDC_INT);
-      if (INT_FLAG&TIMEOWFL_INT && !v) v=make_interrupt(TIMEOWFL_INT); 
-      if (INT_FLAG&SERIAL_INT && !v) v=make_interrupt(SERIAL_INT); */
-
-    key_cycle+=a;
-    if (key_cycle>=gblcdc->vblank_cycle) {
-      update_key();
-      key_cycle=0;
+      }
     }
+  }
 #ifndef DEBUG
-  } while(!conf.gb_done);
+  while(!conf.gb_done);
 #else
-  } while(!conf.gb_done && continue_run());
+  while(!conf.gb_done && continue_run());
 #endif
-
 }
 
 #undef REG_AF

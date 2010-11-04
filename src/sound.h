@@ -22,39 +22,39 @@
 
 #include "global.h"
 
-UINT32 sample_rate;
-UINT8  bit_per_sample;
-UINT16 sample_per_update;
+Uint32 sample_rate;
+Uint8  bit_per_sample;
+Uint16 sample_per_update;
 
 typedef struct SoundM1
 {
   /* NR10 */
-  UINT8 swp_time:3;  // -OOO----
-  UINT8 swp_dir:1;   // ----O---
-  UINT8 swp_shift:3; // -----OOO
+  Uint8 swp_time;  // -OOO----
+  Uint8 swp_dir;   // ----O---
+  Uint8 swp_shift; // -----OOO
 
   /* NR11 */
-  UINT8 duty:2;      // OO------
-  UINT8 len:6;       // --OOOOOO -> Write only
+  Uint8 duty;      // OO------
+  Uint8 len;       // --OOOOOO -> Write only
 
   /* NR12 */
-  UINT8 env_start:4; // OOOO----
-  UINT8 env_dir:1;   // ----O---
-  UINT8 env_swp:3;   // -----OOO
+  Uint8 env_start; // OOOO----
+  Uint8 env_dir;   // ----O---
+  Uint8 env_swp;   // -----OOO
 
   /* NR13 */
-  UINT8 freq_lo;     // OOOOOOOO
+  Uint8 freq_lo;     // OOOOOOOO
   
   /* NR14 */
-  UINT8 initial:1;   // O------- -> Write only
-  UINT8 mode:1;      // -O------
-  UINT8 freq_hi:3;   // -----OOO -> Write only
+  Uint8 initial;   // O------- -> Write only
+  Uint8 mode;      // -O------
+  Uint8 freq_hi;   // -----OOO -> Write only
 
-  UINT8 env_changed:1;
-  UINT16 freq:11;    // freq_lo+(freq_hi<<8)
+  Uint8 env_changed;
+  Uint16 freq;    // freq_lo+(freq_hi<<8)
   float sample;     // Periode en samples
   float sample_dut; // Wave Duty en samples
-  UINT16 sample_len; // durée en samples
+  Uint16 sample_len; // durée en samples
 
   float sample_sweep_time;
   float env_per_step;
@@ -66,27 +66,27 @@ SoundM1 snd_m1;
 typedef struct SoundM2
 {
   /* NR21 */
-  UINT8 duty:2;      // OO------
-  UINT8 len:6;       // --OOOOOO -> Write only
+  Uint8 duty;      // OO------
+  Uint8 len;       // --OOOOOO -> Write only
 
   /* NR22 */
-  UINT8 env_start:4; // OOOO----
-  UINT8 env_dir:1;   // ----O---
-  UINT8 env_swp:3;   // -----OOO
+  Uint8 env_start; // OOOO----
+  Uint8 env_dir;   // ----O---
+  Uint8 env_swp;   // -----OOO
 
   /* NR23 */
-  UINT8 freq_lo;     // OOOOOOOO
+  Uint8 freq_lo;     // OOOOOOOO
   
   /* NR24 */
-  UINT8 initial:1;   // O------- -> Write only
-  UINT8 mode:1;      // -O------
-  UINT8 freq_hi:3;   // -----OOO -> Write only
+  Uint8 initial;   // O------- -> Write only
+  Uint8 mode;      // -O------
+  Uint8 freq_hi;   // -----OOO -> Write only
 
-  UINT8 env_changed:1;
-  UINT16 freq:11;    // freq_lo+(freq_hi<<8)
+  Uint8 env_changed;
+  Uint16 freq;    // freq_lo+(freq_hi<<8)
   float sample;     // Periode en samples
   float sample_dut; // Wave Duty en samples
-  UINT16 sample_len; // durée en samples
+  Uint16 sample_len; // durée en samples
 
   float env_per_step;
   float sample_env_per_step;
@@ -97,27 +97,27 @@ SoundM2 snd_m2;
 typedef struct SoundM3
 {
   /* NR30 */
-  UINT8 is_on:1;     // O-------
+  Uint8 is_on;     // O-------
   
   /* NR31 */
-  UINT8 len;         // OOOOOOOO 
+  Uint8 len;         // OOOOOOOO 
 
   /* NR32 */
-  UINT8 level:2;     // -OO-----
+  Uint8 level;     // -OO-----
 
   /* NR33 */
-  UINT8 freq_lo;     // OOOOOOOO
+  Uint8 freq_lo;     // OOOOOOOO
   
   /* NR34 */
-  UINT8 initial:1;   // O------- -> Write only
-  UINT8 mode:1;      // -O------
-  UINT8 freq_hi:3;   // -----OOO -> Write only
+  Uint8 initial;   // O------- -> Write only
+  Uint8 mode;      // -O------
+  Uint8 freq_hi;   // -----OOO -> Write only
 
-  UINT8 wave[16];    // Wave Pattern RAM
+  Uint8 wave[16];    // Wave Pattern RAM
 
-  UINT16 freq:11;    // freq_lo+(freq_hi<<8)
+  Uint16 freq;    // freq_lo+(freq_hi<<8)
   float sample;     // Periode en samples
-  UINT16 sample_len; // durée en samples
+  Uint16 sample_len; // durée en samples
   float cp;
 }SoundM3;
 SoundM3 snd_m3;
@@ -125,26 +125,26 @@ SoundM3 snd_m3;
 typedef struct SoundM4
 {
   /* NR41 */
-  UINT8 len:6;       // --OOOOOO
+  Uint8 len;       // --OOOOOO
 
   /* NR42 */
-  UINT8 env_start:4; // OOOO----
-  UINT8 env_dir:1;   // ----O---
-  UINT8 env_swp:3;   // -----OOO
+  Uint8 env_start; // OOOO----
+  Uint8 env_dir;   // ----O---
+  Uint8 env_swp;   // -----OOO
 
   /* NR43 */
-  UINT8 poly;
+  Uint8 poly;
 
   /* NR14 */
-  UINT8 initial:1;   // O------- -> Write only
-  UINT8 mode:1;      // -O------
+  Uint8 initial;   // O------- -> Write only
+  Uint8 mode;      // -O------
  
 
-  UINT8 env_changed:1;
-  UINT8 poly_changed:1;
+  Uint8 env_changed;
+  Uint8 poly_changed;
   double sample;     // Periode en samples
   float freq;
-  UINT16 sample_len; // durée en samples
+  Uint16 sample_len; // durée en samples
 
   float env_per_step;
   float sample_env_per_step;
@@ -155,27 +155,27 @@ SoundM4 snd_m4;
 typedef struct SoundG
 {
   /* NR50 */
-  UINT8 SO1_OutputLevel : 3; // -----OOO
-  UINT8 Vin_SO1         : 1; // ----O---
-  UINT8 SO2_OutputLevel : 3; // -OOO----
-  UINT8 Vin_SO2         : 1; // O-------
+  Uint8 SO1_OutputLevel ; // -----OOO
+  Uint8 Vin_SO1         ; // ----O---
+  Uint8 SO2_OutputLevel ; // -OOO----
+  Uint8 Vin_SO2         ; // O-------
 
   /* NR51 */
-  UINT8 Sound1_To_SO1   : 1;
-  UINT8 Sound2_To_SO1   : 1;
-  UINT8 Sound3_To_SO1   : 1;
-  UINT8 Sound4_To_SO1   : 1;
-  UINT8 Sound1_To_SO2   : 1;
-  UINT8 Sound2_To_SO2   : 1;
-  UINT8 Sound3_To_SO2   : 1;
-  UINT8 Sound4_To_SO2   : 1;
+  Uint8 Sound1_To_SO1   ;
+  Uint8 Sound2_To_SO1   ;
+  Uint8 Sound3_To_SO1   ;
+  Uint8 Sound4_To_SO1   ;
+  Uint8 Sound1_To_SO2   ;
+  Uint8 Sound2_To_SO2   ;
+  Uint8 Sound3_To_SO2   ;
+  Uint8 Sound4_To_SO2   ;
 
   /* NR52 */
-  UINT8 Sound_On_Off    : 1;
-  UINT8 Sound1_On_Off   : 1;
-  UINT8 Sound2_On_Off   : 1;
-  UINT8 Sound3_On_Off   : 1;
-  UINT8 Sound4_On_Off   : 1;
+  Uint8 Sound_On_Off    ;
+  Uint8 Sound1_On_Off   ;
+  Uint8 Sound2_On_Off   ;
+  Uint8 Sound3_On_Off   ;
+  Uint8 Sound4_On_Off   ;
 }SoundG;
 SoundG snd_g;
 
@@ -183,11 +183,11 @@ SoundG snd_g;
 #define LEFT  1
 #define RIGHT 2
 
-void update_gb_sound(UINT32 len);
+void update_gb_sound(float len);
 int gbsound_init(void);
 void close_sound(void);
-void write_sound_reg(UINT16 add,UINT8 val);
-UINT8 read_sound_reg(UINT16 add);
+void write_sound_reg(Uint16 add,Uint8 val);
+Uint8 read_sound_reg(Uint16 add);
 void update_sound_reg(void);
 
 

@@ -8,8 +8,8 @@
 #include "../vram.h"
 #include "../memory.h"
 
-void get_mem_id(UINT16 adr,char *ret) {
-  UINT8 bank;
+void get_mem_id(Uint16 adr,char *ret) {
+  Uint8 bank;
 
   ret[0]=0;
   if (adr>=0xfe00 && adr<0xfea0) {

@@ -19,7 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <SDL/SDL.h>
+#include <SDL.h>
 #include "memory.h"
 #include "emu.h"
 #include "cpu.h"
@@ -36,39 +36,44 @@
 #include "gngb_debuger/debuger.h"
 #endif
 
-static UINT8 gb_pad;
+static Uint8 gb_pad;
 
-SDL_Joystick *joy=NULL;
+Uint8 rom_mask;
+Uint16 nb_rom_page;
+Uint16 nb_ram_page;
+Uint16 nb_vram_page;
+Uint16 nb_wram_page;
+Uint16 active_rom_page=0;
+Uint16 active_ram_page=0;
+Uint16 active_vram_page=0;
+Uint16 active_wram_page=0;
+Uint8 **rom_page=NULL;
+Uint8 **ram_page=NULL;
+Uint8 **vram_page=NULL;
+Uint8 **wram_page=NULL;
+Uint8 oam_space[0xa0];  
+Uint8 himem[0x160];     
 
-UINT8 rom_mask;
-UINT16 nb_rom_page;
-UINT16 nb_ram_page;
-UINT16 nb_vram_page;
-UINT16 nb_wram_page;
-UINT16 active_rom_page=0;
-UINT16 active_ram_page=0;
-UINT16 active_vram_page=0;
-UINT16 active_wram_page=0;
-UINT8 **rom_page=NULL;
-UINT8 **ram_page=NULL;
-UINT8 **vram_page=NULL;
-UINT8 **wram_page=NULL;
-UINT8 oam_space[0xa0];  
-UINT8 himem[0x160];     
+Uint8 ram_enable=0;
 
-UINT8 ram_enable=0;
+Uint8 mbc1_mem_mode=MBC1_16_8_MEM_MODE;
+Uint8 mbc1_line=0;
+Uint8 mbc5_lower=0;
+Uint8 mbc5_upper=0;
+Uint8 mbc7_lower=0;
+Uint8 mbc7_upper=0;
 
-UINT8 mbc1_mem_mode=MBC1_16_8_MEM_MODE;
-UINT8 mbc1_line=0;
-UINT8 mbc5_lower=0;
-UINT8 mbc5_upper=0;
+Uint16 sensor_x=0x7ff,sensor_y=0x7ff;
 
-UINT8 ram_mask;
+Uint8 ram_mask;
 
-void (*select_rom_page)(UINT16 adr,UINT8 v);
-void (*select_ram_page)(UINT16 adr,UINT8 v);
+MEM_READ_ENTRY mem_read_tab[0x10];
+MEM_WRITE_ENTRY mem_write_tab[0x10];
 
-UINT8 IOMem[256]=
+void (*select_rom_page)(Uint16 adr,Uint8 v);
+void (*select_ram_page)(Uint16 adr,Uint8 v);
+
+Uint8 IOMem[256]=
 {0xCF, 0x00, 0x7E, 0xFF, 0xAD, 0x00, 0x00, 0xF8, 0xFF, 0xFF,
  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x80, 0xBF, 0xF0, 0xFF,
  0xBF, 0xFF, 0x3F, 0x00, 0xFF, 0xBF, 0x7F, 0xFF, 0x9F, 0xFF,
@@ -85,50 +90,164 @@ UINT8 IOMem[256]=
 
 DMA_INFO dma_info;
 
-UINT8 *temp;
+/* Ram Info: 
+   Because some roms use Ram Space to communicate Ram can't always be in 
+   direct access */
 
+Uint8 ram_can_direct_access=1;
+Uint8 (*mem_read_a000_bfff)(Uint16 adr)=NULL;
+void (*mem_write_a000_bfff)(Uint16 adr,Uint8 v)=NULL;
 
+/* Read Function */
 
-void select_default(UINT16 adr,UINT8 v)
+Uint8 mbc7_read_a000_bfff(Uint16 adr);
+Uint8 timer_read_a000_bfff(Uint16 adr);
+
+Uint8 mem_read_a000_bfff_default(Uint16 adr);
+Uint8 mem_read_f000_ffff_default(Uint16 adr);
+
+/* Write Function */
+
+void mem_write_0000_1fff_default(Uint16 adr,Uint8 v);
+void mem_write_2000_3fff_default(Uint16 adr,Uint8 v);
+void mem_write_4000_5fff_default(Uint16 adr,Uint8 v);
+void mem_write_6000_7fff_default(Uint16 adr,Uint8 v);
+void mem_write_a000_bfff_default(Uint16 adr,Uint8 v);
+void mem_write_f000_ffff_default(Uint16 adr,Uint8 v);
+
+void mbc1_write_4000_5fff(Uint16 adr,Uint8 v);
+void mbc1_write_6000_7fff(Uint16 adr,Uint8 v);
+
+void rumble_write_4000_5fff(Uint16 adr,Uint8 v);
+
+void timer_write_4000_5fff(Uint16 adr,Uint8 v);
+void timer_write_6000_7fff(Uint16 adr,Uint8 v);
+void timer_write_a000_bfff(Uint16 adr,Uint8 v);
+
+void mbc7_write_a000_bfff(Uint16 adr,Uint8 v);
+
+/* Fast Mem Function */
+
+__inline__ void set_mem_read_direct_access(Uint8 mem_area,Uint8 *buf) {
+  mem_read_tab[mem_area].type=MEM_DIRECT_ACCESS;
+  mem_read_tab[mem_area].b=buf;
+}
+
+__inline__ void set_mem_write_direct_access(Uint8 mem_area,Uint8 *buf) {
+  mem_write_tab[mem_area].type=MEM_DIRECT_ACCESS;
+  mem_write_tab[mem_area].b=buf;
+}
+
+__inline__ void set_mem_read_fun_access(Uint8 mem_area,Uint8 (*fun)(Uint16 adr)) {
+  mem_read_tab[mem_area].type=MEM_FUN_ACCESS;
+  mem_read_tab[mem_area].f=fun;
+}
+
+__inline__ void set_mem_write_fun_access(Uint8 mem_area,void (*fun)(Uint16 adr,Uint8 v)) {
+  mem_write_tab[mem_area].type=MEM_FUN_ACCESS;
+  mem_write_tab[mem_area].f=fun;
+}
+
+__inline__ void set_active_rom_page(Uint16 page) {
+  Uint8 i;
+  active_rom_page=page&rom_mask;
+  for(i=0;i<4;i++) {
+    set_mem_read_direct_access(i,&rom_page[0][i*0x1000]);
+    set_mem_read_direct_access(i+4,&rom_page[active_rom_page][i*0x1000]);
+  }
+}
+
+__inline__ void set_active_vram_page(Uint16 page) {
+  Uint8 i;
+  active_vram_page=page&0x01;
+  for(i=0;i<2;i++) {
+    set_mem_read_direct_access(i+8,&vram_page[active_vram_page][i*0x1000]);
+    set_mem_write_direct_access(i+8,&vram_page[active_vram_page][i*0x1000]);
+  }
+}
+
+__inline__ void set_active_ram_page(Uint16 page) {
+  Uint8 i;
+  active_ram_page=page&ram_mask;
+  if (ram_can_direct_access) {
+    for(i=0;i<2;i++) {
+      set_mem_read_direct_access(i+0x0A,&ram_page[active_ram_page][i*0x1000]);
+      set_mem_write_direct_access(i+0x0A,&ram_page[active_ram_page][i*0x1000]);
+    }
+  }
+}
+
+__inline__ void set_active_wram_page(Uint16 page) {
+  int i;
+  active_wram_page=page&0x07;
+  if (!active_wram_page) active_wram_page=1;
+  
+  set_mem_read_direct_access(0x0C,&wram_page[0][0]);
+  set_mem_read_direct_access(0x0D,&wram_page[active_wram_page][0]);
+  set_mem_read_direct_access(0x0E,&wram_page[0][0]);
+  
+  set_mem_write_direct_access(0x0C,&wram_page[0][0]);
+  set_mem_write_direct_access(0x0D,&wram_page[active_wram_page][0]);
+  set_mem_write_direct_access(0x0E,&wram_page[0][0]);
+}
+
+__inline__ void disable_ram(void) {
+  Uint8 i;
+  for(i=0;i<2;i++) {
+    set_mem_read_fun_access(i+0x0A,mem_read_a000_bfff);
+    set_mem_write_fun_access(i+0x0A,mem_write_a000_bfff);
+  }
+  ram_enable=0;
+}
+
+__inline__ void enable_ram(void) {
+  set_active_ram_page(active_ram_page);
+  ram_enable=1;
+}
+
+void select_default(Uint16 adr,Uint8 v)
 {
   // do nothing
 }
 
-void mbc1_select_page(UINT16 adr,UINT8 v)
+void mbc1_select_page(Uint16 adr,Uint8 v)
 {
-  UINT8 bank=v;//&rom_mask;
+  Uint8 bank=v&rom_mask;
   if (bank<1) bank=1;
-  active_rom_page=bank;
+  set_active_rom_page(bank);
 }
 
-void mbc2_select_page(UINT16 adr,UINT8 v)
+void mbc2_select_page(Uint16 adr,Uint8 v)
 {
-  UINT8 bank;
+  Uint8 bank;
   if (adr==0x2100) {
-    bank=v;//&rom_mask;
+    bank=v&rom_mask;
     if (bank<1) bank=1;
-    active_rom_page=bank;
+    set_active_rom_page(bank);
   }
 }
 
-void mbc3_select_page(UINT16 adr,UINT8 v)
+void mbc3_select_page(Uint16 adr,Uint8 v)
 {
-  UINT8 bank=v;//rom_mask;
+  Uint8 bank=v&rom_mask;
   if (bank<1) bank=1;
-  active_rom_page=bank;
+  set_active_rom_page(bank);
 }
 
-void mbc5_select_page(UINT16 adr,UINT8 v)
+void mbc5_select_page(Uint16 adr,Uint8 v)
 {
-  UINT16 bank;
+  Uint16 bank;
   if (adr>=0x2000 && adr<0x3000)
-    mbc5_lower=v;//&rom_mask;
+    mbc5_lower=v;
   if (adr>=0x3000 && adr<0x4000 && nb_rom_page>=256) {
     mbc5_upper=v&0x01;
   }
   bank=mbc5_lower+((mbc5_upper)?256:0);
-  active_rom_page=bank&rom_mask;
+  set_active_rom_page(bank);
 }
+
+
+
      
 
 void gbmemory_init(void)
@@ -174,9 +293,13 @@ void gbmemory_init(void)
   else if (rom_type&MBC3) select_rom_page=mbc3_select_page;
   else if (rom_type&MBC5) select_rom_page=mbc5_select_page;
   else select_rom_page=select_default;  
+
+  gbmemory_reset();
 }
 
 void gbmemory_reset(void) {
+  int i;
+  
   memset(key,0,256);
   memset(oam_space,0,0xa0);
   memcpy(&himem[0x60],IOMem,0xff);
@@ -224,29 +347,117 @@ void gbmemory_reset(void) {
   active_wram_page=1;
   
   ram_enable=0;
+
+  /* FAST MEM SYSTEM */
+  
+  /* ROM */
+  set_mem_write_fun_access(0x00,mem_write_0000_1fff_default);
+  set_mem_write_fun_access(0x01,mem_write_0000_1fff_default);
+  set_mem_write_fun_access(0x02,mem_write_2000_3fff_default);
+  set_mem_write_fun_access(0x03,mem_write_2000_3fff_default);
+  set_mem_write_fun_access(0x04,mem_write_4000_5fff_default);
+  set_mem_write_fun_access(0x05,mem_write_4000_5fff_default);
+  set_mem_write_fun_access(0x06,mem_write_6000_7fff_default);
+  set_mem_write_fun_access(0x07,mem_write_6000_7fff_default);
+
+  if (rom_type&MBC1) select_rom_page=mbc1_select_page;
+  else if (rom_type&MBC2) select_rom_page=mbc2_select_page;
+  else if (rom_type&MBC3) select_rom_page=mbc3_select_page;
+  else if (rom_type&MBC5) select_rom_page=mbc5_select_page;
+  else select_rom_page=select_default;  
+
+  set_mem_write_fun_access(0x02,select_rom_page);
+  set_mem_write_fun_access(0x03,select_rom_page);
+
+  for(i=0;i<4;i++) {
+    set_mem_read_direct_access(i,&rom_page[0][i*0x1000]);
+    set_mem_read_direct_access(i+4,&rom_page[active_rom_page][i*0x1000]);
+  }
+
+  if (rom_type&MBC1) {
+    set_mem_write_fun_access(0x04,mbc1_write_4000_5fff);
+    set_mem_write_fun_access(0x05,mbc1_write_4000_5fff);
+    set_mem_write_fun_access(0x06,mbc1_write_6000_7fff);
+    set_mem_write_fun_access(0x07,mbc1_write_6000_7fff);
+  }
+
+  if (rom_type&RUMBLE) {
+    set_mem_write_fun_access(0x04,rumble_write_4000_5fff);
+    set_mem_write_fun_access(0x05,rumble_write_4000_5fff);
+  }    
+
+  if (rom_type&TIMER) {
+    set_mem_write_fun_access(0x04,timer_write_4000_5fff);
+    set_mem_write_fun_access(0x05,timer_write_4000_5fff);
+    set_mem_write_fun_access(0x06,timer_write_6000_7fff);
+    set_mem_write_fun_access(0x07,timer_write_6000_7fff);
+  }
+
+  /* VRAM */
+  for(i=0;i<2;i++) {
+    set_mem_read_direct_access(i+8,&vram_page[0][i*0x1000]);
+    set_mem_write_direct_access(i+8,&vram_page[0][i*0x1000]);
+  }
+    
+  /* RAM */
+  if (rom_type&TIMER) {
+    ram_can_direct_access=0;
+    mem_write_a000_bfff=timer_write_a000_bfff;
+    mem_read_a000_bfff=timer_read_a000_bfff;
+     for(i=0;i<2;i++) {
+       set_mem_read_fun_access(i+0x0A,mem_read_a000_bfff);
+       set_mem_write_fun_access(i+0x0A,mem_write_a000_bfff);
+     }
+  } else {
+    ram_can_direct_access=1;
+    mem_read_a000_bfff=mem_read_a000_bfff_default;
+    mem_write_a000_bfff=mem_write_a000_bfff_default;
+    for(i=0;i<2;i++) {
+      set_mem_read_direct_access(i+0x0A,&ram_page[0][i*0x1000]);
+      set_mem_write_direct_access(i+0x0A,&ram_page[0][i*0x1000]);
+    }
+  }
+
+  /* WRAM */
+  set_mem_read_direct_access(0x0C,&wram_page[0][0]);
+  set_mem_read_direct_access(0x0D,&wram_page[active_wram_page][0]);
+  set_mem_read_direct_access(0x0E,&wram_page[0][0]);
+
+  set_mem_write_direct_access(0x0C,&wram_page[0][0]);
+  set_mem_write_direct_access(0x0D,&wram_page[active_wram_page][0]);
+  set_mem_write_direct_access(0x0E,&wram_page[0][0]);
+
+  /* OAM HIMEM */
+  set_mem_read_fun_access(0x0f,mem_read_f000_ffff_default);
+  set_mem_write_fun_access(0x0f,mem_write_f000_ffff_default);  
 }
 
-void push_stack_word(UINT16 v)
+void push_stack_word(Uint16 v)
 {
-  UINT8 h=((v&0xff00)>>8);
-  UINT8 l=(v&0x00ff);    
-  mem_write(--gbcpu->sp.w,h);
-  mem_write(--gbcpu->sp.w,l);
+  Uint8 h=((v&0xff00)>>8);
+  Uint8 l=(v&0x00ff);    
+  
+  --gbcpu->sp.w;
+  mem_write_fast(gbcpu->sp.w,h);
+  --gbcpu->sp.w;
+  mem_write_fast(gbcpu->sp.w,l);
+  /*mem_write(--gbcpu->sp.w,h);
+    mem_write(--gbcpu->sp.w,l);*/
 }
 
-UINT8 **alloc_mem_page(UINT16 nb_page,UINT32 size)
+Uint8 **alloc_mem_page(Uint16 nb_page,Uint32 size)
 {
-  UINT8 **page;
+  Uint8 **page;
   int i;
-  page=(UINT8 **)malloc(sizeof(UINT8 *)*nb_page);
+  page=(Uint8 **)malloc(sizeof(Uint8 *)*nb_page);
   for(i=0;i<nb_page;i++) {
-    page[i]=(UINT8 *)malloc(sizeof(UINT8)*size);
+    page[i]=(Uint8 *)malloc(sizeof(Uint8)*size);
     memset(page[i],0,size);
   }
   return page;
 }
 
-void free_mem_page(UINT8 **page,UINT16 nb_page)
+void free_mem_page(Uint8 **page,Uint16 nb_page)
 {
   int i;
   for(i=0;i<nb_page;i++) {
@@ -256,12 +467,19 @@ void free_mem_page(UINT8 **page,UINT16 nb_page)
   free(page);
 }
 
-inline void do_hdma(void) {
+/* DMA FUNCTIONS */
+
+__inline__ void do_hdma(void) {
   int i;
+  Uint8 t;
 
-  for(i=0;i<16;i++)
-    mem_write(dma_info.dest++,mem_read(dma_info.src++));
-
+  for(i=0;i<16;i++) {
+    mem_read_fast(dma_info.src,t);
+    dma_info.src++;
+    mem_write_fast(dma_info.dest,t);    
+    dma_info.dest++;
+  }
+  
   HDMA_CTRL1=(dma_info.src&0xff00)>>8;
   HDMA_CTRL2=(dma_info.src&0xf0);
   HDMA_CTRL3=(dma_info.dest&0xff00)>>8;
@@ -272,11 +490,26 @@ inline void do_hdma(void) {
   if (HDMA_CTRL5==0xff) dma_info.type=NO_DMA;
 }
 
-inline void do_gdma(void) {
+__inline__ void do_gdma(void) {
   int i;
+  Uint8 t;
+  Uint8 bk;
+  Uint8 *d=&vram_page[active_vram_page][dma_info.dest&0x1fff];
   
-  for(i=0;i<dma_info.lg;i++)
-    mem_write(dma_info.dest++,mem_read(dma_info.src++));
+  for(i=0;i<dma_info.lg;i++) {
+    mem_read_fast(dma_info.src,t);
+    dma_info.src++;
+    mem_write_fast(dma_info.dest,t);
+    dma_info.dest++;
+  }
+  /*} else {
+    for(i=0;i<dma_info.lg;i++) {
+    t=mem_read(dma_info.src);
+    dma_info.src++;
+    mem_write(dma_info.dest++,t);   
+    }
+    }*/  
+
   HDMA_CTRL1=(dma_info.src&0xff00)>>8;
   HDMA_CTRL2=(dma_info.src&0xf0);
   HDMA_CTRL3=(dma_info.dest&0xff00)>>8;
@@ -288,15 +521,19 @@ inline void do_gdma(void) {
 }
 
 
-inline void hdma_request(UINT8 v)
+__inline__ void hdma_request(Uint8 v)
 {
   /* FIXME : control are necesary ( i think ) */
   //if (LCDCCONT&0x80) {
 
   if (dma_info.type==HDMA) {
     int i;
-    for(i=0;i<dma_info.lg;i++)
-    mem_write(dma_info.dest++,mem_read(dma_info.src++));
+    Uint8 t;
+    for(i=0;i<dma_info.lg;i++) {
+      t=mem_read(dma_info.src);
+      dma_info.src++;
+      mem_write(dma_info.dest++,t);
+    }
   }
 
   dma_info.src=((HDMA_CTRL1<<4)|(HDMA_CTRL2>>4))<<4;
@@ -317,25 +554,30 @@ inline void hdma_request(UINT8 v)
       }*/
 }
 
-inline void gdma_request(UINT8 v)
+__inline__ void gdma_request(Uint8 v)
 {
   dma_info.src=((HDMA_CTRL1<<4)|(HDMA_CTRL2>>4))<<4;
   dma_info.dest=((((HDMA_CTRL3&31)|0x80)<<4)|(HDMA_CTRL4>>4))<<4;
   dma_info.lg=((v&0x7f)+1)<<4;
  
-  /* FIXME: how many cycle take GDMA ? */
+  /* FIXME: gdma: how many cycle take GDMA ? */
   dma_info.gdma_cycle=((((gbcpu->mode==DOUBLE_SPEED)?110:220)+((v&0x7f)*7.63))*0.000001)*
     (((gbcpu->mode==DOUBLE_SPEED)?4194304*2:4194304));
 
-  /* FIXME : control are necesary ( i think ) */
+  /* TGB: */
+  dma_info.gdma_cycle=456*2+((v&0x7f)+1)*32*(gbcpu->mode==DOUBLE_SPEED?2:1);
+
+  
+
+  /* FIXME: gdma: control are necesary ( i think ) */
   do_gdma();
 }
 
 
-inline void do_dma(UINT8 v)
+__inline__ void do_dma(Uint8 v)
 {
-  UINT16 a=v<<8;
-  UINT8 bank;
+  Uint16 a=v<<8;
+  Uint8 bank;
   int i;
 
   DMA=v;
@@ -368,10 +610,12 @@ inline void do_dma(UINT8 v)
   }
 }
 
-inline UINT8 mem_read_ff(UINT16 adr)
+/* READ FUNCTIONS */
+
+__inline__ Uint8 mem_read_ff(Uint16 adr)
 {
   if (adr==0xff00) {
-    UINT8 t=0;
+    Uint8 t=0xff;
     /*if (sgb.check) {
       sgb.check=0;
       return GB_PAD;
@@ -394,36 +638,39 @@ inline UINT8 mem_read_ff(UINT16 adr)
     switch(GB_PAD&0x30) {
     case 0x00:
     case 0xff:t=0xff;break;      
-    case 0x10:t/*GB_PAD*/=((~(gb_pad&0x0f)))|0x10; break;
-    case 0x20:t/*GB_PAD*/=((~(gb_pad>>4)))|0x20; break;
-    case 0x30:t/*GB_PAD*/=(((!sgb.player)?(~0x00):(~0x01)));break;
+    case 0x10:t=((~(gb_pad&0x0f)))|0x10; break;
+    case 0x20:t=((~(gb_pad>>4)))|0x20; break;
+    case 0x30:t=(((!sgb.player)?(~0x00):(~0x01)));break;
     }
     /*if (GB_PAD==0x10) GB_PAD=((~(gb_pad&0x0f)))|0x10;
-      else if (GB_PAD==0x20) GB_PAD=((~(gb_pad>>4)))|0x20;*/
+      else if (GB_PAD==0x20) GB_PAD=((~(gb_pad>>4)))|0x20;
+      return GB_PAD;*/
     //if (sgb.player&0x80) {
     if (conf.gb_type&SUPER_GAMEBOY) t/*GB_PAD*/&=0x3f;
       /*      sgb.player&=(~0x80);
 	      }*/
     return  t;
-    GB_PAD=t;
-    return GB_PAD;
-  }
-  
-  if (adr==0xff4d && conf.gb_type&COLOR_GAMEBOY) {
-    if (gbcpu->mode==DOUBLE_SPEED) return CPU_SPEED|0x80;
-    else return 0x00;
+    //GB_PAD=t;
+    //return GB_PAD;
   }
 
-  if (adr==0xff69 && conf.gb_type&COLOR_GAMEBOY) {
-    if (BGPAL_SPE&0x01)
-      return pal_col_bck_gb[(BGPAL_SPE&0x38)>>3][(BGPAL_SPE&0x06)>>1]>>8;
+  if (conf.gb_type&COLOR_GAMEBOY) {
+    if (adr==0xff4d) {
+      if (gbcpu->mode==DOUBLE_SPEED) return CPU_SPEED|0x80;
+      else return 0x00;
+    }
+    
+    if (adr==0xff69) {
+      if (BGPAL_SPE&0x01)
+	return pal_col_bck_gb[(BGPAL_SPE&0x38)>>3][(BGPAL_SPE&0x06)>>1]>>8;
     else return pal_col_bck_gb[(BGPAL_SPE&0x38)>>3][(BGPAL_SPE&0x06)>>1]&0xff;
-  }
-
-  if (adr==0xff6b && conf.gb_type&COLOR_GAMEBOY) {
-    if (OBJPAL_SPE&0x01) 
-      return pal_col_obj_gb[(OBJPAL_SPE&0x38)>>3][(OBJPAL_SPE&0x06)>>1]>>8;
-    else return pal_col_obj_gb[(OBJPAL_SPE&0x38)>>3][(OBJPAL_SPE&0x06)>>1]&0xff;
+    }
+    
+    if (adr==0xff6b) {
+      if (OBJPAL_SPE&0x01) 
+	return pal_col_obj_gb[(OBJPAL_SPE&0x38)>>3][(OBJPAL_SPE&0x06)>>1]>>8;
+      else return pal_col_obj_gb[(OBJPAL_SPE&0x38)>>3][(OBJPAL_SPE&0x06)>>1]&0xff;
+    }
   }
 
   if (adr>=0xff10 && adr<=0xff3f && conf.sound) return read_sound_reg(adr);
@@ -439,10 +686,31 @@ inline UINT8 mem_read_ff(UINT16 adr)
   return himem[adr-0xfea0];
 }
 
-inline UINT8 mem_read(UINT16 adr)
-{
-  UINT8 bank;
+Uint8 mem_read_a000_bfff_default(Uint16 adr) {
+  if (!ram_enable) return 0xff;
+  return ram_page[active_ram_page][adr-0xa000];
+}
 
+Uint8 mem_read_f000_ffff_default(Uint16 adr) {
+  if (adr>=0xff00) return mem_read_ff(adr);
+  if (adr>=0xfe00 && adr<0xfea0) return oam_space[adr-0xfe00];
+  if (adr>=0xfea0 && adr<0xff00) return himem[adr-0xfea0];
+  return 0xff;
+}
+
+
+Uint8 timer_read_a000_bfff(Uint16 adr) {
+  /* FIXME: Timer and ram enable ???? */
+  if (!ram_enable) return 0xFF;
+  if (rom_timer->reg_sel&0x08) 
+    return rom_timer->regl[rom_timer->reg_sel&0x07];
+  return ram_page[active_ram_page][adr-0xa000];
+}
+
+Uint8 mem_read_default(Uint16 adr)
+{
+  Uint8 bank;
+  
   if (adr>=0xfe00 && adr<0xfea0) return oam_space[adr-0xfe00];
   if (adr>=0xfea0 && adr<0xff00) return himem[adr-0xfea0];
   if (adr>=0xff00) return mem_read_ff(adr);
@@ -472,7 +740,24 @@ inline UINT8 mem_read(UINT16 adr)
   return 0xFF;
 }
 
-inline void write2lcdccont(UINT8 v)
+__inline__ void update_gb_pad(void) {
+  gb_pad=0;
+  
+  if ((joy_but[jmap[PAD_START]]) || (key[kmap[PAD_START]])) gb_pad|=0x08; /* Start */
+  if ((joy_but[jmap[PAD_SELECT]]) || (key[kmap[PAD_SELECT]])) gb_pad|=0x04; /* Select */
+  if ((joy_but[jmap[PAD_A]]) || (key[kmap[PAD_A]])) gb_pad|=0x01; /* A */
+  if ((joy_but[jmap[PAD_B]]) || (key[kmap[PAD_B]])) gb_pad|=0x02; /* B */
+  
+  if ((joy_axis[jmap[PAD_LEFT]]<-1000) || (key[kmap[PAD_LEFT]])) gb_pad|=0x20;
+  if ((joy_axis[jmap[PAD_RIGHT]]>1000) || (key[kmap[PAD_RIGHT]])) gb_pad|=0x10;
+  if ((joy_axis[jmap[PAD_UP]]<-1000) ||  (key[kmap[PAD_UP]])) gb_pad|=0x40;
+  if ((joy_axis[jmap[PAD_DOWN]]>1000) || (key[kmap[PAD_DOWN]])) gb_pad|=0x80;
+  
+}
+
+extern Uint8 win_line;
+
+__inline__ void write2lcdccont(Uint8 v)
 {
   if ((LCDCCONT&0x80) && (!(v&0x80))) {  // LCDC go to off
 #ifdef DEBUG
@@ -482,7 +767,7 @@ inline void write2lcdccont(UINT8 v)
     LCDCSTAT=(LCDCSTAT&0xfc);
     CURLINE=0;
     gblcdc->cycle=0;
-    /* FIXME */
+    
     dma_info.type=NO_DMA;
     HDMA_CTRL5=0xff;
     clear_screen();
@@ -498,28 +783,15 @@ inline void write2lcdccont(UINT8 v)
   LCDCCONT=v;
 }
 
-inline void update_gb_pad(void) {
-  gb_pad=0;
-  if ((SDL_JoystickGetButton(joy,jmap[PAD_START])) || (key[kmap[PAD_START]])) gb_pad|=0x08; // Start
-  if ((SDL_JoystickGetButton(joy,jmap[PAD_SELECT])) || (key[kmap[PAD_SELECT]])) gb_pad|=0x04;// Select
-  if ((SDL_JoystickGetButton(joy,jmap[PAD_A])) || (key[kmap[PAD_A]])) gb_pad|=0x01;     // A
-  if ((SDL_JoystickGetButton(joy,jmap[PAD_B])) || (key[kmap[PAD_B]])) gb_pad|=0x02; // B
-
-  if ((SDL_JoystickGetAxis(joy,jmap[PAD_LEFT])<-1000) || (key[kmap[PAD_LEFT]])) gb_pad|=0x20;
-  if ((SDL_JoystickGetAxis(joy,jmap[PAD_RIGHT])>1000) || (key[kmap[PAD_RIGHT]])) gb_pad|=0x10;
-  if ((SDL_JoystickGetAxis(joy,jmap[PAD_UP])<-1000) ||  (key[kmap[PAD_UP]])) gb_pad|=0x40;
-  if ((SDL_JoystickGetAxis(joy,jmap[PAD_DOWN])>1000) || (key[kmap[PAD_DOWN]])) gb_pad|=0x80;
-}
-
-inline void mem_write_ff(UINT16 adr,UINT8 v) {
-  UINT16 a;
-  UINT8 c,p;
+__inline__ void mem_write_ff(Uint16 adr,Uint8 v) {
+  Uint16 a;
+  Uint8 c,p;
 
   if (conf.gb_type&COLOR_GAMEBOY) {
     if (adr==0xff4d) {
       if (v&0x80 || v&0x01) {
 	go2double_speed();
-	/* FIXME */
+	/* FIXME: */
 	get_nb_cycle();
       }
       CPU_SPEED=(v&0xfe);
@@ -527,7 +799,7 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
     }
 
     if (adr==0xff4f) {
-      active_vram_page=v&0x01;
+      set_active_vram_page(v);
       VRAM_BANK=active_vram_page;
       return;
     }
@@ -556,10 +828,10 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
      
       pal_col_bck[p][c]=Filter[pal_col_bck_gb[p][c]&0x7FFF];
       if (BGPAL_SPE&0x80) {
-	a=BGPAL_SPE&0x3f;
+	/*a=BGPAL_SPE&0x3f;
 	a++;
-	BGPAL_SPE=(a&0x3f)|0x80;
-	//BGPAL_SPE++;
+	BGPAL_SPE=(a&0x3f)|0x80;*/
+	BGPAL_SPE++;
       }
       BGPAL_DATA=v;
       return;
@@ -591,9 +863,7 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
     }
 
     if (adr==0xff70) {
-      active_wram_page=(v&0x07);
-      //WRAM_BANK=active_wram_page;
-      if (!active_wram_page) active_wram_page=1;
+      set_active_wram_page(v);
       WRAM_BANK=active_wram_page;
       return;
     }
@@ -614,7 +884,7 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
       case 0x20:sgb.b=0;break;
       case 0x30:
 	if (sgb.b_i==-1) {sgb.b_i=0;return;}
-	if (sgb.b_i==128 && sgb.b==0) {
+	if (sgb.b_i==128 /*&& sgb.b==0*/) {
 	  sgb_exec_cmd();
 	  sgb.on=0;
 	  return;
@@ -628,8 +898,7 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
 	return;
       }
       if (v==0x30 ) GB_PAD=0xff;
-      else
-      GB_PAD=v;
+      else GB_PAD=v;
       update_gb_pad();
     }
     break;
@@ -638,19 +907,26 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
     SB=v;
     break;
   case 0xff02:
-    // printf("write %02x to SC\n",v);
+    
+    /*    SC=v&0x81;
+	  if ((v&0x80)&&(v&0x01)) serial_cycle_todo=512;
+	  break;*/
 
     if (!conf.serial_on) {
       if ((v&0x81)==0x81) {
 	SB=0xff;
 	SC=v&0x7f;
+#ifdef DEBUG
+	if (link_int_enable) set_interrupt(SERIAL_INT);
+#else
 	set_interrupt(SERIAL_INT);
+#endif
       }
     } else {
       if ((v&0x81)==0x81) {
 	send_byte(SB);
 	serial_cycle_todo=4096;
-      } else serial_cycle_todo=500;
+      } //else serial_cycle_todo=500;
       SC=v;
     }
 
@@ -665,8 +941,7 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
     break;
   case 0xff0f:
     unset_interrupt(((INT_FLAG)^(v&0x1f))^(v&0x1f));
-    if (v&0x1f) 
-      set_interrupt(v&0x1f);
+    if (v&0x1f) set_interrupt(v&0x1f);
 #ifdef DEBUG
     add_mem_msg("write %02x to INT_FLAG %02x\n",v,INT_FLAG);
 #endif
@@ -701,8 +976,12 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
       case 3: gbtimer->clk_inc=256;break;
       }
     } else gbtimer->clk_inc=0;
-    /* FIXME */
     gbtimer->cycle=gbtimer->clk_inc;
+    /* FIXME */
+    /*if (!(TIME_CONTROL&0x04))
+      gbtimer->cycle+=gbtimer->clk_inc;
+      else gbtimer->cycle=gbtimer->clk_inc;*/
+    //    if ((v&0x04) && !(TIME_CONTROL&0x04)) gbtimer->cycle=0;
     TIME_CONTROL=v;
 #ifdef DEBUG
     add_mem_msg("write %02x to TIMER_CONTROLER\n",v);
@@ -715,12 +994,22 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
 #endif   
     break;
   case 0xff41:
-    /* Emulate Normal Gameboy Bug (fix Legend Oz Zerd) */
+    /* Emulate Normal Gameboy Bug (fix Legend Of Zerd) */
     if (!(conf.gb_type&COLOR_GAMEBOY)) {
-      if (!(LCDCSTAT&0x03) || (LCDCSTAT&0x03)==0x01) set_interrupt(LCDC_INT);
-      LCDCSTAT=(LCDCSTAT&0x07)|(v&0xf8);
-    } else LCDCSTAT=(LCDCSTAT&0x07)|(v&0xf8);
-    
+#ifdef DEBUG
+      //if (!(LCDCSTAT&0x03) || (LCDCSTAT&0x03)==0x01) set_interrupt(LCDC_INT);
+      if (!(LCDCSTAT&0x02)) 
+	set_interrupt(LCDC_INT);
+      add_int_msg("Emulate gmb lcdcstat write bug\n");
+#else
+      //if (!(LCDCSTAT&0x03) || (LCDCSTAT&0x03)==0x01) set_interrupt(LCDC_INT);
+      if (!(LCDCSTAT&0x02)) 
+	/* FIXME: Stat write bug */
+	set_interrupt(LCDC_INT);
+#endif
+      //if ((v&0x20) && (!(LCDCSTAT&0x20)) && (LCDCSTAT&0x02)) set_interrupt(LCDC_INT);
+      LCDCSTAT=(LCDCSTAT&0x07)|(v&0x78);
+    } else LCDCSTAT=(LCDCSTAT&0x07)|(v&0x78);    
 #ifdef DEBUG
     add_mem_msg("Write %02x to LCDCSTAT %02x\n",v,LCDCSTAT);
 #endif  
@@ -730,19 +1019,24 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
     add_mem_msg("Write to CURLINE %02x \n",v);
 #endif
     CURLINE=0;
-    gblcdc_set_on();
+    if (LCDCCONT&0x80) gblcdc_set_on();
     break;
   case 0xff45:CMP_LINE=v;
 #ifdef DEBUG
     add_mem_msg("Write %02x to CMPLINE\n",v);
 #endif   
-    /*if (CMP_LINE==CURLINE && CURLINE!=0x00) LCDCSTAT|=0x04;
-      else LCDCSTAT&=~0x04;*/
-    if (CHECK_LYC_LY) LCDCSTAT|=0x04;
-    else LCDCSTAT&=~0x04;
     /* FIXME */
+    if (CURLINE==CMP_LINE) LCDCSTAT|=0x04;
+    else LCDCSTAT&=~0x04;
+    /*#ifdef DEBUG
+    if (lcd_lyc_int_enable && LCDCCONT&0x80 && LCDCSTAT&0x40 && LCDCSTAT&0x04 && (LCDCSTAT&0x02)==0x02) {
+      set_interrupt(LCDC_INT);
+      add_int_msg("Write To Cmp Line and set lyc int\n");
+    }
+    #else*/
     if (LCDCCONT&0x80 && LCDCSTAT&0x40 && LCDCSTAT&0x04 && (LCDCSTAT&0x02)==0x02) 
       set_interrupt(LCDC_INT);
+    //#endif
     break;
   case 0xff46:      // DMA
     do_dma(v);
@@ -780,11 +1074,34 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
   }
 }
 
-inline void rom_timer_lock(void) {
-  memcpy(rom_timer->regl,rom_timer->reg,sizeof(UINT8)*5);
+/* Mbc1 */
+
+void mbc1_write_4000_5fff(Uint16 adr,Uint8 v) {
+  if (mbc1_mem_mode==MBC1_16_8_MEM_MODE) 
+    mbc1_line=v&0x03;
+  else set_active_ram_page(v);
 }
 
-inline void rom_timer_write(UINT8 v) {
+void mbc1_write_6000_7fff(Uint16 adr,Uint8 v) {
+ if (!v) mbc1_mem_mode=MBC1_16_8_MEM_MODE;
+ else if (v==1) mbc1_mem_mode=MBC1_4_32_MEM_MODE;
+}
+
+/* Rumble */
+
+void rumble_write_4000_5fff(Uint16 adr,Uint8 v) {
+  /* FIXME: Rumble write v&0x08 we must active ram Page ????? */
+  set_active_ram_page(v);
+  if (conf.rumble_on && v&0x08) rb_on=1;
+}
+
+/* Timer */
+
+__inline__ void rom_timer_lock(void) {
+  memcpy(rom_timer->regl,rom_timer->reg,sizeof(Uint8)*5);
+}
+
+__inline__ void rom_timer_write(Uint8 v) {
   if (!(rom_timer->reg_sel&0x08)) return;
   switch(rom_timer->reg_sel&0x07) {
   case 0x00:rom_timer->reg[0]=(v%60);break;  // seconds
@@ -795,9 +1112,126 @@ inline void rom_timer_write(UINT8 v) {
   }
 }   
 
-inline void mem_write(UINT16 adr,UINT8 v) 
+void timer_write_a000_bfff(Uint16 adr,Uint8 v) {
+  /* FIXME: timer write and ram enable ????? */
+  if (!ram_enable) return;
+  if (rom_timer->reg_sel&0x08) {
+    rom_timer_write(v);
+    return;
+  }
+  ram_page[active_ram_page][adr-0xa000]=v;
+}
+
+void timer_write_4000_5fff(Uint16 adr,Uint8 v) {
+  rom_timer->reg_sel=v&0x0f;
+}
+
+void timer_write_6000_7fff(Uint16 adr,Uint8 v) {
+  if (!rom_timer->latch && v) rom_timer_lock();
+  rom_timer->latch=v;
+}
+
+
+/* Write Function Default */
+
+void mem_write_0000_1fff_default(Uint16 adr,Uint8 v) {
+  if ((v&0x0f)==0x0a) enable_ram();
+  else disable_ram();
+}
+
+void mem_write_2000_3fff_default(Uint16 adr,Uint8 v) {
+  select_rom_page(adr,v);
+}
+
+void mem_write_4000_5fff_default(Uint16 adr,Uint8 v) {
+  set_active_ram_page(v);
+}
+
+void mem_write_6000_7fff_default(Uint16 adr,Uint8 v) {
+  //printf("WARNING: Write %02x at %04x\n",v,adr);
+}
+
+void mem_write_a000_bfff_default(Uint16 adr,Uint8 v) {
+  if (!ram_enable) return;
+  ram_page[active_ram_page][adr-0xa000]=v;
+}
+
+/*void mem_write_c000_dfff_default(Uint16 adr,Uint8 v) {
+  Uint8 bk;
+  bk=(adr&0xf000)>>12;
+  switch(bk) {
+  case 0xc:wram_page[0][adr-0xc000]=v;return;
+  case 0xd:wram_page[active_wram_page][adr-0xd000]=v;return;
+  }
+}
+
+void mem_write_e000_efff_default(Uint16 adr,Uint8 v) {
+  wram_page[0][adr-0xe000]=v;
+  }*/
+
+void mem_write_f000_ffff_default(Uint16 adr,Uint8 v) {
+  if (adr>=0xff00) {
+    mem_write_ff(adr,v);
+    return;
+  }
+  if (adr>=0xfe00 && adr<0xfea0) {
+    oam_space[adr-0xfe00]=v;
+    return;
+  }
+  if (adr>=0xfea0 && adr<0xff00) {
+    himem[adr-0xfea0]=v;
+    return;
+  }
+  wram_page[active_wram_page][adr-0xf000]=v;
+}
+
+
+/*void mem_write_0000_7fff(Uint16 adr,Uint8 v) {
+  Uint8 bk;
+  
+  bk=(adr&0xf000)>>12;
+  switch(bk) {
+  case 0:
+  case 1:
+    if ((v&0x0f)==0x0a) enable_ram();
+    else disable_ram();
+    return;
+  case 2:
+  case 3:select_rom_page(adr,v);return;
+  case 4:
+  case 5:
+    if (rom_type&MBC1) {
+      if (mbc1_mem_mode==MBC1_16_8_MEM_MODE) 
+	mbc1_line=v&0x03;
+      else set_active_ram_page(v);
+      return;
+    }
+    else set_active_ram_page(v);
+    if (rom_type&RUMBLE && conf.rumble_on && v&0x08) rb_on=1;
+    if (rom_type&TIMER) rom_timer->reg_sel=v&0x0f;
+    return;
+  case 6:
+  case 7:
+    if (rom_type&MBC1) {
+      if (!v) mbc1_mem_mode=MBC1_16_8_MEM_MODE;
+      else if (v==1) mbc1_mem_mode=MBC1_4_32_MEM_MODE;
+      return;
+    }
+    if (rom_type&TIMER) {
+      if (!rom_timer->latch && v) rom_timer_lock();
+      rom_timer->latch=v;
+    }
+    return;
+  default:
+    printf("Warning: Write 0000 7fff bank %02x\n",bk);break;
+  }  
+  }*/
+
+void mem_write_default(Uint16 adr,Uint8 v) 
 {
-  UINT8 bk;
+  Uint8 bk;
+
+  printf("PC: %04x: Write Default %02x at %04x\n",gbcpu->pc.w,v,adr);
 
   if (adr>=0xfe00 && adr<0xfea0) {
     oam_space[adr-0xfe00]=v;
@@ -819,7 +1253,11 @@ inline void mem_write(UINT16 adr,UINT8 v)
   bk=(adr&0xf000)>>12;
   switch(bk) {
   case 0:
-  case 1:ram_enable=((v&0x0f)==0x0a)?(1):(0);return;
+  case 1:
+    if ((v&0x0f)==0x0a) enable_ram();
+    else disable_ram();
+    return;
+    //ram_enable=((v&0x0f)==0x0a)?(1):(0);return;
   case 2:
   case 3:select_rom_page(adr,v);return;
   case 4:
@@ -827,10 +1265,10 @@ inline void mem_write(UINT16 adr,UINT8 v)
     if (rom_type&MBC1) {
       if (mbc1_mem_mode==MBC1_16_8_MEM_MODE) 
 	mbc1_line=v&0x03;
-      else active_ram_page=(v)&ram_mask;
+      else set_active_ram_page(v);
       return;
     }
-    else active_ram_page=(v)&ram_mask;
+    else set_active_ram_page(v);
     
     if (rom_type&RUMBLE && conf.rumble_on && v&0x08) rb_on=1;
 
@@ -847,7 +1285,6 @@ inline void mem_write(UINT16 adr,UINT8 v)
       return;
     }
     if (rom_type&TIMER) {
-      //printf("latch %02x \n",v);
       if (!rom_timer->latch && v) rom_timer_lock();
       rom_timer->latch=v;
     }
@@ -859,7 +1296,6 @@ inline void mem_write(UINT16 adr,UINT8 v)
     if (!ram_enable) return;
     if (rom_type&TIMER && rom_timer->reg_sel&0x08) {
       rom_timer_write(v);
-      //rom_timer->reg[rom_timer->reg_sel&0x07]=v;
       return;
     }
     ram_page[active_ram_page][adr-0xa000]=v;

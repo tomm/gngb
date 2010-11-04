@@ -2,14 +2,14 @@
 #include "../memory.h"
 #include "op.h"
 
-static int aff_op0(char *format,UINT16 pc,char *ret);
-static int aff_op1(char *format,UINT16 pc,char *ret);
-static int aff_op2(char *format,UINT16 pc,char *ret);
-static int aff_op_cb(char *format,UINT16 pc,char *ret);
+static int aff_op0(char *format,Uint16 pc,char *ret);
+static int aff_op1(char *format,Uint16 pc,char *ret);
+static int aff_op2(char *format,Uint16 pc,char *ret);
+static int aff_op_cb(char *format,Uint16 pc,char *ret);
  
 struct gbcpu_op {
   char *format;
-  int (*aff_op)(char *format,UINT16 pc,char *ret);
+  int (*aff_op)(char *format,Uint16 pc,char *ret);
   char nb_byte;
 };
 
@@ -527,35 +527,35 @@ struct gbcpu_op tab_op[]={
   {"SET_7_MEM_HL      ",aff_op0,1},
   {"SET_7_A           ",aff_op0,1}};
 
-int aff_op(UINT8 op,UINT16 pc,char *ret) {
+int aff_op(Uint8 op,Uint16 pc,char *ret) {
   return tab_op[op].aff_op(tab_op[op].format,pc,ret);  
 }
 
-int get_nb_byte(UINT8 op) {
+int get_nb_byte(Uint8 op) {
   return tab_op[op].nb_byte;
 }
 
 /*****************************************************/
 
-int aff_op0(char *format,UINT16 pc,char *ret) {
+int aff_op0(char *format,Uint16 pc,char *ret) {
   ret[0]=0;
   sprintf(ret,format);
   return 1;
 }
 
-int aff_op1(char *format,UINT16 pc,char *ret) {
+int aff_op1(char *format,Uint16 pc,char *ret) {
   ret[0]=0;
   sprintf(ret,format,mem_read(pc+1));
   return 2;
 }
 
-int aff_op2(char *format,UINT16 pc,char *ret) {
+int aff_op2(char *format,Uint16 pc,char *ret) {
   ret[0]=0;
   sprintf(ret,format,(mem_read(pc+2)<<8)|mem_read(pc+1));
   return 3;
 }
 
-int aff_op_cb(char *format,UINT16 pc,char *ret) {
+int aff_op_cb(char *format,Uint16 pc,char *ret) {
   tab_op[mem_read(pc+1)+256].aff_op(tab_op[mem_read(pc+1)+256].format,pc+1,ret);  
   return 2;
 }

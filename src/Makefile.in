@@ -62,15 +62,17 @@ DEBUG_CFLAGS = @DEBUG_CFLAGS@
 DEBUG_LIBS = @DEBUG_LIBS@
 GLIB_CONFIG = @GLIB_CONFIG@
 GTK_CONFIG = @GTK_CONFIG@
+LIBOBJS = @LIBOBJS@
 MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 SDL_CONFIG = @SDL_CONFIG@
 VERSION = @VERSION@
 
 bin_PROGRAMS = gngb
-gngb_SOURCES = cpu.c cpu.h emu.c emu.h frame_skip.c frame_skip.h global.h interrupt.c interrupt.h main.c memory.c memory.h message.c message.h rom.c rom.h serial.c  serial.h sgb.c sgb.h sound.c sound.h tiny_font.c vram.c vram.h
+gngb_SOURCES = cpu.c cpu.h emu.c emu.h frame_skip.c frame_skip.h global.h interrupt.c interrupt.h main.c memory.c memory.h message.c message.h rom.c rom.h serial.c  serial.h sgb.c sgb.h sound.c sound.h tiny_font.h vram.c vram.h video_yuy2.c video_yuv.c video_yuv.h video_yv12.c video_std.c video_gl.c video_gl.h video_std.h menu.h menu.c menu_image.h
+gngb_LDADD = @LIBOBJS@
+EXTRA_DIST = getopt.h
 
-@MAKE_DEBUGER_CURSES_TRUE@SUBDIRS = gngb_debuger_curses
 @MAKE_DEBUGER_TRUE@SUBDIRS = gngb_debuger
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = ../config.h
@@ -83,26 +85,22 @@ CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 gngb_OBJECTS =  cpu.o emu.o frame_skip.o interrupt.o main.o memory.o \
-message.o rom.o serial.o sgb.o sound.o tiny_font.o vram.o
-gngb_LDADD = $(LDADD)
-gngb_DEPENDENCIES = 
+message.o rom.o serial.o sgb.o sound.o vram.o video_yuy2.o video_yuv.o \
+video_yv12.o video_std.o video_gl.o menu.o
+gngb_DEPENDENCIES =  @LIBOBJS@
 gngb_LDFLAGS = 
 CFLAGS = @CFLAGS@
 COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
-DIST_COMMON =  Makefile.am Makefile.in
+DIST_COMMON =  Makefile.am Makefile.in getopt.c getopt1.c
 
 
 DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
 
 TAR = tar
 GZIP_ENV = --best
-DIST_SUBDIRS =  gngb_debuger_curses gngb_debuger
-DEP_FILES =  .deps/cpu.P .deps/emu.P .deps/frame_skip.P \
-.deps/interrupt.P .deps/main.P .deps/memory.P .deps/message.P \
-.deps/rom.P .deps/serial.P .deps/sgb.P .deps/sound.P .deps/tiny_font.P \
-.deps/vram.P
+DIST_SUBDIRS =  gngb_debuger
 SOURCES = $(gngb_SOURCES)
 OBJECTS = $(gngb_OBJECTS)
 
@@ -110,9 +108,9 @@ all: all-redirect
 .SUFFIXES:
 .SUFFIXES: .S .c .o .s
 $(srcdir)/Makefile.in: Makefile.am $(top_srcdir)/configure.in $(ACLOCAL_M4) 
-	cd $(top_srcdir) && $(AUTOMAKE) --gnu src/Makefile
+	cd $(top_srcdir) && $(AUTOMAKE) --gnu --include-deps src/Makefile
 
-Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status $(BUILT_SOURCES)
+Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status
 	cd $(top_builddir) \
 	  && CONFIG_FILES=$(subdir)/$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
@@ -141,6 +139,9 @@ uninstall-binPROGRAMS:
 	list='$(bin_PROGRAMS)'; for p in $$list; do \
 	  rm -f $(DESTDIR)$(bindir)/`echo $$p|sed 's/$(EXEEXT)$$//'|sed '$(transform)'|sed 's/$$/$(EXEEXT)/'`; \
 	done
+
+.c.o:
+	$(COMPILE) -c $<
 
 .s.o:
 	$(COMPILE) -c $<
@@ -256,11 +257,6 @@ distdir = $(top_builddir)/$(PACKAGE)-$(VERSION)/$(subdir)
 subdir = src
 
 distdir: $(DISTFILES)
-	here=`cd $(top_builddir) && pwd`; \
-	top_distdir=`cd $(top_distdir) && pwd`; \
-	distdir=`cd $(distdir) && pwd`; \
-	cd $(top_srcdir) \
-	  && $(AUTOMAKE) --include-deps --build-dir=$$here --srcdir-name=$(top_srcdir) --output-dir=$$top_distdir --gnu src/Makefile
 	@for file in $(DISTFILES); do \
 	  d=$(srcdir); \
 	  if test -d $$d/$$file; then \
@@ -281,38 +277,44 @@ distdir: $(DISTFILES)
 	      || exit 1; \
 	  fi; \
 	done
+cpu.o: cpu.c rom.h global.h ../config.h cpu.h memory.h interrupt.h \
+	serial.h emu.h
+emu.o: emu.c ../config.h getopt.h emu.h global.h message.h rom.h vram.h \
+	serial.h memory.h cpu.h interrupt.h menu.h frame_skip.h sound.h \
+	sgb.h
+frame_skip.o: frame_skip.c ../config.h getopt.h frame_skip.h message.h \
+	emu.h global.h
+interrupt.o: interrupt.c interrupt.h global.h ../config.h frame_skip.h \
+	memory.h vram.h cpu.h emu.h rom.h
+main.o: main.c ../config.h getopt.h global.h emu.h memory.h cpu.h rom.h \
+	vram.h interrupt.h serial.h frame_skip.h sgb.h sound.h
+memory.o: memory.c memory.h global.h ../config.h emu.h cpu.h rom.h \
+	vram.h interrupt.h frame_skip.h sound.h serial.h message.h \
+	sgb.h
+menu.o: menu.c ../config.h memory.h global.h emu.h menu.h message.h \
+	vram.h video_std.h rom.h sound.h menu_image.h
+message.o: message.c global.h ../config.h tiny_font.h message.h emu.h \
+	menu.h video_std.h vram.h
+rom.o: rom.c ../config.h getopt.h rom.h global.h memory.h emu.h cpu.h \
+	interrupt.h vram.h sound.h
+serial.o: serial.c ../config.h getopt.h serial.h global.h interrupt.h \
+	memory.h emu.h
+sgb.o: sgb.c ../config.h memory.h global.h sgb.h vram.h rom.h emu.h
+sound.o: sound.c ../config.h emu.h global.h sound.h memory.h interrupt.h \
+	cpu.h
+video_gl.o: video_gl.c global.h ../config.h memory.h vram.h message.h \
+	tiny_font.h emu.h interrupt.h sgb.h video_std.h video_gl.h
+video_std.o: video_std.c global.h ../config.h memory.h vram.h message.h \
+	tiny_font.h emu.h interrupt.h sgb.h video_std.h menu.h
+video_yuv.o: video_yuv.c ../config.h cpu.h global.h emu.h vram.h \
+	video_yuv.h memory.h message.h
+video_yuy2.o: video_yuy2.c ../config.h global.h memory.h video_yuv.h \
+	vram.h video_std.h sgb.h message.h emu.h interrupt.h
+video_yv12.o: video_yv12.c global.h ../config.h memory.h video_yuv.h \
+	vram.h video_std.h sgb.h message.h emu.h interrupt.h
+vram.o: vram.c vram.h global.h ../config.h memory.h rom.h interrupt.h \
+	message.h emu.h sgb.h video_std.h menu.h
 
-DEPS_MAGIC := $(shell mkdir .deps > /dev/null 2>&1 || :)
-
--include $(DEP_FILES)
-
-mostlyclean-depend:
-
-clean-depend:
-
-distclean-depend:
-	-rm -rf .deps
-
-maintainer-clean-depend:
-
-%.o: %.c
-	@echo '$(COMPILE) -c $<'; \
-	$(COMPILE) -Wp,-MD,.deps/$(*F).pp -c $<
-	@-cp .deps/$(*F).pp .deps/$(*F).P; \
-	tr ' ' '\012' < .deps/$(*F).pp \
-	  | sed -e 's/^\\$$//' -e '/^$$/ d' -e '/:$$/ d' -e 's/$$/ :/' \
-	    >> .deps/$(*F).P; \
-	rm .deps/$(*F).pp
-
-%.lo: %.c
-	@echo '$(LTCOMPILE) -c $<'; \
-	$(LTCOMPILE) -Wp,-MD,.deps/$(*F).pp -c $<
-	@-sed -e 's/^\([^:]*\)\.o[ 	]*:/\1.lo \1.o :/' \
-	  < .deps/$(*F).pp > .deps/$(*F).P; \
-	tr ' ' '\012' < .deps/$(*F).pp \
-	  | sed -e 's/^\\$$//' -e '/^$$/ d' -e '/:$$/ d' -e 's/$$/ :/' \
-	    >> .deps/$(*F).P; \
-	rm -f .deps/$(*F).pp
 info-am:
 info: info-recursive
 dvi-am:
@@ -351,24 +353,23 @@ distclean-generic:
 
 maintainer-clean-generic:
 mostlyclean-am:  mostlyclean-binPROGRAMS mostlyclean-compile \
-		mostlyclean-tags mostlyclean-depend mostlyclean-generic
+		mostlyclean-tags mostlyclean-generic
 
 mostlyclean: mostlyclean-recursive
 
-clean-am:  clean-binPROGRAMS clean-compile clean-tags clean-depend \
-		clean-generic mostlyclean-am
+clean-am:  clean-binPROGRAMS clean-compile clean-tags clean-generic \
+		mostlyclean-am
 
 clean: clean-recursive
 
 distclean-am:  distclean-binPROGRAMS distclean-compile distclean-tags \
-		distclean-depend distclean-generic clean-am
+		distclean-generic clean-am
 
 distclean: distclean-recursive
 
 maintainer-clean-am:  maintainer-clean-binPROGRAMS \
 		maintainer-clean-compile maintainer-clean-tags \
-		maintainer-clean-depend maintainer-clean-generic \
-		distclean-am
+		maintainer-clean-generic distclean-am
 	@echo "This command is intended for maintainers to use;"
 	@echo "it deletes files that may require special tools to rebuild."
 
@@ -383,14 +384,12 @@ uninstall-exec-recursive installdirs-recursive uninstalldirs-recursive \
 all-recursive check-recursive installcheck-recursive info-recursive \
 dvi-recursive mostlyclean-recursive distclean-recursive clean-recursive \
 maintainer-clean-recursive tags tags-recursive mostlyclean-tags \
-distclean-tags clean-tags maintainer-clean-tags distdir \
-mostlyclean-depend distclean-depend clean-depend \
-maintainer-clean-depend info-am info dvi-am dvi check check-am \
-installcheck-am installcheck install-exec-am install-exec \
-install-data-am install-data install-am install uninstall-am uninstall \
-all-redirect all-am all installdirs-am installdirs mostlyclean-generic \
-distclean-generic clean-generic maintainer-clean-generic clean \
-mostlyclean distclean maintainer-clean
+distclean-tags clean-tags maintainer-clean-tags distdir info-am info \
+dvi-am dvi check check-am installcheck-am installcheck install-exec-am \
+install-exec install-data-am install-data install-am install \
+uninstall-am uninstall all-redirect all-am all installdirs-am \
+installdirs mostlyclean-generic distclean-generic clean-generic \
+maintainer-clean-generic clean mostlyclean distclean maintainer-clean
 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.

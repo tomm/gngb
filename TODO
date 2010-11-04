@@ -1,14 +1,7 @@
 
-/* Configure */
-
- 
-
-
 /* Emu */
 
 Improve compatibility
-Fix some random crash
-Configuration
 Optimisation
 Add serial support
 Add Mbc3 support
@@ -19,4 +12,15 @@ Fix gb pad
 
 /* ROM BUG TO FIX */
 
-* Micro Machine ( reset when game begin )
+Pinball Deluxe/Fantasy : freeze (Problem avec int LCDCSTAT&0x20) regler avec
+pas de hblank line 0x89 (verifier) Mickey Racing deconne
+Magical Drop : freeze (Must use option -g to fix)
+Addams Family : Freeze (must use option -d to fix) 
+Star Heritage : Freeze when use Start Button
+
+Powerpuff Girl : - Line 0 clignote si l'option -g est active
+                 
+
+Maybe set always -d and -g option (other games work)
+
+

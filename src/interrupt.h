@@ -37,21 +37,10 @@
 #define TIMEOWFL_INT 0x04
 #define SERIAL_INT 0x08
 
-// LCD Interrupt
-
-#define LY_LYC_CO_SEL 1
-#define OAM_SEL 2
-#define VBLANK_SEL 3
-#define HBLANK_SEL 4
-#define CHECK_LYC_LY (((CURLINE==CMP_LINE) && (CURLINE!=0x00)) ||\
-		      ((CURLINE==0x99) && (CMP_LINE==0x00)))
-void set_lcd_int(char type);
-extern UINT8 ISTAT;
-
-extern UINT32 nb_cycle;
+extern Uint32 nb_cycle;
 
 #define GBLCDC_ADD_CYCLE(n) { \
-      gblcdc->cycle-=a; \
+      gblcdc->cycle-=(n); \
       if (gblcdc->cycle<=0) gblcdc->cycle+=(gblcdc_update()); }
 /*if ((LCDCSTAT&0x03)==0x02) { \
 	gblcdc->oam_last_p=gblcdc->oam_pixel; \
@@ -61,31 +50,33 @@ extern UINT32 nb_cycle;
        
 
 typedef struct {
-  UINT8 mode;
-  UINT8 nb_spr;
-  UINT8 inc_line;
+  Uint8 mode;
+  Uint8 nb_spr;
+  Uint8 inc_line;
   
-  INT16 cycle;
-  UINT16 mode1cycle;
-  UINT16 mode2cycle;
-  UINT16 mode3cycle;
-  UINT32 vblank_cycle;
-  UINT8 timing;
+  Sint16 cycle;
+  Uint16 mode1cycle;
+  Uint16 mode2cycle;
+  Uint16 mode3cycle;
+  Uint32 vblank_cycle;
+  Uint8 timing;
+
+  Uint8 win_curline;		/* Gameboy Window Current Line */
 
   double vram_factor;
-  UINT8 *vram_pal_line[160];
+  Uint8 *vram_pal_line[160];
 }GBLCDC;
 
 GBLCDC *gblcdc;
 
-UINT8 vram_pal_line_temp[160][4];
-extern UINT8 vram_init_pal;
+Uint8 vram_pal_line_temp[160][4];
+extern Uint8 vram_init_pal;
 
 #define gb_set_pal_bck(v) { \
       int i; \
       BGPAL=v;\
       if ((LCDCSTAT&0x03)==0x03) { \
-          UINT8 x=(double)((gblcdc->mode3cycle-gblcdc->cycle))*gblcdc->vram_factor;\
+          Uint8 x=(double)((gblcdc->mode3cycle-gblcdc->cycle))*gblcdc->vram_factor;\
           vram_pal_line_temp[x][0]=BGPAL&3; \
 	  vram_pal_line_temp[x][1]=(BGPAL>>2)&3; \
 	  vram_pal_line_temp[x][2]=(BGPAL>>4)&3; \
@@ -102,8 +93,8 @@ extern UINT8 vram_init_pal;
    }
 
 typedef struct {
-  UINT16 clk_inc;
-  INT32 cycle;
+  Uint16 clk_inc;
+  Sint32 cycle;
 }GBTIMER;
 
 GBTIMER *gbtimer;
@@ -116,17 +107,21 @@ void gbtimer_reset(void);
 
 void go2double_speed(void);
 void go2simple_speed(void);
-UINT32 get_nb_cycle(void);
+Uint32 get_nb_cycle(void);
 
-void set_interrupt(UINT8 n);
-void unset_interrupt(UINT8 n);
-UINT8 make_interrupt(UINT8 n);
-UINT8 request_interrupt(UINT8 n);
+#ifdef DEBUG
+void set_interrupt(Uint8 n);
+void unset_interrupt(Uint8 n);
+#else 
+#define set_interrupt(n) ((INT_FLAG|=(n)))
+#define unset_interrupt(n) ((INT_FLAG&=(~(n))))
+#endif
 
-//int check_lcdstat_int(void);
+Uint8 make_interrupt(Uint8 n);
+
 void gblcdc_set_on(void);
-void gblcdc_addcycle(INT32 c);
-extern UINT16 (*gblcdc_update)(void);
+void gblcdc_addcycle(Sint32 c);
+Uint16 gblcdc_update(void);
 void gbtimer_update(void);
 void halt_update(void); 
 

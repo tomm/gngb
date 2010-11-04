@@ -1,2 +1,0 @@
-tiny_font.o: tiny_font.c
-tiny_font.c :

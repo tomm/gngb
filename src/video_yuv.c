@@ -16,45 +16,46 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. 
  */
 
-#ifndef SGB_H
-#define SGB_H
-
+#include <config.h>
 #include <SDL.h>
-#include <string.h>
-#include "global.h"
+#include "cpu.h"
+#include "emu.h"
 #include "vram.h"
+#include "video_yuv.h"
+#include "memory.h"
+#include "message.h"
 
-#define SGB_WIDTH 256
-#define SGB_HEIGHT 224
+void init_message_yuv(void) {
 
-#define SGB_PACKSIZE 16		/* 128/8=16 */
+}
 
-typedef struct {
-  Uint8 on;			/*  on!=0 during a transfert */
-  Uint8 cmd;
-  Sint8 nb_pack;		        /* nb packet for the cmd */
-  Uint8 b;
-  Uint8 pack[SGB_PACKSIZE];
-  Sint16 b_i;			/* ieme bit du package */
-  Uint8 player;
-}SGB;
-
-SGB sgb;
-
-Uint16 sgb_pal[4][4];		/* 4 pallete of 4 colour */
-Uint8 sgb_pal_map[20][18];      /* Map of Pallete Tiles */
-
-Uint8 sgb_mask;
-
-extern SDL_Surface *sgb_buf;
-
-
-#define sgb_init_transfer() { \
-          sgb.on=1;           \
-          sgb.b_i=-1;         \
-          memset(sgb.pack,0,SGB_PACKSIZE);}
-void sgb_exec_cmd(void);
-
-void sgb_init(void);
-
+void init_rgb2yuv_table(void)
+{
+  Uint32 i;
+  Uint8 y,u,v,r,g,b;
+  for(i=0;i<=65535;i++) {
+    r=((i&0xF800)>>11)<<3;
+    g=((i&0x7E0)>>5)<<2;
+    b=(i&0x1F)<<3;
+    y = (0.257 * r) + (0.504 * g) + (0.098 * b) + 16;
+    u = (0.439 * r) - (0.368 * g) - (0.071 * b) + 128;
+    v =-(0.148 * r) - (0.291 * g) + (0.439 * b) + 128;
+    rgb2yuv[i].y=(y<<8)|y;
+    rgb2yuv[i].u=u;
+    rgb2yuv[i].v=v;
+#ifndef GNGB_BIG_ENDIAN
+    rgb2yuv[i].yuy2=(u<<24)|(y<<16)|(v<<8)|y;
+#else
+    rgb2yuv[i].yuy2=(y<<24)|(v<<16)|(y<<8)|u;
 #endif
+  }
+}
+
+
+void reinit_video_yuv(void){
+  gb_screen=SDL_SetVideoMode(conf.res_w,conf.res_h,BIT_PER_PIXEL,yuv_flag);
+  ov_rect.x=0;
+  ov_rect.y=0;
+  ov_rect.w=conf.res_w;
+  ov_rect.h=conf.res_h;
+}

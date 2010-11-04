@@ -21,13 +21,19 @@
 
 #include "global.h"
 
-INT16 serial_cycle_todo;
-INT8 gblisten;
+struct {
+  Sint16 cycle_todo;
+  Uint8 b;
+  Uint8 byte_wait;
+}gbserial;
+
+Sint16 serial_cycle_todo;
+Sint8 gblisten;
 
 void gbserial_init(int server_side,char *servername);
 void gbserial_close(void);
-void send_byte(UINT8 b);
-INT16 recept_byte(void);
+void send_byte(Uint8 b);
+Sint16 recept_byte(void);
 
 #endif
 

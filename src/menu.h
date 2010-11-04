@@ -16,45 +16,41 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. 
  */
 
-#ifndef SGB_H
-#define SGB_H
+#ifndef _MENU_H_
+#define _MENU_H_
 
+#include <config.h>
 #include <SDL.h>
-#include <string.h>
-#include "global.h"
-#include "vram.h"
 
-#define SGB_WIDTH 256
-#define SGB_HEIGHT 224
+typedef struct MENU_ITEM{
+  char *name;
+  int (*func)(struct MENU_ITEM *self);
+  void (*draw_info)(struct MENU_ITEM *self,int menu_pos);
+  Uint8 type;
+  void *user_data;
+  Uint8 state; /* on/off */
+  Uint8 group; /* for radio_button */
+  Uint8 radio; /* the radio_buuton place in the group */
+  Uint8 draw_type;
+  struct MENU_ITEM *next;
+}MENU_ITEM;
 
-#define SGB_PACKSIZE 16		/* 128/8=16 */
+typedef struct MENU{
+  char *title;
+  MENU_ITEM *item;
+  int size,begin,end,id;
+}MENU;
 
-typedef struct {
-  Uint8 on;			/*  on!=0 during a transfert */
-  Uint8 cmd;
-  Sint8 nb_pack;		        /* nb packet for the cmd */
-  Uint8 b;
-  Uint8 pack[SGB_PACKSIZE];
-  Sint16 b_i;			/* ieme bit du package */
-  Uint8 player;
-}SGB;
+#define ACTION 0
+#define TOGGLE 1
+#define RADIO  2
 
-SGB sgb;
+#define DRAW_ALWAYS   0
+#define DRAW_WHEN_ACTIVE 1
 
-Uint16 sgb_pal[4][4];		/* 4 pallete of 4 colour */
-Uint8 sgb_pal_map[20][18];      /* Map of Pallete Tiles */
-
-Uint8 sgb_mask;
-
-extern SDL_Surface *sgb_buf;
-
-
-#define sgb_init_transfer() { \
-          sgb.on=1;           \
-          sgb.b_i=-1;         \
-          memset(sgb.pack,0,SGB_PACKSIZE);}
-void sgb_exec_cmd(void);
-
-void sgb_init(void);
+extern MENU main_menu;
+MENU *current_menu;
+void loop_menu(MENU *m);
+void display_menu(MENU *m);
 
 #endif

@@ -19,28 +19,8 @@
 #ifndef _GLOBAL_H
 #define _GLOBAL_H
 
-#ifndef UINT8
-#define UINT8 unsigned char
-#endif
+#include <config.h>
+#include <SDL.h>
 
-#ifndef UINT16
-#define UINT16 unsigned short
-#endif
-
-#ifndef UINT32
-#define UINT32 unsigned long
-#endif
-
-#ifndef INT8
-#define INT8  char
-#endif
-
-#ifndef INT16
-#define INT16 short
-#endif
-
-#ifndef INT32
-#define INT32 long
-#endif
 
 #endif

@@ -19,8 +19,10 @@
 
 /* TODO : Rewrite the length code for evry channel */
 
+#include <config.h>
 #include <stdlib.h>
-#include <SDL/SDL.h>
+#include <SDL.h>
+#include "emu.h"
 #include "sound.h"
 #include "memory.h"
 #include "interrupt.h"
@@ -30,20 +32,20 @@
 #define HZ_M3(x) ((double)(4194304.0)/(64.0*(double)(2048-x)))
 // #define LOG_SOUND
 
-INT8 *playbuf;
+Sint8 *playbuf;
 FILE *fsound;
 /*
-INT8 vol_table[]={0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60};
-INT8 snd3_tbl_100[]={-60,-52,-45,-37,-30,-22,-15,-7,7,15,22,30,37,45,52,60};
-INT8 snd3_tbl_50[]={-30,-22,-15,-7,7,15,22,30};
-INT8 snd3_tbl_25[]={-15,-7,7,15};
+Sint8 vol_table[]={0,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60};
+Sint8 snd3_tbl_100[]={-60,-52,-45,-37,-30,-22,-15,-7,7,15,22,30,37,45,52,60};
+Sint8 snd3_tbl_50[]={-30,-22,-15,-7,7,15,22,30};
+Sint8 snd3_tbl_25[]={-15,-7,7,15};
 */
-INT8 vol_table[]={0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-INT8 snd3_tbl_100[]={-16,-15,-12,-10,-8,-6,-4,-2,2,4,6,8,10,12,14,16};
-INT8 snd3_tbl_50[]={-10,-8,-4,-2,2,4,8,10};
-INT8 snd3_tbl_25[]={-4,-2,2,4};
+Sint8 vol_table[]={0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+Sint8 snd3_tbl_100[]={-16,-15,-12,-10,-8,-6,-4,-2,2,4,6,8,10,12,14,16};
+Sint8 snd3_tbl_50[]={-10,-8,-4,-2,2,4,8,10};
+Sint8 snd3_tbl_25[]={-4,-2,2,4};
 
-UINT16 wduty[4][8] = 
+Uint16 wduty[4][8] = 
 {
   {0,0,-1,0,0,0,0,0 },
   {0,-1,-1,0,0,0,0,0 },
@@ -56,10 +58,10 @@ double freq_table[2048];
 double freq_table_m3[2048];
 long double freq_table_m4[256];
 
-UINT16 lastpos=0,curpos=0;
-UINT32 buf_size;
+float lastpos=0,curpos=0;
+Uint32 buf_size;
 
-UINT8 m1_len,m1_slen;
+Uint8 m1_len,m1_slen;
 float wave_duty[]={8,4,2,1.3333};
 
 /* retourne l'entier de l bit, debutant au bit d de v */
@@ -70,19 +72,19 @@ void update_sound_reg(void) {
     write_sound_reg(i,himem[i-0xFEA0]);
 }
 
-UINT32 clk;
-void write_sound_reg(UINT16 add,UINT8 val)
+Uint32 clk;
+void write_sound_reg(Uint16 add,Uint8 val)
 {
-  // UINT32 snd_len =(UINT32)((float)get_nb_cycle()*(sample_rate/59.73)
+  // Uint32 snd_len =(Uint32)((float)get_nb_cycle()*(sample_rate/59.73)
   //			   /((gbcpu->mode== DOUBLE_SPEED)?140448.0:70224.0));
-  //  static UINT32 clk;
-  UINT32 snd_len;
+  //  static Uint32 clk;
+  float snd_len;
   static float samp; 
 
  clk=get_nb_cycle();
-  snd_len = (UINT32)((float)clk*sample_rate/(float)((gbcpu->mode== DOUBLE_SPEED)?8388608.0:4194304.0));
+  snd_len = ((float)clk*sample_rate/(float)((gbcpu->mode== DOUBLE_SPEED)?8388608.0:4194304.0));
   
-  if (snd_len) update_gb_sound(snd_len<<1);
+  if (snd_len) update_gb_sound(snd_len*2);
  
   himem[add-0xfea0]=val;
 
@@ -138,7 +140,7 @@ void write_sound_reg(UINT16 add,UINT8 val)
     break;
   case 0xFF13 : // NR13
     snd_m1.freq_lo=val;
-    snd_m1.freq=((UINT16)(snd_m1.freq_lo))|(((UINT16)(snd_m1.freq_hi))<<8); // update freq
+    snd_m1.freq=((Uint16)(snd_m1.freq_lo))|(((Uint16)(snd_m1.freq_hi))<<8); // update freq
     //samp=snd_m1.sample;
     snd_m1.sample=freq_table[snd_m1.freq];
     snd_m1.sample_dut=snd_m1.sample/wave_duty[snd_m1.duty];
@@ -148,7 +150,7 @@ void write_sound_reg(UINT16 add,UINT8 val)
     snd_m1.initial=(val&0x80)>>7;
     snd_m1.mode=(val&0x40)>>6;
     snd_m1.freq_hi=val&0x7;
-    snd_m1.freq=((UINT16)(snd_m1.freq_lo))|(((UINT16)(snd_m1.freq_hi))<<8); // update freq
+    snd_m1.freq=((Uint16)(snd_m1.freq_lo))|(((Uint16)(snd_m1.freq_hi))<<8); // update freq
     //samp=snd_m1.sample;
     snd_m1.sample=freq_table[snd_m1.freq];
     snd_m1.sample_dut=(float)snd_m1.sample/wave_duty[snd_m1.duty];
@@ -171,7 +173,7 @@ void write_sound_reg(UINT16 add,UINT8 val)
     break;
   case 0xFF18 : // NR23
     snd_m2.freq_lo=val;
-    snd_m2.freq=((UINT16)(snd_m2.freq_lo))|(((UINT16)(snd_m2.freq_hi))<<8); // update freq
+    snd_m2.freq=((Uint16)(snd_m2.freq_lo))|(((Uint16)(snd_m2.freq_hi))<<8); // update freq
     //samp=snd_m2.sample;
     snd_m2.sample=freq_table[snd_m2.freq];
     //snd_m2.cp=snd_m2.cp*snd_m2.sample/samp;
@@ -181,7 +183,7 @@ void write_sound_reg(UINT16 add,UINT8 val)
     snd_m2.initial=(val&0x80)>>7;
     snd_m2.mode=(val&0x40)>>6;
     snd_m2.freq_hi=val&0x7;
-    snd_m2.freq=((UINT16)(snd_m2.freq_lo))|(((UINT16)(snd_m2.freq_hi))<<8); // update freq
+    snd_m2.freq=((Uint16)(snd_m2.freq_lo))|(((Uint16)(snd_m2.freq_hi))<<8); // update freq
     //samp=snd_m2.sample;
     snd_m2.sample=freq_table[snd_m2.freq];
     snd_m2.sample_dut=(float)snd_m2.sample/wave_duty[snd_m2.duty];
@@ -206,7 +208,7 @@ void write_sound_reg(UINT16 add,UINT8 val)
     break;
   case 0xFF1D : // NR33
     snd_m3.freq_lo=val;
-    snd_m3.freq=((UINT16)(snd_m3.freq_lo))|(((UINT16)(snd_m3.freq_hi))<<8);
+    snd_m3.freq=((Uint16)(snd_m3.freq_lo))|(((Uint16)(snd_m3.freq_hi))<<8);
         samp=snd_m3.sample;
     snd_m3.sample=freq_table_m3[snd_m3.freq]/32.0;// *64.0;
     //    printf("sample %f\n",snd_m3.sample);
@@ -216,7 +218,7 @@ void write_sound_reg(UINT16 add,UINT8 val)
     snd_m3.initial=(val&0x80)>>7;
     snd_m3.mode=(val&0x40)>>6;
     snd_m3.freq_hi=val&0x7;
-    snd_m3.freq=((UINT16)(snd_m3.freq_lo))|(((UINT16)(snd_m3.freq_hi))<<8);
+    snd_m3.freq=((Uint16)(snd_m3.freq_lo))|(((Uint16)(snd_m3.freq_hi))<<8);
         samp=snd_m3.sample;
     snd_m3.sample=freq_table_m3[snd_m3.freq]/32.0;// *64.0;
     //    printf("sample %f\n",snd_m3.sample);
@@ -255,7 +257,7 @@ void write_sound_reg(UINT16 add,UINT8 val)
 
 }
    
-UINT8 read_sound_reg(UINT16 add)
+Uint8 read_sound_reg(Uint16 add)
 {
   if (add>=0xFF30 && add<=0xFF3F) // Wave Pattern RAM
     return snd_m3.wave[add-0xFF30];
@@ -350,7 +352,7 @@ void init_freq_table(void)
 }
 
 
-inline INT8 update_snd_m1(void)
+__inline__ Sint8 update_snd_m1(void)
 {
   static int env=0;
   static char sp=0;
@@ -469,7 +471,7 @@ inline INT8 update_snd_m1(void)
 
 }
 
-inline INT8 update_snd_m2(void)
+__inline__ Sint8 update_snd_m2(void)
 {
   //  static float cp=0;
   static int env=0;
@@ -557,7 +559,7 @@ inline INT8 update_snd_m2(void)
 
 }
 
-inline INT8 update_snd_m3(void)
+__inline__ Sint8 update_snd_m3(void)
 {
   static int lp=0;
   static int sp=0;
@@ -648,7 +650,7 @@ inline INT8 update_snd_m3(void)
   return 0;
 }
 
-inline INT8 update_snd_m4(void)
+__inline__ Sint8 update_snd_m4(void)
 {
   static float cp=0;
   static int env=0;
@@ -656,7 +658,7 @@ inline INT8 update_snd_m4(void)
   static int lp=0; 
   static int ep=0;
   static int cur_env_step;
-  static UINT32 poly_counter;
+  static Uint32 poly_counter;
   int vol;
   float j;
 
@@ -780,18 +782,18 @@ inline INT8 update_snd_m4(void)
 
 
 
-void update_gb_sound(UINT32 snd_len)
+void update_gb_sound(float snd_len)
 {
   int i;
-  INT8 *pl=playbuf+(lastpos<<1);
-  INT16 p=0,l=0,r=0;
+  Sint8 *pl=playbuf+(int)(lastpos*2);
+  Sint16 p=0,l=0,r=0;
 
    SDL_LockAudio();
   
 
-  if ((snd_len+(lastpos<<1))>=buf_size) {
-    //printf("ho:%d %d\n",snd_len,(INT16)(lastpos<<1));
-    snd_len=buf_size-(lastpos<<1); // on borne.
+  if ((snd_len+(lastpos*2))>=buf_size) {
+    //printf("ho:%d %d\n",snd_len,(Sint16)(lastpos<<1));
+    snd_len=buf_size-(lastpos*2); // on borne.
   }
 
   //printf("update gb sound len:%d %d\n",lastpos<<1,snd_len>>1);
@@ -815,7 +817,7 @@ void update_gb_sound(UINT32 snd_len)
     
   //printf("curpos start:%d len:%d\n",curpos,len);
 
-  for(i=0;i<(snd_len>>1) && pl<playbuf+buf_size;i++) {
+  for(i=0;i<(snd_len/2) && pl<playbuf+buf_size;i++) {
 
     l=r=0;
     
@@ -868,11 +870,12 @@ void update_gb_sound(UINT32 snd_len)
     if (p>127) p=127;
     else if (p<-127) p=-127;
     */	
-    *pl++=(INT8)l;
-    *pl++=(INT8)r;
-    curpos++;
+    *pl++=(Sint8)l;
+    *pl++=(Sint8)r;
+
   }
-  if (curpos==buf_size) curpos=0;
+  curpos+=snd_len/2;
+  if (curpos>buf_size) curpos=0.0;
   lastpos=curpos;
 
   //  printf("curpos end:%d\n",curpos);
@@ -882,14 +885,14 @@ void update_gb_sound(UINT32 snd_len)
 }
 
 /* fonction callback */
-void update_stream(void *userdata,UINT8 *stream,int snd_len)
+void update_stream(void *userdata,Uint8 *stream,int snd_len)
 {
 
   /* update tous les buffer dans playbuf*/
 
-  if (snd_len-(lastpos<<1)>0) {
+  if (snd_len-(lastpos*2.0)>0) {
     // printf("HOHO\n");
-    update_gb_sound(snd_len-(lastpos<<1));
+    update_gb_sound(snd_len-(lastpos*2.0));
     // clk=0;
   }
   get_nb_cycle();
@@ -916,9 +919,14 @@ int gbsound_init(void)
   fsound=fopen("./sound.raw","wb");
 #endif
 
-  sample_rate=44100;
+  SDL_InitSubSystem(SDL_INIT_AUDIO);
 
-  sample_per_update=1024;
+  sample_rate=conf.sample_rate;
+
+  if (sample_rate>22000)
+    sample_per_update=1024;
+  else
+    sample_per_update=512;
 
 
   desired.freq=sample_rate;
@@ -929,14 +937,18 @@ int gbsound_init(void)
   desired.userdata = NULL;
 
   if (!SDL_OpenAudio(&desired,NULL)) {
-    playbuf=(INT8*)malloc(desired.size);
+    //playbuf=(Sint8*)malloc(desired.size+1);
+    if (playbuf)
+      realloc((void*)playbuf,desired.size+1);
+    else
+      playbuf=(Sint8*)malloc(desired.size+1);
     buf_size=desired.size;
     memset(playbuf,0,desired.size);
     printf("Allocating %d for sound\n",desired.size);
     init_freq_table();
 
     SDL_PauseAudio(0);
-    SDL_Delay(1000); // Pour pemetre au thread audio de ce lancer
+    
     update_sound_reg();
     return 0;
   } 
@@ -946,7 +958,9 @@ int gbsound_init(void)
 
 void close_sound(void)
 {
+  
   SDL_CloseAudio();
+  SDL_QuitSubSystem(SDL_INIT_AUDIO);
 #ifdef LOG_SOUND
   fclose(fsound);
 #endif

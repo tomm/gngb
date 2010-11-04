@@ -16,45 +16,25 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. 
  */
 
-#ifndef SGB_H
-#define SGB_H
+#ifndef _VIDEO_YUV_H_
+#define _VIDEO_YUV_H_
 
-#include <SDL.h>
-#include <string.h>
 #include "global.h"
-#include "vram.h"
 
-#define SGB_WIDTH 256
-#define SGB_HEIGHT 224
+SDL_Overlay *overlay;
+SDL_Rect ov_rect;
+Uint32 yuv_flag;
 
-#define SGB_PACKSIZE 16		/* 128/8=16 */
+struct yuv{
+  Uint16 y;
+  Uint8  u;
+  Uint8  v;
+  Uint32 yuy2;
+}rgb2yuv[65536];
 
-typedef struct {
-  Uint8 on;			/*  on!=0 during a transfert */
-  Uint8 cmd;
-  Sint8 nb_pack;		        /* nb packet for the cmd */
-  Uint8 b;
-  Uint8 pack[SGB_PACKSIZE];
-  Sint16 b_i;			/* ieme bit du package */
-  Uint8 player;
-}SGB;
-
-SGB sgb;
-
-Uint16 sgb_pal[4][4];		/* 4 pallete of 4 colour */
-Uint8 sgb_pal_map[20][18];      /* Map of Pallete Tiles */
-
-Uint8 sgb_mask;
-
-extern SDL_Surface *sgb_buf;
-
-
-#define sgb_init_transfer() { \
-          sgb.on=1;           \
-          sgb.b_i=-1;         \
-          memset(sgb.pack,0,SGB_PACKSIZE);}
-void sgb_exec_cmd(void);
-
-void sgb_init(void);
+void init_message_yuv(void);
+void init_rgb2yuv_table(void);
+void blit_screen_yuv(void);
+void reinit_video_yuv(void);
 
 #endif

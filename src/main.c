@@ -15,10 +15,20 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-                
+
+#include <config.h>            
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+#include <SDL.h>
+#ifdef HAVE_GETOPT_LONG
+#include <getopt.h>
+#else
+#include "getopt.h"
+#endif
+
 #include "global.h"
 #include "emu.h"
 #include "memory.h"
@@ -30,11 +40,11 @@
 #include "frame_skip.h"
 #include "emu.h"
 #include "sgb.h"
-
+//#include "optargs.h"
 #include "sound.h"
-#include <SDL/SDL.h>
 
-extern SDL_Joystick *joy;
+
+extern SDL_Joystick *sdl_joy;
 
 void exit_gngb(void)
 {
@@ -43,16 +53,12 @@ void exit_gngb(void)
   if (vram_page) free_mem_page(vram_page,nb_vram_page);
   if (wram_page) free_mem_page(wram_page,nb_wram_page);
 
-  close_vram();
-  if (conf.sound)
-    close_sound();
-  if (conf.serial_on) 
-    gbserial_close();
+  if (conf.sound) close_sound();
+  if (conf.serial_on) gbserial_close();
 }
 
 int main(int argc,char *argv[])
 {
-
   setup_default_conf();
   open_conf();  
   check_option(argc,argv);
@@ -64,30 +70,10 @@ int main(int argc,char *argv[])
     exit(1);
   }
 
-  gbmemory_init();
-  gblcdc_init();
-  gbtimer_init();
-  gbcpu_init();
-  init_vram((conf.fs?SDL_FULLSCREEN:0)|(conf.gl?SDL_OPENGL:0));
-  
-  if (conf.gb_type&SUPER_GAMEBOY) sgb_init();
+  emu_init();
 
-  if(SDL_NumJoysticks()>0){
-    joy=SDL_JoystickOpen(conf.joy_no);
-    if(joy) {
-      printf("Name: %s\n", SDL_JoystickName(conf.joy_no));
-      printf("Number of Axes: %d\n", SDL_JoystickNumAxes(joy));
-      printf("Number of Buttons: %d\n", SDL_JoystickNumButtons(joy));
-      printf("Number of Balls: %d\n", SDL_JoystickNumBalls(joy));
-    }
-  };
-
-  if (conf.sound)
-    if (gbsound_init()) conf.sound=0;      
-
-  //frame_skip(1);
-  while(!conf.gb_done) update_gb();
-  
+  update_gb();
+    
   if (rom_type&BATTERY) {
     save_ram();
     if (rom_type&TIMER) save_rom_timer();

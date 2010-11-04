@@ -6,10 +6,10 @@
 struct {
   GtkWidget *clist;
   GtkObject *vadj;
-  UINT16 begin_add;
+  Uint16 begin_add;
 }mem_info;
 
-void mem_info_set_begin_add(UINT16 add) {
+void mem_info_set_begin_add(Uint16 add) {
   int i,j;
   char text[10];
   mem_info.begin_add=add;
@@ -30,8 +30,8 @@ void mem_info_set_begin_add(UINT16 add) {
 
 
 static void cb_vadj_value_changed(GtkAdjustment *adj,gpointer data) {
-  UINT16 add;
-  add=((UINT16)adj->value)*16;
+  Uint16 add;
+  add=((Uint16)adj->value)*16;
   mem_info_set_begin_add(add);
 }
 
@@ -53,8 +53,8 @@ static void cb_clist_scroll_horizontal(GtkCList *clist,GtkScrollType scroll_type
   gtk_adjustment_value_changed(GTK_ADJUSTMENT(mem_info.vadj));
 }
 
-GtkWidget *init_mem_info(void) {
-  GtkWidget *frame;
+GtkWidget *dbg_mem_win_create(void) {
+  GtkWidget *win;
   GtkWidget *vscroll_bar;
   GtkWidget *hbox;
   int i;
@@ -62,7 +62,11 @@ GtkWidget *init_mem_info(void) {
 		"00","01","02","03","04","05","06","07",
 		"08","09","0A","0B","0C","0D","0E","0F"};
 
-  frame=gtk_frame_new("MEM");
+  win=gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_window_set_title(GTK_WINDOW(win),"Memory");
+  gtk_signal_connect_object(GTK_OBJECT(win),"delete_event",
+			    GTK_SIGNAL_FUNC(gtk_widget_hide),GTK_OBJECT(win));
+  gtk_widget_show(win);
 
   hbox=gtk_hbox_new(FALSE,1);
  
@@ -85,16 +89,16 @@ GtkWidget *init_mem_info(void) {
   gtk_box_pack_start(GTK_BOX(hbox),vscroll_bar,FALSE,FALSE,2);    
   gtk_widget_show(vscroll_bar); 
 
-  gtk_container_add(GTK_CONTAINER(frame),hbox);
+  gtk_container_add(GTK_CONTAINER(win),hbox);
   gtk_widget_show(hbox);
 
-  return frame;
+  return win;
 }
 
 void update_mem_info(void) {
   int i,j;
   char text[5];
-  UINT16 add=mem_info.begin_add;
+  Uint16 add=mem_info.begin_add;
 
   gtk_clist_freeze(GTK_CLIST(mem_info.clist));
   for(i=0;i<10;i++) {

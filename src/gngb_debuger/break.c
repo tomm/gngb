@@ -8,8 +8,8 @@
 typedef struct {
   char type;
   union {
-    UINT16 add;
-    UINT16 int_type;
+    Uint16 add;
+    Uint16 int_type;
   }data;
 }BREAK;
 
@@ -32,7 +32,7 @@ void remove_break(BREAK *b) {
 
 // Classic Break Point
 
-BREAK *find_break_point(UINT16 add) {
+BREAK *find_break_point(Uint16 add) {
   GSList *node;
   for(node=break_list;node;node=node->next)
     if ((((BREAK *)node->data)->type==BREAK_BP) && 
@@ -40,22 +40,22 @@ BREAK *find_break_point(UINT16 add) {
   return NULL;
 }
 
-void add_break_point(UINT16 add) {
+void add_break_point(Uint16 add) {
   BREAK *b=create_break(BREAK_BP);
   b->data.add=add;
   add_break(b);
 }
 
-void del_break_point(UINT16 add) {
+void del_break_point(Uint16 add) {
   BREAK *b=find_break_point(add);
   if (b) remove_break(b);
 }
 
-char is_break_point(UINT16 add) {
+char is_break_point(Uint16 add) {
   return (find_break_point(add)?TRUE:FALSE);
 }
 
-void add_break_int(UINT8 int_type) {
+void add_break_int(Uint8 int_type) {
   //break_list=g_slist_add(break_list,GINT_TO_POINTER((int)int_type));
 }
 

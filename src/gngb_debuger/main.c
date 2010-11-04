@@ -11,24 +11,45 @@
 #include "../vram.h"
 #include "../interrupt.h"
 #include "../sgb.h"
+#include <signal.h>
 
-extern SDL_Joystick *joy;
+extern SDL_Joystick *sdl_joy;
+
+GtkWidget *dbg_vram_win=NULL;
+GtkWidget *dbg_msg_win=NULL;
+GtkWidget *dbg_int_win=NULL;
+GtkWidget *dbg_mem_win=NULL;
+GtkWidget *dbg_cpu_win=NULL;
+GtkWidget *dbg_io_win=NULL;
+GtkWidget *dbg_code_win=NULL;
+
+void my_exit(void) {
+  printf("PC: %04x\n",gbcpu->pc.w);
+  printf("AF: %04x\n",gbcpu->af.w);
+  printf("BC: %04x\n",gbcpu->bc.w);
+  printf("DE: %04x\n",gbcpu->de.w);
+  printf("HL: %04x\n",gbcpu->hl.w);
+}
+
+void recieve_sigint(int signum) {
+  printf("PC: %04x\n",gbcpu->pc.w);
+  printf("AF: %04x\n",gbcpu->af.w);
+  printf("BC: %04x\n",gbcpu->bc.w);
+  printf("DE: %04x\n",gbcpu->de.w);
+  printf("HL: %04x\n",gbcpu->hl.w);
+  if (!conf.gb_done) conf.gb_done=1;
+}
+
 
 int main(int argc,char *argv[]) {
   GtkWidget *window;
   GtkWidget *menu_bar;
   GtkWidget *vbox;
-  GtkWidget *cpu_frame;
-  GtkWidget *mem_frame;
-  GtkWidget *io_frame;
-  GtkWidget *code_frame;
-  GtkWidget *table;
-  GtkWidget *msg_win;
-
+  
   gtk_init(&argc,&argv);
 
   // Init Gngb
-   setup_default_conf();
+  setup_default_conf();
   open_conf();  
   check_option(argc,argv);
   if(optind >= argc)
@@ -39,26 +60,31 @@ int main(int argc,char *argv[]) {
     exit(1);
   }
 
+  conf.fs=0;
+  emu_init();
+
+  /*init_vram((conf.fs?SDL_FULLSCREEN:0)|(conf.gl?SDL_OPENGL:0));	
   gbmemory_init();
   gblcdc_init();
   gbtimer_init();
   gbcpu_init();
-  init_vram((conf.fs?SDL_FULLSCREEN:0)|(conf.gl?SDL_OPENGL:0));
   
   if (conf.gb_type&SUPER_GAMEBOY) sgb_init();
 
   if(SDL_NumJoysticks()>0){
-    joy=SDL_JoystickOpen(conf.joy_no);
-    if(joy) {
+    sdl_joy=SDL_JoystickOpen(conf.joy_no);
+    if(sdl_joy) {
       printf("Name: %s\n", SDL_JoystickName(conf.joy_no));
-      printf("Number of Axes: %d\n", SDL_JoystickNumAxes(joy));
-      printf("Number of Buttons: %d\n", SDL_JoystickNumButtons(joy));
-      printf("Number of Balls: %d\n", SDL_JoystickNumBalls(joy));
+      printf("Number of Axes: %d\n", SDL_JoystickNumAxes(sdl_joy));
+      printf("Number of Buttons: %d\n", SDL_JoystickNumButtons(sdl_joy));
+      printf("Number of Balls: %d\n", SDL_JoystickNumBalls(sdl_joy));
     }
-  };
+    };
 
-  if (conf.sound && gbsound_init()) conf.sound=0;  
+    if (conf.sound && gbsound_init()) conf.sound=0;  */
 
+  signal(SIGINT,recieve_sigint);
+  atexit(my_exit);
 
   // Init Debuger
   window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -68,39 +94,26 @@ int main(int argc,char *argv[]) {
   gtk_signal_connect(GTK_OBJECT(window),"delete_event",
 		     GTK_SIGNAL_FUNC(gtk_main_quit),NULL);
 
-  table=gtk_table_new(3,4,FALSE);
+  //table=gtk_table_new(3,4,FALSE);
   
-  mem_frame=init_mem_info();
-  gtk_table_attach_defaults(GTK_TABLE(table),mem_frame,
-			    0,2,2,4);
-  gtk_widget_show(mem_frame); 
+  
+  dbg_msg_win=dbg_msg_win_create();
+  dbg_vram_win=dbg_vram_win_create();
+  dbg_int_win=dbg_int_win_create();
+  dbg_mem_win=dbg_mem_win_create();
+  dbg_cpu_win=dbg_cpu_win_create();
+  dbg_io_win=dbg_io_win_create();
+  dbg_code_win=dbg_code_win_create();
 
-  code_frame=init_code_info();
-  gtk_table_attach_defaults(GTK_TABLE(table),code_frame,
-			    0,2,0,2);
-  gtk_widget_show(code_frame); 
-
-  cpu_frame=init_cpu_info();
-  gtk_table_attach_defaults(GTK_TABLE(table),cpu_frame,
-			    2,3,0,1);
-  gtk_widget_show(cpu_frame); 
-
-  io_frame=init_io_info();
-  gtk_table_attach_defaults(GTK_TABLE(table),io_frame,
-			    2,3,1,4);
-  gtk_widget_show(io_frame); 
-
-  msg_win=init_msg_win();
-
-  menu_bar=init_menu(window);
-  gtk_box_pack_start(GTK_BOX(vbox),menu_bar,FALSE,FALSE,1);
-  gtk_widget_show(menu_bar);
+  menu_bar=init_dbg_menu(window);
+  /*  gtk_box_pack_start(GTK_BOX(vbox),menu_bar,FALSE,FALSE,1);
+      gtk_widget_show(menu_bar);
 
   gtk_box_pack_start(GTK_BOX(vbox),table,FALSE,FALSE,1);
-  gtk_widget_show(table);
+  gtk_widget_show(table);*/
 
-  gtk_container_add(GTK_CONTAINER(window),vbox);
-  gtk_widget_show(vbox);
+  gtk_container_add(GTK_CONTAINER(window),menu_bar);
+  gtk_widget_show(menu_bar);
   gtk_widget_show(window);
 
   update_cpu_info();

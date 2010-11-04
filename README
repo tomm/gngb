@@ -1,60 +1,89 @@
-Prerequisites :
+Description :
+-------------
 
-You need a recent version of SDL (I use SDL-1.2). 
+Gngb is Color GameBoy(tm) for linux emulator wrinten in C using the SDL.
+It emulate most of the GB and GBC roms.
+
+Prerequisites :
+---------------
+
+You need a recent version of SDL (I use SDL-1.2.2). 
 The 1.0 serie don't work, sorry.
 
 Installation : 
+--------------
+
 ./configure
 make
 make install
 
 if you want to compile with a debuger
 
-./configure --with-debuger=yes
+./configure --with-debuger
 make
 make install
 
-Save/Load state change sine last version certainly old save don't work 
+Usage : 
+------
 
-Use :
+gngb [OPTION]... FILE
+Emulate the GameBoy rom pointed by FILE
 
-gngb [option] game 
-option:
--h            : show this help
--a            : auto frame skip
--G            : force normal gameboy
--S            : force to super gameboy
--C            : force to color gameboy
--f            : fullscreen
--j joy_num    : use joy_num as joystick 
--s            : sound on
--r            : rumble on
--o            : opengl renderer
--O WxH        : same as o, but with WxH resolution (instead of double size)
--y            : use constant cycle (cycle don't change according to nb sprite
-on a line)
--g            : try to emulate gdma cycle
--Y            : YUV Mode (resizable)
+  -h, --help                 print this help and exit
+  -a, --autoframeskip        turn on autoframeskip
+      --sleep_idle           sleep when idle
+      --color_filter         turn on the color filter
+  -r, --rumble               turn on the rumble simulation
+      --filter=X             Set the filter to apply (only for standard mode)
+                              0 = none
+                              1 = scanline
+                              2 = scanline 50%
+                              3 = smooth
+                              4 = pseudo cell shading
+  -R, --res=WxH              set the resolution to WxH (for YUV and GL mode)
+  -Y, --yuv                  turn YUV mode on
+      --yuv_type             set the type of the YUV overlay
+                              0 = YV12
+                              1 = YUY2
+  -o, --opengl               turn OpenGL mode on (if conpiled in)
+  -f, --fullscreen           run gngb in fullscreen
+      --fps                  show frame/sec
+  -s, --sound                turn on sound
+      --sample_rate=RATE     set the sample rate to RATE
+  -C, --color_gb             force to color gameboy mode
+  -G, --normal_gb            force to normal gameboy mode
+  -S, --super_gb             force to super gameboy mode (experimental)
+      --auto_gb              turn on automatique detection
+  -j, --joy=N                use the Nth joystick
+  -g, --gdma_cycle           cpu stop during gdma transfer (experimental)
 
-Key :
+
+Most options can be disabled whith --no-OPTION (Ex: --no-sound turn sound off)
+
+Keybinding :
+------------
 
 Enter          : Start
 Right Shift    : Select
-W              : B       (on azerty kerboard)
+W              : B
 X              : A    
 
+TAB            : Open menu
+
 F9             : fullscreen on/off
-Shift + F(1-8) : save state (experimental) 
-F(1-8)         : load state (experimental)
-F10            : show fps (work only with -a options)
+F10            : show fps
 F11            : reset
-F12            : show key code
+F12            : show keysym code
 
-KepPad 1-5: Change palette
+KeyPad 1-5: Change palette
+            Palette must be define in your gngbrc file (see sample_gngbrc)
 
-Palette must be define in your gngbrc file (see sample_gngbrc)
+KeyPad 6  : Toggle color filter 
+
 
 Configuration :
+---------------
+
 In the file $HOME/.gngb/gngbrc
 a sample file is provide : sample_gngbrc
 

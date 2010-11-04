@@ -3,8 +3,8 @@
 
 #include "../global.h"
 
-int aff_op(UINT8 op,UINT16 pc,char *ret);
-int get_nb_byte(UINT8 op);
+int aff_op(Uint8 op,Uint16 pc,char *ret);
+int get_nb_byte(Uint8 op);
 
 #endif
 

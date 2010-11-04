@@ -18,83 +18,34 @@
 
 #include <stdlib.h>
 #include <stdarg.h>
-#include <SDL/SDL.h>
+#include <SDL.h>
+#include <string.h>
 #include "global.h"
-#include "tiny_font.c"
+#include "tiny_font.h"
 #include "message.h"
-//#include "vram.h"
 #include "emu.h"
-#ifdef SDL_GL
-#include <GL/gl.h>
-#include <GL/glu.h>
-#endif
-
-#ifdef SDL_GL
-#define FONTBUF_GL_W 128
-#define FONTBUF_GL_H 128
-GLubyte *gl_buf;
-int fontgl_texid;
-#endif
+#include "menu.h"
+#include "video_std.h"
 
 SDL_Surface *fontbuf=NULL;
 
-static int wl,hl,xm,ym;
+//int wl,hl,xm,ym;
 static int tempo_mes;
 
 #define BUF_ALPHA 240
 
 char mes_buf[50];
-extern SDL_Surface *gb_screen;
+char info_buf[50];
+//extern SDL_Surface *gb_screen;
 int mx_off,my_off;
+int info=0;
+SDL_Color fontpal[]={{214,214,214},{0,0,0}};
 
-void (*draw_message)(int x,int y,char *mes);
 
-void draw_message_default(int x,int y,char *mes);
+//void (*draw_message)(int x,int y,char *mes);
 
-#ifdef SDL_YUV
-extern SDL_Overlay *overlay;
-void draw_message_yuv(int x,int y,char *mes);
-#endif
 
-#ifdef SDL_GL
-
-void draw_message_gl(int x,int y,char *mes);
-
-inline void draw_char_gl(int x,int y,unsigned char c) {
-  int indice=c-32;
-  static float u1,v1,u2,v2;
-  static int x1,x2,y1,y2;
-
-  x1=((indice*8)%FONTBUF_GL_W);
-  y1=((indice*8)/FONTBUF_GL_W)*hl;
-  x2=x1+wl;
-  y2=y1+hl;
-
-  u1=(float)x1/FONTBUF_GL_W;
-  u2=(float)x2/FONTBUF_GL_W;
-  v1=(float)y1/FONTBUF_GL_H;
-  v2=(float)y2/FONTBUF_GL_H;
-
-  glEnable(GL_TEXTURE_2D);
-  glBindTexture(GL_TEXTURE_2D,fontgl_texid);
-  
-  glBegin(GL_QUADS);
-  
-  glTexCoord2f(u1,v1);
-  glVertex2i(x,y);
-  glTexCoord2f(u2,v1);
-  glVertex2i(x+wl,y);
-  glTexCoord2f(u2,v2);
-  glVertex2i(x+wl,y+hl);
-  glTexCoord2f(u1,v2);
-  glVertex2i(x,y+hl);
- 
-  glEnd();
-  
-}
-#endif
-
-inline void draw_char(SDL_Surface *dest,int x,int y,unsigned char c) {
+static __inline__ void draw_char(SDL_Surface *dest,int x,int y,unsigned char c) {
   static SDL_Rect font_rect,dest_rect;
   int indice=c-32;
   
@@ -113,153 +64,83 @@ inline void draw_char(SDL_Surface *dest,int x,int y,unsigned char c) {
   SDL_BlitSurface(fontbuf,&font_rect,dest,&dest_rect);
 }
 
-#ifdef SDL_GL
-
-void init_message_gl(void) {
-  int x1,y1,x,y;
+void draw_message(int x,int y,char *mes) {
   int i;
-  
-  gl_buf=(GLubyte *)malloc(sizeof(GLubyte)*FONTBUF_GL_W*FONTBUF_GL_H*3);
-  memset(gl_buf,0,sizeof(GLubyte)*FONTBUF_GL_W*FONTBUF_GL_H*3);
-  
-  x1=0;y1=0;
-  for(i=0;i<tiny_font.width;i+=wl) {
-
-    for(y=0;y<hl;y++) {
-      for(x=0;x<wl;x++) {
-	gl_buf[((y1+y)*FONTBUF_GL_W+(x1+x))*3]=tiny_font.pixel_data[((x+i)+(y)*tiny_font.width)*3];
-	gl_buf[((y1+y)*FONTBUF_GL_W+(x1+x))*3+1]=tiny_font.pixel_data[((x+i)+(y)*tiny_font.width)*3+1];
-	gl_buf[((y1+y)*FONTBUF_GL_W+(x1+x))*3+2]=tiny_font.pixel_data[((x+i)+(y)*tiny_font.width)*3+2];
-      }
-    }
-    
-    x1+=8;
-    if (x1+wl>FONTBUF_GL_W) {
-      y1+=hl;
-      x1=0;
-    }
-  }
-
-  glGenTextures(1,&fontgl_texid);
-  glBindTexture(GL_TEXTURE_2D,fontgl_texid);
-  glTexImage2D(GL_TEXTURE_2D,0,GL_RGB8,
-	       FONTBUF_GL_W,FONTBUF_GL_H,0,
-	       GL_RGB,GL_UNSIGNED_BYTE,(GLvoid *)gl_buf);
-  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP);
-  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP);
-  
-  free(gl_buf);
-}
-#endif
-
-#ifdef SDL_YUV
-
-inline void draw_char_yuv(int ox,int oy,unsigned char c) {
-  int fx,fy;
-  int indice=c-32;
-  int x,y;
-  UINT8 *buf=(UINT8 *)overlay->pixels[0] + oy*overlay->pitches[0];
-  
-  fx=indice*wl;
-  fy=0;
-  
-  for(y=0;y<hl;y++,buf+=(overlay->pitches[0]-1)) {
-    for(x=0;x<wl;x++) {
-      buf[y+ox+x]=tiny_font.pixel_data[((x+fx)+(y+fy)*tiny_font.width)*3];
-    }
-  }
-}
-
-void draw_message_yuv(int x,int y,char *mes) {
-  int i;
-  if (!fontbuf) init_message();
+      
   for(i=0;i<strlen(mes);i++)
-    draw_char_yuv(x+i*wl,y,mes[i]);
+    draw_char(back,x+i*wl,y,mes[i]);
 }
 
-void init_message_yuv(void) {
-  /*int i;
-    if (!fontbuf) init_message();
-    for(i=0;i<strlen(mes);i++)
-    draw_char_yuv(x+i*wl,y,mes[i]);*/
+void restore_message_pal(void)
+{
+  SDL_SetColors(fontbuf,fontpal,0,2);
+  /* reset color keying */
+  SDL_SetColorKey(fontbuf,0,0);
 }
-#endif
+
 
 void init_message(void) {
   wl=tiny_font.width/(128-32);
   hl=tiny_font.height;
+
+  fontbuf=img2surface(tiny_font);
+  restore_message_pal();
+  //SDL_SetColorKey(fontbuf,SDL_SRCCOLORKEY|SDL_RLEACCEL,1);
+  /*
   fontbuf=SDL_CreateRGBSurfaceFrom((void*)tiny_font.pixel_data,
 				   tiny_font.width,
 				   tiny_font.height,
 				   24,tiny_font.width*3,0xFF0000,0xFF00,0xFF,0);
-  SDL_SetAlpha(fontbuf,SDL_SRCALPHA,BUF_ALPHA);
-  draw_message=draw_message_default;
+  */
+  //  SDL_SetAlpha(fontbuf,SDL_SRCALPHA,BUF_ALPHA);
+  //draw_message=draw_message_default;
 
-  if (conf.gb_type&SUPER_GAMEBOY) {
-    mx_off=48;
-    my_off=40;
-  } else mx_off=my_off=0;
-  
-#ifdef SDL_GL
-  if (conf.gl) {
-    init_message_gl();
-    draw_message=draw_message_gl;
-  }
-#endif
-#ifdef SDL_YUV
-  if (conf.yuv) {
-    init_message_yuv();
-    draw_message=draw_message_yuv;
-    if (conf.gb_type&COLOR_GAMEBOY) my_off+=144;
-  }
-#endif
 }
-
-#ifdef SDL_GL
-void draw_message_gl(int x,int y,char *mes) {
-  int i;
-  if (!fontbuf) init_message();
-  for(i=0;i<strlen(mes);i++)
-    draw_char_gl(x+i*wl,y,mes[i]);
-}
-#endif
-
-void draw_message_default(int x,int y,char *mes) {
-  int i;
-  if (!fontbuf) init_message();
-  for(i=0;i<strlen(mes);i++)
-    draw_char(gb_screen,x+i*wl,y,mes[i]);
-}
-
 void set_message(const char *format,...) {
   va_list pvar;
   va_start(pvar,format);
 
   tempo_mes=5*60; // 5 sec
   xm=0;
+ 
   ym=144-hl;
 
   mes_buf[0]=0;
   vsprintf(mes_buf,format,pvar);
-  SDL_SetAlpha(fontbuf,SDL_SRCALPHA,BUF_ALPHA);
+  //  SDL_SetAlpha(fontbuf,SDL_SRCALPHA,BUF_ALPHA);
   va_end(pvar);
 }
 
-void update_message(void) {
-  if (tempo_mes) {
-    if (tempo_mes<BUF_ALPHA) {
-      SDL_SetAlpha(fontbuf,SDL_SRCALPHA,tempo_mes);
-    }
-    tempo_mes--;
-    draw_message(mx_off+xm,my_off+ym,mes_buf);
+void set_info(const char *format,...) {
+  va_list pvar;
+  va_start(pvar,format);
+  info=1;
+  
+  info_buf[0]=0;
+  vsprintf(info_buf,format,pvar);
+  //  SDL_SetAlpha(fontbuf,SDL_SRCALPHA,BUF_ALPHA);
+  va_end(pvar);
+}
 
-    /*#ifdef SDL_GL
-      if (conf.gl) 
-      draw_message_gl(mx_off+xm,my_off+ym,mes_buf);
-      else
-      #endif
-      draw_message(gb_screen,mx_off+xm,my_off+ym,mes_buf);*/
-  } 
+void unset_info(void) {
+  info=0;
+}
+
+void update_message(void) {
+ 
+  if (current_menu!=NULL) {
+    display_menu(current_menu);
+  } else {
+    if (tempo_mes) {
+      /*    if (tempo_mes<BUF_ALPHA) {
+            SDL_SetAlpha(fontbuf,SDL_SRCALPHA,tempo_mes);
+	    }*/
+      tempo_mes--;
+      draw_message(mx_off+xm,my_off+ym,mes_buf);
+    } 
+    if (info) {
+      //SDL_SetAlpha(fontbuf,SDL_SRCALPHA,BUF_ALPHA);
+      draw_message(mx_off,my_off,info_buf);
+    }
+  }
 }
