@@ -18,6 +18,7 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -27,23 +28,30 @@
 #include <string.h>
 #include "rom.h"
 #include "memory.h"
+#include "emu.h"
 #include "cpu.h"
 #include "interrupt.h"
 #include "vram.h"
 #include "sound.h"
+#include "emu.h"
+
+#define FILENAME_LEN 256
 
 typedef enum {
   CPU_SECTION,
   LCDC_SECTION,
   PAL_SECTION,
   TIMER_SECTION,
-  DMA_SECTION
+  DMA_SECTION,
+  RT_SECTION,
 }SECTION_TYPE;
 
-INT16 rom_type;
-UINT8 gameboy_type;
+INT16 rom_type=UNKNOW_TYPE;
 
-char *get_save_name(char *name) {
+//UINT8 gameboy_type=UNKNOW;
+UINT8 rom_gb_type=UNKNOW;
+
+char *get_name_without_ext(char *name) {
   char *a;
   int lg=strlen(name);
   int l,r,i;
@@ -58,9 +66,7 @@ char *get_save_name(char *name) {
   while(l<r) 
     a[i++]=name[l++];
   
-  a[i++]='s';
-  a[i++]='v';
-  a[i++]=0;
+  a[i-1]=0;
   return a;
 }
 
@@ -74,24 +80,47 @@ int check_dir(char *dir_name) {
   return 1;
 }
 
+void get_filename_ext(char *f,char *ext) {
+  char *a=getenv("HOME");
+  f[0]=0;
+  strcat(f,a);
+  strcat(f,"/.gngb/");
+  check_dir(f);
+  strcat(f,rom_name);
+  strcat(f,ext);
+  free(a);
+}
+
+void get_ext_nb(char *r,int n) {
+  r[0]='.';
+  r[1]=r[2]='0';
+  switch(n) {
+  case 0:r[3]='0';break;
+  case 1:r[3]='1';break;
+  case 2:r[3]='2';break;
+  case 3:r[3]='3';break;
+  case 4:r[3]='4';break;
+  case 5:r[3]='5';break;
+  case 6:r[3]='6';break;
+  case 7:r[3]='7';break;
+  case 8:r[3]='8';break;
+  }
+  r[4]=0;
+}
+
+
 int load_ram(void) {
   FILE *stream;
   int i;
-  char dir[100];
-  char *a=getenv("HOME");
+  char filename[FILENAME_LEN];
 
-  dir[0]=0;
-  strcat(dir,a);
-  strcat(dir,"/.gngb/");
-  check_dir(dir);
-
-  strcat(dir,get_save_name(rom_name));
-  stream=fopen(dir,"rb");
-  if (!stream) {
-    printf("Error while trying to read file %s \n",dir);
+  get_filename_ext(filename,".sv");
+  
+  if (!(stream=fopen(filename,"rb"))) {
+    printf("Error while trying to read file %s \n",filename);
     return 1;
   }
-
+  
   for(i=0;i<nb_ram_page;i++)
     fread(ram_page[i],sizeof(UINT8),0x2000,stream);
 
@@ -102,18 +131,12 @@ int load_ram(void) {
 int save_ram(void) {
   FILE *stream;
   int i;
-  char dir[100];
-  char *a=getenv("HOME");
+  char filename[FILENAME_LEN];
   
-  dir[0]=0;
-  strcat(dir,a);
-  strcat(dir,"/.gngb/");
-  check_dir(dir);
+  get_filename_ext(filename,".sv");
 
-  strcat(dir,get_save_name(rom_name));
-  stream=fopen(dir,"wb");
-  if (!stream) {
-    printf("Error while trying to write file %s \n",dir);
+  if (!(stream=fopen(filename,"wb"))) {
+    printf("Error while trying to write file %s \n",filename);
     return 1;
   }
 
@@ -122,6 +145,120 @@ int save_ram(void) {
 
   fclose(stream);
   return 0;
+}
+
+int save_rom_timer(void) {
+  char filename[FILENAME_LEN];
+  FILE *stream;
+  int i;
+  
+  get_filename_ext(filename,".rt");
+
+  if (!(stream=fopen(filename,"wt"))) {
+    printf("Error while trying to write file %s \n",filename);
+    return 1;
+  }
+  
+  for(i=0;i<5;i++)
+    fprintf(stream,"%02x ",rom_timer->reg[i]);
+
+  fprintf(stream,"%d",(long)time(NULL));
+
+  fclose(stream);
+  return 0;
+}
+
+int load_rom_timer(void) {
+  char filename[FILENAME_LEN];
+  FILE *stream;
+  int i;
+  long dt;
+
+  get_filename_ext(filename,".rt");
+
+  if (!(stream=fopen(filename,"rt"))) {
+    printf("Error while trying to read file %s \n",filename);
+    return 1;
+  }
+
+  /* FIXME : must adjust the time still last time */
+  for(i=0;i<5;i++)
+    fscanf(stream,"%02x",&rom_timer->reg[i]);
+
+  fscanf(stream,"%d",&dt);
+
+  {
+    int h,m,s,d,dd;
+    
+    dt=time(NULL)-dt;
+
+    //printf("sec %d \n",s=(dt%60));
+    dt/=60;
+    
+    rom_timer->reg[0]+=s;
+    if (rom_timer->reg[0]>=60) {
+      rom_timer->reg[0]-=60;
+      rom_timer->reg[1]++;
+    }
+   
+    // printf("min %d \n",m=(dt%60));
+    dt/=60;
+    
+    rom_timer->reg[1]+=m;
+    if (rom_timer->reg[1]>=60) {
+      rom_timer->reg[1]-=60;
+      rom_timer->reg[2]++;
+    }
+    
+    //printf("hour %d \n",h=(dt%24));
+    dt/=24;
+
+    rom_timer->reg[2]+=h;
+    if (rom_timer->reg[2]>=24) {
+      rom_timer->reg[2]-=24;
+      rom_timer->reg[3]++;
+      if (!rom_timer->reg[3])
+	dt++;
+    }
+    
+    //printf("day %d \n",d=dt);
+
+    dd=((rom_timer->reg[5]&0x01)<<9)|rom_timer->reg[4];
+    
+    dd+=dt;
+    if (dd>=365) {
+      dd=0;
+      rom_timer->reg[5]|=0x80;        // set carry
+    }
+
+    rom_timer->reg[4]=dd&0xff;
+    rom_timer->reg[5]=(rom_timer->reg[5]&0xfe)|((dd&0x100)>>9);
+
+  }
+
+  fclose(stream);
+  return 0;
+}
+
+void set_gameboy_type(void) {
+  if (rom_gb_type&COLOR_GAMEBOY)  // prefer always CGB
+    conf.gb_type=COLOR_GAMEBOY;
+  else {
+    if (rom_gb_type&SUPER_GAMEBOY) // prefer SGB if not CGB
+      conf.gb_type=SUPER_GAMEBOY;
+    else 
+      conf.gb_type=NORMAL_GAMEBOY;
+  }
+}
+
+void check_gameboy_type(void) {
+  if (conf.gb_type&COLOR_GAMEBOY && 
+      rom_gb_type&NORMAL_GAMEBOY &&
+      !(rom_gb_type&COLOR_GAMEBOY)) {
+    printf("WARNING:Normal gb game on Color gb dont work for the moment\n");
+    printf("Force to normal gb\n");
+    conf.gb_type&=(~COLOR_GAMEBOY);
+  }
 }
 
 int open_rom(char *filename)
@@ -139,28 +276,33 @@ int open_rom(char *filename)
 
   if ((stream=fopen(filename,"rb"))) {
     printf("Open file %s\n",filename);
-    strcpy(rom_name,filename);
+    rom_name=get_name_without_ext(filename);
     fread(gb_memory,sizeof(char),32768,stream);
     printf("Name    : %.15s\n",gb_memory+0x134);
 
     if (gb_memory[0x0143]==0x80) {
-      gameboy_type=COLOR_GAMEBOY;
+      rom_gb_type=COLOR_GAMEBOY|NORMAL_GAMEBOY;
       printf("Color GameBoy\n");
       printf("Normal GameBoy Supported\n");
     } else if (gb_memory[0x0143]==0xc0) {
-      gameboy_type=COLOR_GAMEBOY_ONLY;
+      rom_gb_type=COLOR_GAMEBOY_ONLY;
       printf("Color GameBoy\n");
       printf("Normal GameBoy Not Supported !! \n");
     } else {
-      gameboy_type=NORMAL_GAMEBOY;
+      rom_gb_type=NORMAL_GAMEBOY;
       printf("Normal GameBoy\n");
     }
 
     if (gb_memory[0x0146]) {
-      gameboy_type|=SUPER_GAMEBOY;
-      printf("SGB\n");
+      rom_gb_type|=SUPER_GAMEBOY;
+      printf("SGB Supported %02x\n",gb_memory[0x0146]);
     }
     
+    //if (conf.normal_gb) gameboy_type=NORMAL_GAMEBOY;
+
+    if (conf.gb_type==UNKNOW) set_gameboy_type();
+    else check_gameboy_type();
+
     printf("configuration %02x : ",gb_memory[0x147]);
     switch(gb_memory[0x147]) {
     case 0x00: printf("ROM ONLY\n"); rom_type=ROM_ONLY;break;
@@ -202,6 +344,14 @@ int open_rom(char *filename)
 	fread(rom_page[i],sizeof(char),0x4000,stream);
     }
 
+    if (rom_type&TIMER) {
+      rom_timer=(ROM_TIMER *)malloc(sizeof(ROM_TIMER));
+      rom_timer->cycle=0;
+      rom_timer->reg_sel=0;
+      rom_timer->latch=0;
+      memset(rom_timer->reg,0,sizeof(UINT8)*5);
+    } else rom_timer=NULL;
+
     /* RAM */
 
     if ((rom_type&RAM) || (rom_type&SRAM)) {
@@ -222,11 +372,14 @@ int open_rom(char *filename)
     ram_page=alloc_mem_page(nb_ram_page,0x2000);
     active_ram_page=0;	
 
-    if (rom_type&BATTERY) load_ram();
+    if (rom_type&BATTERY) {
+      load_ram();
+      if (rom_type&TIMER) load_rom_timer();
+    }
 
     /* VRAM & INTERNAL RAM */
 
-    if (gameboy_type&COLOR_GAMEBOY) {
+    if (conf.gb_type&COLOR_GAMEBOY) {
       nb_vram_page=2;
       nb_wram_page=8;
     } else {
@@ -447,7 +600,7 @@ void write_pal_info(FILE *stream) {
    */
   
   UINT8 t=PAL_SECTION;
-  UINT16 size=512+96+1;
+  UINT16 size=269;
 
   // SECTION + size
   
@@ -459,14 +612,15 @@ void write_pal_info(FILE *stream) {
   t=1;
   fwrite(&t,sizeof(UINT8),1,stream);
 
-  fwrite(pal_col_bck_gb,sizeof(UINT32),8*4,stream);
-  fwrite(pal_col_obj_gb,sizeof(UINT32),8*4,stream);
-  fwrite(pal_col_bck,sizeof(UINT32),8*4,stream);
-  fwrite(pal_col_obj,sizeof(UINT32),8*4,stream);
-  fwrite(pal_bck,sizeof(UINT32),8,stream);
-  fwrite(pal_obj0,sizeof(UINT32),8,stream);
-  fwrite(pal_obj1,sizeof(UINT32),8,stream);
+  fwrite(pal_col_bck_gb,sizeof(UINT16),8*4,stream);
+  fwrite(pal_col_obj_gb,sizeof(UINT16),8*4,stream);
+  fwrite(pal_col_bck,sizeof(UINT16),8*4,stream);
+  fwrite(pal_col_obj,sizeof(UINT16),8*4,stream);
 
+  fwrite(pal_bck,sizeof(UINT8),4,stream);
+  fwrite(pal_obj,sizeof(UINT8),2*4,stream);
+  /*  fwrite(pal_obj0,sizeof(UINT32),8,stream);
+      fwrite(pal_obj1,sizeof(UINT32),8,stream);*/
 }
 
 int read_pal_info(FILE *stream,int size) {
@@ -483,13 +637,25 @@ int read_pal_info(FILE *stream,int size) {
     fread(&t,sizeof(UINT8),1,stream);
     switch(t) {
     case 1:
-      fread(pal_col_bck_gb,sizeof(UINT32),8*4,stream);
-      fread(pal_col_obj_gb,sizeof(UINT32),8*4,stream);
-      fread(pal_col_bck,sizeof(UINT32),8*4,stream);
-      fread(pal_col_obj,sizeof(UINT32),8*4,stream);
-      fread(pal_bck,sizeof(UINT32),8,stream);
-      fread(pal_obj0,sizeof(UINT32),8,stream);
-      fread(pal_obj1,sizeof(UINT32),8,stream);
+      if (size==(512+96+1)) {
+	//printf("old version\n");
+	/*fread(pal_col_bck_gb,sizeof(UINT32),8*4,stream);
+	  fread(pal_col_obj_gb,sizeof(UINT32),8*4,stream);
+	  fread(pal_col_bck,sizeof(UINT32),8*4,stream);
+	  fread(pal_col_obj,sizeof(UINT32),8*4,stream);
+	  fread(pal_bck,sizeof(UINT32),8,stream);
+	  fread(pal_obj0,sizeof(UINT32),8,stream);
+	  fread(pal_obj1,sizeof(UINT32),8,stream);*/
+	//fread(pal_bck,sizeof(UINT32),8,stream);
+      } else {
+	//printf("new version\n");
+	fread(pal_col_bck_gb,sizeof(UINT16),8*4,stream);
+	fread(pal_col_obj_gb,sizeof(UINT16),8*4,stream);
+	fread(pal_col_bck,sizeof(UINT16),8*4,stream);
+	fread(pal_col_obj,sizeof(UINT16),8*4,stream);
+	fread(pal_bck,sizeof(UINT8),4,stream);
+	fread(pal_obj,sizeof(UINT8),2*4,stream);
+      }
       break;
     default:return -1;
     }
@@ -611,21 +777,76 @@ int read_dma_info(FILE *stream,int size) {
   return 0;
 }
 
+void write_rt_info(FILE *stream) {
+  /* RT INFO is simply defined by id
+     - id=1 => all register  5*UINT8
+     - id=2 => cycle,reg_sel,latch UINT16,2*UINT8
+     size = 11
+   */
+  UINT8 t=RT_SECTION;
+  UINT16 size=11;
+
+  // SECTION + size
+  
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&size,sizeof(UINT16),1,stream);
+
+  // all register
+
+  t=1;
+  fwrite(&t,sizeof(UINT8),1,stream);
+  for(t=0;t<5;t++)
+    fwrite(&rom_timer->reg[t],sizeof(UINT8),1,stream);
+
+  // cycle,reg_sel,latch
+
+  t=2;
+  fwrite(&t,sizeof(UINT8),1,stream);
+  fwrite(&rom_timer->cycle,sizeof(UINT16),1,stream);
+  fwrite(&rom_timer->reg_sel,sizeof(UINT8),1,stream);
+  fwrite(&rom_timer->latch,sizeof(UINT8),1,stream);
+}
+
+int read_rt_info(FILE *stream,int size) {
+  /* RT INFO is simply defined by id
+     - id=1 => all register  5*UINT8
+     - id=2 => cycle,reg_sel,latch UINT16,2*UINT8
+  */
+
+  long end=ftell(stream)+size;
+  UINT8 t;
+  
+  printf("read rt info\n");
+
+  while(ftell(stream)!=end) {
+    fread(&t,sizeof(UINT8),1,stream);
+    switch(t) {
+    case 1:
+      for(t=0;t<5;t++)
+	fread(&rom_timer->reg[t],sizeof(UINT8),1,stream);
+      break;
+    case 2:
+       fread(&rom_timer->cycle,sizeof(UINT16),1,stream);
+       fread(&rom_timer->reg_sel,sizeof(UINT8),1,stream);
+       fread(&rom_timer->latch,sizeof(UINT8),1,stream);
+       break;
+    default:return -1;
+    }
+  }
+  return 0;
+}  
+
 int save_state(int n) {
   FILE *stream;
   int i;
-  char dir[100];
-  char *a=getenv("HOME");
-  
-  dir[0]=0;
-  strcat(dir,a);
-  strcat(dir,"/.gngb/");
-  check_dir(dir);
+  char filename[FILENAME_LEN];
+  char t[5];
 
-  strcat(dir,get_snap_name(rom_name,n));
-  stream=fopen(dir,"wb");
-  if (!stream) {
-    printf("Error while trying to write file %s \n",dir);
+  get_ext_nb(t,n);
+  get_filename_ext(filename,t);
+
+  if (!(stream=fopen(filename,"wb"))) {
+    printf("Error while trying to write file %s \n",filename);
     return 1;
   }
 
@@ -656,6 +877,8 @@ int save_state(int n) {
   write_timer_info(stream);
   write_dma_info(stream);
 
+  if (rom_type&TIMER) write_rt_info(stream);
+
   fclose(stream);
   return 0;
 }
@@ -663,21 +886,17 @@ int save_state(int n) {
 int load_state(int n) {
   FILE *stream;
   int i;
-  char dir[100];
-  char *a=getenv("HOME");
+  char filename[FILENAME_LEN];
+  char t[5];
   UINT8 section_id;
   UINT16 size;
   long end;
 
-  dir[0]=0;
-  strcat(dir,a);
-  strcat(dir,"/.gngb/");
-  check_dir(dir);
+  get_ext_nb(t,n);
+  get_filename_ext(filename,t);
 
-  strcat(dir,get_snap_name(rom_name,n));
-  stream=fopen(dir,"rb");
-  if (!stream) {
-    printf("Error while trying to read file %s \n",dir);
+  if (!(stream=fopen(filename,"rb"))) {
+    printf("Error while trying to read file %s \n",filename);
     return -1;
   }
 
@@ -729,6 +948,9 @@ int load_state(int n) {
     case DMA_SECTION:
       if (read_dma_info(stream,size)<0) goto read_error;
       break;
+    case RT_SECTION:
+      if (read_rt_info(stream,size)<0) goto read_error;
+      break;
     }
   }
   
@@ -739,7 +961,7 @@ int load_state(int n) {
 
  read_error:  
   fclose(stream);
-  printf("Error while reading file %s \n",dir);
+  printf("Error while reading file %s \n",filename);
   return -1;
 }
 

@@ -23,9 +23,9 @@
 #include "global.h"
 #include <SDL/SDL.h>
 
-typedef struct {
-  UINT8 autofs;           /* auto frameskip */
-  UINT8 fs;               /* fullscreen */  
+/*typedef struct {
+  UINT8 autofs; 
+  UINT8 fs;     
   UINT8 sound;
   UINT8 normal_gb;
   UINT8 rumble_on;
@@ -36,7 +36,7 @@ typedef struct {
   int gl_w,gl_h;
 }GNGB_CONF;
 
-GNGB_CONF conf;
+GNGB_CONF conf;*/
 
 /* mbc1 mem mode type */
 
@@ -138,6 +138,8 @@ UINT8 **alloc_mem_page(UINT16 nb_page,UINT32 size);
 void free_mem_page(UINT8 **page,UINT16 nb_page);
 
 void gbmemory_init(void);
+void gbmemory_reset(void);
+
 inline UINT8 mem_read(UINT16 adr);
 inline void mem_write(UINT16 adr,UINT8 v);
 inline UINT8 mem_read_ff(UINT16 adr);
@@ -147,8 +149,6 @@ void push_stack_word(UINT16 v);
 
 inline void do_gdma(void);
 inline void do_hdma(void);
-
-inline void update_key(void);
 
 #define NO_DMA 0
 #define SPRITE_DMA 1
@@ -165,19 +165,7 @@ typedef struct {
 
 extern DMA_INFO dma_info;
 
-#define PAD_UP 0
-#define PAD_DOWN 1
-#define PAD_LEFT 2
-#define PAD_RIGHT 3
-#define PAD_A 4
-#define PAD_B 5
-#define PAD_START 6
-#define PAD_SELECT 7
-
-extern UINT8 gb_pad_code[8];
-extern UINT8 key[256];
-
-UINT8 gb_pad;
+//UINT8 gb_pad;
 
 #endif
 

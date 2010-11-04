@@ -1,0 +1,51 @@
+# GNGB Sample resource file
+
+# Play in fullscreen?
+fullscreen 0
+
+# Have sound?
+sound 1
+
+# Shown FPS
+show_fps 0
+
+# Rumble On ?
+rumble 1
+
+# GL Mode ?
+glmode 0
+gl_size_w 640
+gl_size_h 576
+
+# gameboy type
+# 0 AUTOMATIC
+# 1 NORMAL GAMEBOY
+# 2 SUPER GAMEBOY
+# 4 COLOR GAMEBOY
+gb_type 0
+
+# autoframeskip control
+throttle 1
+autoframeskip 1
+sleep_idle 0
+
+# Interrupt Delay
+dely_int 0
+
+# Joystick number device
+no_joy 0
+
+# Joystick configuration
+# order : AXE_UP,AXE_DOWN,AXE_LEFT,AXE_RIGHT,A,B,START,SELECT
+
+map_joy     1,1,0,0,3,2,0,1  
+
+# Key configuration
+# order : AXE_UP,AXE_DOWN,AXE_LEFT,AXE_RIGHT,A,B,START,SELECT
+# please see SDL_keysym.h for key definition
+# or push F12 during game and the keysym code of
+# the key you press will be printed 
+# (you can do the same for the joystick)
+
+map_key      273,274,276,275,120,119,13,303
+

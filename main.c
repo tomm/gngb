@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "global.h"
+#include "emu.h"
 #include "memory.h"
 #include "cpu.h"
 #include "rom.h"
@@ -27,11 +28,11 @@
 #include "interrupt.h"
 #include "serial.h"
 #include "frame_skip.h"
+#include "emu.h"
+#include "sgb.h"
 
 #include "sound.h"
 #include <SDL/SDL.h>
-
-UINT32 fullscr=0;
 
 extern SDL_Joystick *joy;
 
@@ -47,82 +48,29 @@ void exit_gngb(void)
     close_sound();
   if (conf.serial_on) 
     gbserial_close();
-  
-  exit(0);
-}
- 
-void print_help(void) {
-  printf("gngb [option] game \n");
-  printf("option:\n");
-  printf("-h           : show this help\n");
-  printf("-a           : auto frame skip\n");
-  printf("-g           : force normal gameboy\n");
-  printf("-f           : fullscreen\n");
-  printf("-j joy_num   : use joy_num as joystick\n");
-  printf("-s           : sound on\n");
-  printf("-r           : rumble on\n");
-  printf("-o           : opengl renderer\n");
-  printf("-O WxH       : same as o, but with WxH resolution (instead of double size)\n");
-  exit_gngb();
-}
-  
-
-
-void check_option(int argc,char *argv[]) 
-{
-  char c;
-  conf.normal_gb=0;
-  conf.autofs=0;
-  conf.sound=0;
-  conf.serial_on=0;
-  conf.joy_no=0;
-  conf.fs=0;
-  conf.gb_done=0;
-  conf.rumble_on=0;
-  while((c=getopt(argc,argv,"c:lrghasfj:O:o"))!=EOF) {
-    switch(c) {
-    case 'g':conf.normal_gb=1;break;
-    case 'a':conf.autofs=1;break;
-    case 's':conf.sound=1;break;
-    case 'j':conf.joy_no=atoi(optarg);break;
-    case 'f':conf.fs=1;fullscr|=SDL_FULLSCREEN;break;
-    case 'r':conf.rumble_on=1;break;  
-    case 'l':conf.serial_on=1;gbserial_init(1,NULL);break;
-    case 'c':conf.serial_on=1;gbserial_init(0,optarg);break;
-    case 'h':print_help();break;
-#ifdef SDL_GL
-    case 'O':
-   	sscanf(optarg,"%dx%d",&conf.gl_w,&conf.gl_h);
-	conf.gl=1;fullscr|=SDL_OPENGL;break;
-    case 'o' :
-      conf.gl_w=160*2;
-      conf.gl_h=144*2;
-      conf.gl=1;fullscr|=SDL_OPENGL;break;
-#else
-    case 'o':
-    case 'O':printf("Opengl mode not conpiled in\n");break; 
-#endif
-    }
-  }
 }
 
 int main(int argc,char *argv[])
 {
-  
+
+  setup_default_conf();
+  open_conf();  
   check_option(argc,argv);
   if(optind >= argc)
     print_help();
   
   if (open_rom(argv[optind])) {
     fprintf(stderr,"Error while trying to read file %s \n",argv[optind]);
-    exit_gngb();
+    exit(1);
   }
 
   gblcdc_init();
   gbtimer_init();
   gbcpu_init();
-  init_vram(fullscr);
+  init_vram((conf.fs?SDL_FULLSCREEN:0)|(conf.gl?SDL_OPENGL:0));
   gbmemory_init();
+
+  if (conf.gb_type&SUPER_GAMEBOY) sgb_init();
 
   if(SDL_NumJoysticks()>0){
     joy=SDL_JoystickOpen(conf.joy_no);
@@ -134,15 +82,22 @@ int main(int argc,char *argv[])
     }
   }
 
-  if (conf.sound) gbsound_init();
-
+  if (conf.sound) {
+    gbsound_init();
+    update_sound_reg();
+  }
+  
   while(!conf.gb_done) {
     update_gb();
   }
 
-  if (rom_type&BATTERY) save_ram();
+  if (rom_type&BATTERY) {
+    save_ram();
+    if (rom_type&TIMER) save_rom_timer();
+  }
   exit_gngb();
-  exit(0);
+  return 0;
 }
+
 
 

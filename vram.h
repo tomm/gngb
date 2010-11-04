@@ -34,23 +34,19 @@ GLTEX gl_tex;
 
 #endif
 
-struct mask_shift {
-  unsigned char mask;
-  unsigned char shift;
-};
-
-extern struct mask_shift tab_ms[8];
+int scxoff,scyoff;		/* shift of the screen */
 
 extern UINT16 grey[4];
-extern UINT16 pal_bck[4];
-extern UINT16 pal_obj0[4];
-extern UINT16 pal_obj1[4];
+extern UINT8 pal_bck[4];
+extern UINT8 pal_obj[2][4];
 
 extern UINT16 pal_col_bck_gb[8][4]; // 0BBBBBGGGGGRRRRR
 extern UINT16 pal_col_obj_gb[8][4];
-extern UINT16 pal_col_bck[8][4];    // BBBBBGGGGG1RRRRR avec filtre
+extern UINT16 pal_col_bck[8][4];    // RRRRRGGGGG1BBBBB avec filtre
 extern UINT16 pal_col_obj[8][4];
 extern UINT16 Filter[32768];
+
+extern SDL_Surface *gb_screen;
 
 typedef struct {
   INT16 x,y;
@@ -58,7 +54,8 @@ typedef struct {
   UINT8 sizey;
   UINT8 xflip,yflip;
   UINT8 page,pal_col;
-  UINT16 no_tile,*pal;
+  UINT16 no_tile;
+  UINT8 pal;
   UINT8 priority;
 }GB_SPRITE;
 
@@ -67,12 +64,6 @@ extern UINT8 nb_spr;
 
 UINT8 rb_on;
 
-UINT8 draw_screen_wb(void);
-UINT8 draw_screen_col(void);
-#ifdef SDL_GL
-UINT8 draw_screen_gl_wb(void);
-UINT8 draw_screen_gl_col(void);
-#endif
 extern UINT8 (*draw_screen)(void);
 
 void init_vram(UINT32 flag);

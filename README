@@ -15,7 +15,9 @@ gngb [option] game
 option:
 -h            : show this help
 -a            : auto frame skip
--g            : force normal gameboy
+-G            : force normal gameboy
+-S            : force to super gameboy
+-C            : force to color gameboy
 -f            : fullscreen
 -j joy_num    : use joy_num as joystick 
 -s            : sound on
@@ -34,4 +36,13 @@ X              : A
 F9             : fullscreen on/off
 Shift + F(1-8) : save state (experimental)
 F(1-8)         : load state (experimental)
+F10            : show fps (work only with -a options)
+F11            : reset
+F12            : show key code
+
+Configuration :
+In the file $HOME/.gngb/gngbrc
+a sample file is provide : sample_gngbrc
+
+
 

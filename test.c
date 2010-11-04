@@ -1,34 +1,17 @@
-/* The code of autoframeskip is taken from the emulator XMame 
-   I just modify it for portability  and customization
-*/
+/* The code of autoframeskip is taken from the emulator Mame */
 #include <unistd.h>
 #include <sys/time.h>
 #include <math.h>
-#include <SDL/SDL.h>
 #include "frame_skip.h"
 #include "message.h"
-#include "emu.h"
 
 #define FRAMESKIP_LEVELS 22
 
-#ifndef CLOCKS_PER_SEC        /* Thanks to Benjamin */
-#define CLOCKS_PER_SEC 1000000
-#endif
-
-//typedef clock_t uclock_t;
 typedef long uclock_t;
-#define  UCLOCKS_PER_SEC CLOCKS_PER_SEC
+#define  UCLOCKS_PER_SEC 1000000 
 // #define uclock clock
 
-
-#define TICKS_PER_SEC 1000000 
 #define CPU_FPS 59.7
-
-long get_ticks(void)
-{
-  return SDL_GetTicks()*1000;
-}
-
 
 uclock_t uclock(void)
 {
@@ -43,10 +26,10 @@ uclock_t uclock(void)
 
 static int modframe = 0;
 
-//int throttle=1;
-//int autoframeskip=1;
+int throttle=1;
+int autoframeskip=1;
 int frameskip;
-//int sleep_idle=0;
+int sleep_idle=0;
 int max_autoframeskip=FRAMESKIP_LEVELS;//22;
 
 static int barath_skip_this_frame(void)
@@ -66,13 +49,13 @@ int barath_skip_next_frame(int showfps)
   static float lag_rate = -30;
 
   int skip_this_frame = barath_skip_this_frame();
-  int scratch_time = get_ticks();
+  int scratch_time = uclock();
 #ifdef barath_debug
   int debug_value;
   static float slow_speed = 1;
-  int uclocks_per_frame = slow_speed * TICKS_PER_SEC / CPU_FPS;
+  int uclocks_per_frame = slow_speed * UCLOCKS_PER_SEC / CPU_FPS;
 #else
-  int uclocks_per_frame = TICKS_PER_SEC / CPU_FPS;
+  int uclocks_per_frame = UCLOCKS_PER_SEC / CPU_FPS;
 #endif
   /* project target display time of this frame */
   uclock_t target = prev + (frames_skipped + 1) * uclocks_per_frame;
@@ -89,12 +72,12 @@ int barath_skip_next_frame(int showfps)
     framerateavg = (framerateavg * 5 + 1 - skip_this_frame) / 6.0;
     framerate = (framerate * 5 + framerateavg) / 6.0;
   }
-  if (conf.throttle) {
-    int leading = ((sysload > 33) && conf.sleep_idle) ? 0 : uclocks_per_frame;
+  if (throttle) {
+    int leading = ((sysload > 33) && sleep_idle) ? 0 : uclocks_per_frame;
     int sparetime = target - scratch_time;
 
     /* test for load-induced lags and set sysload */
-    if (conf.autoframeskip && conf.sleep_idle) {
+    if (autoframeskip && sleep_idle) {
       /* if lag is excessive and framerate is low then we have a system hiccup */
       if ((sysload < 100) && (lag_rate > 3) && (frameskip < max_autoframeskip)) {
 	sysload++;
@@ -106,7 +89,7 @@ int barath_skip_next_frame(int showfps)
 	lag_rate = .000011;	/* wait ~10 frames */
       }
     }
-    if (conf.autoframeskip) {
+    if (autoframeskip) {
       /* this is an attempt at proportionate feedback to smooth things out */
       int feedback = ((sparetime - uclocks_per_frame / 2) / (uclocks_per_frame / 3));
 
@@ -127,15 +110,14 @@ int barath_skip_next_frame(int showfps)
       else {
 	/* idle until we hit frame ETA or leading */
 	//profiler_mark(PROFILER_IDLE);
-	while (target - get_ticks() > leading)
-	  if (conf.sleep_idle)
-	    //usleep(100);
-	    SDL_Delay(1);
+	while (target - uclock() > leading)
+	  if (sleep_idle)
+	    usleep(100);
 	//profiler_mark(PROFILER_END);
       }
     }
     /* if we are behind we should force a skip: */
-    else if (conf.autoframeskip && (frameskip < max_autoframeskip)
+    else if (autoframeskip && (frameskip < max_autoframeskip)
 	     && (frames_skipped < 1)) {
       modframe = FRAMESKIP_LEVELS * 2 - frameskip;
       //printf("%d \n",modframe);
@@ -150,7 +132,7 @@ int barath_skip_next_frame(int showfps)
 
     /* calculate average running speed for display purposes */
     scratch_time = curr;
-    curr = get_ticks();
+    curr = uclock();
     avg_uclocks = (avg_uclocks * 5 + curr - scratch_time) / (6 + frames_skipped);
     speed = (speed * 5 + (float) uclocks_per_frame / avg_uclocks) / 6.0;
     /* double-forward average  */
@@ -171,10 +153,9 @@ int barath_skip_next_frame(int showfps)
 
 
   /* give a little grace in case something else sets it off */
-  if (conf.sleep_idle && conf.autoframeskip && (sysload > 33)) {
+  if (sleep_idle && autoframeskip && (sysload > 33)) {
     //profiler_mark(PROFILER_IDLE);
-    //usleep(100);
-    SDL_Delay(1);
+    usleep(100);
     //profiler_mark(PROFILER_END);
   }
   /* advance frameskip counter */
@@ -251,8 +232,3 @@ int frame_skip(int init) {
     return 1;
   }   
   }*/
-
-
-
-
-

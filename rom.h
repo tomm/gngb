@@ -35,20 +35,29 @@
 #define RUMBLE         0x100
 #define SRAM           0x200
 
-char rom_name[256];
+char *rom_name;
 extern INT16 rom_type;
 
+//  rom_gb_suport
 
-#define NORMAL_GAMEBOY 0x01
-#define SUPER_GAMEBOY 0x02
-#define COLOR_GAMEBOY 0x04
-#define COLOR_GAMEBOY_ONLY 0x0c
+//extern UINT8 gameboy_type;
+extern UINT8 rom_gb_type;
 
-extern UINT8 gameboy_type;
+typedef struct {
+  UINT16 cycle;
+  UINT8 reg_sel;
+  UINT8 latch;
+  UINT8 reg[5];
+  UINT8 regl[5];   // register locked
+}ROM_TIMER; // MBC3
+
+ROM_TIMER *rom_timer;
 
 int open_rom(char *filename);
 int save_ram(void);
 int load_ram(void);
+int save_rom_timer(void);
+int load_rom_timer(void);
 
 int save_state(int n);
 int load_state(int n);

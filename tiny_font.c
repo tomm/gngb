@@ -5,7 +5,7 @@ static const struct {
   unsigned int 	 height;
   unsigned int 	 bytes_per_pixel; /* 3:RGB, 4:RGBA */ 
   unsigned char	 pixel_data[576 * 10 * 3];
-} gimp_image = {
+} tiny_font = {
   576, 10, 3,
   "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
   "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"

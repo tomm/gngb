@@ -22,7 +22,7 @@ DEBUG = -g
 PROFILE = -pg -O3
 OPT = -O3  -mpentiumpro  -Wno-unused -funroll-loops -fstrength-reduce -ffast-math -malign-functions=2   -malign-jumps=2 -malign-loops=2 -fomit-frame-pointer -Wall -g
 
-DOBJ = memory_dbg.o vram_dbg.o interrupt_dbg.o cpu_dbg.o rom_dbg.o sound_dbg.o serial_dbg.o frame_skip_dbg.o gngb_debuger.o log.o op.o cpu_info.o mem_info.o code_info.o io_info.o
+DOBJ = memory_dbg.o vram_dbg.o interrupt_dbg.o cpu_dbg.o rom_dbg.o sound_dbg.o serial_dbg.o frame_skip_dbg.o gngb_debuger.o log.o op.o cpu_info.o mem_info.o code_info.o io_info.o message_dbg.o emu_dbg.o sgb_dbg.o
 
 DGTKOBJ = memory_dbg.o vram_dbg.o interrupt_dbg.o cpu_dbg.o rom_dbg.o sound_dbg.o serial_dbg.o frame_skip_dbg.o gtk_debuger.o log.o op.o gtk_cpu_info.o gtk_mem_info.o gtk_code_info.o
 
@@ -50,6 +50,9 @@ gtk_%.o : %.c
 ../sound.c : ../sound.h ../memory.h ../cpu.h 
 ../serial.c : ../serial.h
 ../frame_skip.c : ../frame_skip.h  
+../message.c : ../message.h
+../emu.c : ../emu.h
+../sgb.c : ../sgb.h
 
 gngb_debuger.c : ../rom.h ../memory.h ../cpu.h ../vram.h ../interrupt.h 
 log.c : log.h

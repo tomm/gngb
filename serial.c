@@ -10,6 +10,7 @@
 #include "serial.h"
 #include "interrupt.h"
 #include "memory.h"
+#include "emu.h"
 
 #define TCPPORT 15781
 

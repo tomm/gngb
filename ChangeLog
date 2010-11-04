@@ -1,4 +1,21 @@
-WHAT'S NEW?
+
+WHAT'S NEW ?
+
+ * Try to implement sgb window mask
+ * Fix GB_PAD read/write with SGB (PokeJaune and BMBERMAN work)
+ * Fix RETI instruction (Magical Drop,Megaman5 work)
+ * Add a configuration file (see gngbrc)
+ * Fix an interrupt bug (oracle of season works)
+ * Implement gdma cycle (Magical drop works better but not perfectly)
+
+20010502
+
+ * Add MBC3-TIMER card support (i must test it)
+ * Now message info are draw on the screen
+ * Add some SGB features (maybe there is bug with save/load state)
+ 
+
+20010318
 
  * Fix EI instruction -> doesn't take effect imediately (bubble91 work)
  * Fix vblank interrupt -> doesn't take effect imediately :) (addams family work) 

@@ -20,9 +20,23 @@ void put_log(const char *format,...) {
   va_list pvar;
   va_start(pvar,format);
   if (log_file) {
-    fprintf(log_file,"PC:%04x ROM_PAGE:%d halt:%d IME:%d ",gbcpu->pc.w,active_rom_page,gbcpu->state,gbcpu->int_flag);
+    fprintf(log_file,"PC:%04x LY:%02x LYC:%02x halt:%d IME:%d ",gbcpu->pc.w,CURLINE,CMP_LINE,gbcpu->state,gbcpu->int_flag);
+    switch(LCDCSTAT&0x03) {
+    case 0x00:fprintf(log_file,"HBLANK ");break;
+    case 0x01:fprintf(log_file,"VBLANK ");break;
+    case 0x02:fprintf(log_file,"   OAM ");break;
+    case 0x03:fprintf(log_file,"  VRAM ");break;
+    }
     vfprintf(log_file,format,pvar);
   }
   va_end(pvar);
 }
+
+void put_log_message(const char *mes) {
+  fprintf(log_file,mes);
+  fprintf(log_file,"\n");
+}
+
+
+
 

@@ -14,6 +14,8 @@ void show_io_info(void) {
   }			      
   printf("CURLINE %02x CMPLINE %02x\n",CURLINE,CMP_LINE);
   printf("cycle todo : %d\n",gblcdc->cycle);
+  printf("nb_spr: %d\n",gblcdc->nb_spr);
+  printf("inc_line: %d\n",gblcdc->inc_line);
   printf("******* INTERRUPT *********\n");
   printf("INT_ENABLE %02x INT_FLAG %02x\n",INT_ENABLE,INT_FLAG);
 }

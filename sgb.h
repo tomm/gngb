@@ -16,55 +16,48 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. 
  */
 
+#ifndef SGB_H
+#define SGB_H
 
-#ifndef _CPU_H
-#define _CPU_H
-
+#include <SDL/SDL.h>
+#include <string.h>
 #include "global.h"
+#include "vram.h"
 
-#define FLAG_Z 0x80
-#define FLAG_N 0x40
-#define FLAG_H 0x20
-#define FLAG_C 0x10
-#define FLAG_NZ 0x7F
-#define FLAG_NN 0xBF
-#define FLAG_NH 0xDF
-#define FLAG_NC 0xEF
+#define SGB_WIDTH 256
+#define SGB_HEIGHT 224
 
-typedef union {
-	UINT16 w;
-	struct {
-		UINT8 l,h;
-	}b;
-}REG;
-
-#define SIMPLE_SPEED 0
-#define DOUBLE_SPEED 1
-
-#define HALT_STATE 1
-#define STOP_STATE 2
+#define SGB_PACKSIZE 16		/* 128/8=16 */
 
 typedef struct {
-  REG af;
-  REG bc;
-  REG de;
-  REG hl;
-  REG sp;
-  REG pc;
-  UINT8 int_flag;        // IME 
-  UINT8 ei_flag;    
-  UINT8 di_flag;    
-  UINT8 mode;
-  UINT8 state;
-}GB_CPU;
+  UINT8 on;			/*  on!=0 during a transfert */
+  UINT8 cmd;
+  INT8 nb_pack;		        /* nb packet for the cmd */
+  UINT8 b;
+  UINT8 pack[SGB_PACKSIZE];
+  INT16 b_i;			/* ieme bit du package */
+  UINT8 player;
+}SGB;
 
-extern GB_CPU *gbcpu;
+SGB sgb;
 
-void gbcpu_init(void);  
-void gbcpu_reset(void);
-inline UINT8 gbcpu_exec_one(void);
-inline void update_gb(void);
+UINT16 sgb_pal[4][4];		/* 4 pallete of 4 colour */
+UINT8 sgb_pal_map[20][18];      /* Map of Pallete Tiles */
 
+UINT8 sgb_mask;
+
+extern SDL_Surface *sgb_buf;
+
+#ifdef SDL_GL
+GLTEX sgb_tex;
 #endif
 
-	
+#define sgb_init_transfer() { \
+          sgb.on=1;           \
+          sgb.b_i=-1;         \
+          memset(sgb.pack,0,SGB_PACKSIZE);}
+void sgb_exec_cmd(void);
+
+void sgb_init(void);
+
+#endif

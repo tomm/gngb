@@ -23,15 +23,15 @@ LIBDIRS =  -L/usr/X11R6/lib
 DEBUG = -g 
 PROFILE = -pg -O3
 OPT = -O3  -mpentiumpro  -Wno-unused -funroll-loops -fstrength-reduce -ffast-math -malign-functions=2   -malign-jumps=2 -malign-loops=2 -fomit-frame-pointer -Wall -g
-OBJ = memory.o vram.o interrupt.o  cpu.o rom.o sound.o serial.o frame_skip.o main.o 
+OBJ = memory.o vram.o interrupt.o  cpu.o rom.o sound.o serial.o frame_skip.o main.o message.o emu.o sgb.o
 DOBJ = debuger/memory.o debuger/vram.o debuger/interrupt.o debuger/cpu.o debuger/rom.o debuger/sound.o debuger/serial.o debuger/frame_skip.o debuger/log.o debuger/debuger.o
 
 ifdef GL_MODE
-CFLAGS = $(OPT) -D_REENTRANT -DSDL_GL
-LIBS = -lSDL -lpthread -lGL
+CFLAGS = $(OPT) `sdl-config --cflags`  -DSDL_GL
+LIBS = `sdl-config --libs` -lpthread -lGL
 else
-CFLAGS = $(OPT) -D_REENTRANT 
-LIBS = -lSDL -lpthread 
+CFLAGS = $(OPT) `sdl-config --cflags`
+LIBS = `sdl-config --libs` -lpthread 
 endif
 
 all : gngb
@@ -41,15 +41,19 @@ all : gngb
 %.o : %.c
 	$(CC) -c $(CFLAGS) $(INCDIRS)  $< -o $@
 
-cpu.c : cpu.h memory.h rom.h 
-memory.c : memory.h rom.h cpu.h vram.h interrupt.h sound.h 
-interrupt.c :interrupt.h memory.h cpu.h vram.h 
-rom.c : rom.h memory.h cpu.h 
-vram.c : vram.h memory.h rom.h 
-sound.c : sound.h memory.h cpu.h 
-serial.c : serial.h
+#TODO clean depend
+cpu.c : cpu.h memory.h rom.h interrupt.h serial.h frame_skip.h global.h
+memory.c : memory.h rom.h cpu.h vram.h interrupt.h sound.h serial.h frame_skip.h global.h
+interrupt.c :interrupt.h memory.h cpu.h vram.h global.h 
+rom.c : rom.h memory.h cpu.h frame_skip.h vram.h global.h
+vram.c : vram.h memory.h rom.h interrupt.h global.h
+sound.c : sound.h memory.h cpu.h interrupt.h global.h
+serial.c : serial.h memory.h global.h
 frame_skip.c : frame_skip.h  
-main.c : rom.h memory.h cpu.h vram.h interrupt.h sound.h 
+message.c : message.h
+emu.c : emu.h
+main.c : rom.h memory.h cpu.h vram.h interrupt.h sound.h frame_skip.h global.h serial.h
+sgb.c : sgb.h memory.h
 
 # PROGRAMME
 

@@ -24,6 +24,8 @@
 #include "../vram.h"
 #include "../interrupt.h"
 #include "../serial.h"
+#include "../emu.h"
+#include "../sgb.h"
 
 #include "cpu_info.h"
 #include "io_info.h"
@@ -43,6 +45,12 @@ UINT8 quit_debug=0;
 
 // function
 
+#define MAX_PC 20
+struct {
+  int n;
+  UINT16 tab[MAX_PC];
+}pc_file={0,{0}};
+
 void quit_gb_debug(void);
 void next_inst(void);
 void run(void);
@@ -54,13 +62,16 @@ void unset_log(void);
 void save_state2(void);
 void load_state2(void);
 void show_stack(void);
+void put_log_mes(void);
+void dump_sgb_pal_map(void);
+void dump_sgb_border(void);
+void show_nb_cycle(void);
+void show_last_pc(void);
 
 typedef struct {
   char *id;
   void (*handler)(void);
 }COMMANDE;
-
-UINT16 last;
 
 COMMANDE tab_com[]={
   {"r",show_cpu_info},
@@ -76,12 +87,30 @@ COMMANDE tab_com[]={
   {"save",save_state2},
   {"load",load_state2},
   {"ss",show_stack},
+  {"log",put_log_mes},
+  {"sgb_pal_map",dump_sgb_pal_map},
+  {"sgb_border",dump_sgb_border},
+  {"nbc",show_nb_cycle},
+  {"reset",emu_reset},
+  {"last",show_last_pc},
   {NULL,NULL}
 };
 
 char *arg_line;
 
+extern UINT8 sgb_map[32*32];
+extern UINT8 sgb_att[32*32];
+
 /******************** Debuger function ***************************/
+
+void insert_pc(UINT16 pc) {
+  if (pc_file.n==MAX_PC) {
+    int i;
+    for(i=0;i<MAX_PC-1;i++)
+      pc_file.tab[i]=pc_file.tab[i+1];
+    pc_file.tab[MAX_PC-1]=pc;
+  } else pc_file.tab[pc_file.n++]=pc;
+}
 
 void quit_gb_debug(void)
 {
@@ -89,14 +118,17 @@ void quit_gb_debug(void)
 }
 
 void next_inst(void) {
+  insert_pc(gbcpu->pc.w);
   update_gb();
   show_cpu_info();
 }
 
 void run(void) {
   conf.gb_done=0;
-  while(!conf.gb_done) 
+  while(!conf.gb_done) {
+    insert_pc(gbcpu->pc.w);
     update_gb();
+  }   
   show_cpu_info();
 }
 
@@ -113,16 +145,17 @@ void exec_until(void) {
 
   if (add>0xffff) return;
 
-  if (gbcpu->pc.w==add)    
+  if (gbcpu->pc.w==add) {
+    insert_pc(gbcpu->pc.w);
     update_gb();
+  }
   
   conf.gb_done=0;
   while(!conf.gb_done && gbcpu->pc.w!=add) {
-    last=gbcpu->pc.w;
+    insert_pc(gbcpu->pc.w);
     update_gb();
   }
-  printf("%04x\n",last);
-  
+   
   show_cpu_info();
 }
 
@@ -193,6 +226,57 @@ void show_stack(void) {
 
 }
 
+void put_log_mes(void) {
+  char t[256];
+  char *s=NULL;
+  if ((s=strtok(arg_line," \t"))) 
+    sscanf(s,"%s",t);
+  else {
+    printf("message :");
+    scanf("%s",t);
+  }
+  put_log_message(t);  
+}
+
+void dump_sgb_pal_map(void) {
+  int i,j;
+
+  for(j=0;j<18;j++) {
+    for(i=0;i<20;i++)
+      printf("%d ",sgb_pal_map[i][j]);
+    printf("\n");
+  }
+}
+
+void dump_sgb_border(void) {
+  int i,j;
+  
+  printf("MAP\n");
+  for(j=0;j<28;j++) {
+    for(i=0;i<32;i++) 
+      printf("%02x ",sgb_map[i+j*32]);
+    printf("\n");
+  }
+  printf("ATT\n");
+  for(j=0;j<28;j++) {
+    for(i=0;i<32;i++) 
+      printf("%02x ",sgb_att[i+j*32]);
+    printf("\n");
+  }  
+}
+
+void show_nb_cycle(void) {
+  printf("nb cycle: %d\n",get_nb_cycle());
+}
+
+void show_last_pc(void) {
+  int i;
+  for(i=0;i<pc_file.n;i++)
+    printf("%04x ",pc_file.tab[i]);
+  printf("\n");
+}
+
+
 char *get_arg_line(char *c) {
 
   while((*c)!=0 && (*c)!=' ' && (*c)!='\t') c++;
@@ -201,36 +285,13 @@ char *get_arg_line(char *c) {
   return c;
 }
 
-void check_option(int argc,char *argv[]) 
-{
-  char c;
-  conf.normal_gb=0;
-  conf.autofs=0;
-  conf.sound=0;
-  conf.serial_on=0;
-  conf.joy_no=0;
-  conf.fs=0;
-  conf.gb_done=0;
-  conf.rumble_on=0;
-  while((c=getopt(argc,argv,"c:lrghasfj:"))!=EOF) {
-    switch(c) {
-    case 'g':conf.normal_gb=1;break;
-    case 'a':conf.autofs=1;break;
-    case 's':conf.sound=1;break;
-    case 'j':conf.joy_no=atoi(optarg);break;
-    case 'r':conf.rumble_on=1;break;  
-    case 'l':conf.serial_on=1;gbserial_init(1,NULL);break;
-    case 'c':conf.serial_on=1;gbserial_init(0,optarg);break;
-    }
-  }
-} 
-
 int main(int argc,char *argv[])
 {
   int i;
   char command[20]={0},line[20]={0};
   char *buf_com;
 
+  setup_default_conf();
   check_option(argc,argv);
   if (optind>=argc) exit(1);
   if (open_rom(argv[optind])) exit(1);
@@ -242,6 +303,8 @@ int main(int argc,char *argv[])
   init_vram(0);
 
   open_log();
+
+  sgb_init();
 
   while(!quit_debug && (buf_com=readline("GNGB COM >"))) {
     char flag=0;
