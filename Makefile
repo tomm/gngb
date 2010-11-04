@@ -15,84 +15,59 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-
-# configuration
-#JOYSTICK = 1   old version now use SDL_Joystick
-
-
+CC = gcc
+INCDIRS = -I. -I/usr/include 
+LIBDIRS =  -L/usr/X11R6/lib 
 DEBUG = -g 
 PROFILE = -pg -O3
 OPT = -O3  -mpentiumpro  -Wno-unused -funroll-loops -fstrength-reduce -ffast-math -malign-functions=2   -malign-jumps=2 -malign-loops=2 -fomit-frame-pointer -Wall -g
-OBJ = cpu.o memory.o vram.o interrupt.o rom.o sound.o frame_skip.o 
+OBJ = memory.o vram.o interrupt.o  cpu.o rom.o sound.o frame_skip.o main.o
+DOBJ = memory_dbg.o vram_dbg.o interrupt_dbg.o cpu_dbg.o rom_dbg.o sound_dbg.o frame_skip_dbg.o debuger.o log.o
 
-
-#CFLAGS = $(OPT) -D_REENTRANT -DUSE_LOG
-# CFLAGS = $(PROFILE) -D_REENTRANT
 CFLAGS = $(OPT) -D_REENTRANT
 LIBS = -lSDL -lpthread  
-
-#ifdef JOYSTICK
-#CFLAGS += -DLINUX_JOYSTICK 
-#OBJ += joystick.o 
-#endif
-
-DEP = global.h 
 
 all : gngb
 
 # GNGB
 
-cpu.o : cpu.c cpu.h memory.h rom.h $(DEP)
-	gcc -c $(CFLAGS) cpu.c 
+%_dbg.o : %.c
+	$(CC) -c $(CFLAGS) -DDEBUG $(INCDIRS)  $< -o $@
 
-memory.o : memory.c memory.h rom.h cpu.h vram.h joystick.h interrupt.h sound.h $(DEP)
-	gcc -c $(CFLAGS) memory.c
+%.o : %.c
+	$(CC) -c $(CFLAGS) $(INCDIRS)  $< -o $@
 
-interrupt.o : interrupt.c interrupt.h memory.h cpu.h vram.h $(DEP)
-	gcc -c $(CFLAGS) interrupt.c
+cpu.c : cpu.h memory.h rom.h 
+memory.c : memory.h rom.h cpu.h vram.h joystick.h interrupt.h sound.h 
+interrupt.c :interrupt.h memory.h cpu.h vram.h 
+rom.c : rom.h memory.h cpu.h 
+vram.c : vram.h memory.h rom.h 
+sound.c : sound.h memory.h cpu.h 
+frame_skip.c : frame_skip.h  
+main.c : rom.h memory.h cpu.h vram.h interrupt.h sound.h 
 
-rom.o : rom.c rom.h memory.h cpu.h $(DEP)
-	gcc -c $(CFLAGS) rom.c
-
-vram.o : vram.c vram.h memory.h rom.h $(DEP)
-	gcc -c $(CFLAGS) vram.c
-
-sound.o : sound.c sound.h memory.h cpu.h $(DEP)
-	gcc -c $(CFLAGS) sound.c
-
-frame_skip.o : frame_skip.c frame_skip.h  $(DEP)
-	gcc -c $(CFLAGS) frame_skip.c
-
-joystick.o : joystick.h joystick.c
-	gcc -c $(CFLAGS) joystick.c
-
-main.o : main.c rom.h memory.h cpu.h vram.h interrupt.h sound.h $(DEP)
-	gcc -c $(CFLAGS) main.c
-
-log.o: log.c log.h
-	gcc -c $(CFLAGS) log.c
-
-gngb_debug.o : gngb_debug.c rom.h memory.h cpu.h vram.h interrupt.h $(DEP)
-	gcc -c $(CFLAGS) gngb_debug.c
 
 debuger.o : debuger.c debuger.h 
-	gcc -c -g `glib-config --cflags glib` `libglade-config --cflags gtk` debuger.c $(CFLAGS) 
+	$(CC) -c  `glib-config --cflags glib` `libglade-config --cflags gtk` $(CFLAGS) -DDEBUG debuger.c
 
+log.o : log.c log.h
+	$(CC) -c $(CFLAGS) -DDEBUG log.c
+
+gngb_debug.o : gngb_debug.c rom.h memory.h cpu.h vram.h interrupt.h 
+	gcc -c $(CFLAGS) gngb_debug.c
+
+debuger.c : debuger.h memory.h
 
 # PROGRAMME
 
 gngb_debug : $(OBJ) gngb_debug.o
 	gcc $(CFLAGS) $(OBJ) gngb_debug.o $(LIBS) -lreadline -lncurses -o gngb_debug
 
-gngb : $(OBJ) main.o 
-	gcc $(CFLAGS) $(OBJ)  main.o $(LIBS) -o gngb
+gngb : $(OBJ) 
+	gcc $(CFLAGS) $(OBJ) $(LIBS) -o gngb
 
-debuger :  $(OBJ) debuger.o log.o
-	gcc  $(OBJ) debuger.o log.o $(LIBS) `glib-config --libs glib` `libglade-config --libs gtk` -o debuger
-
-# ACTION
+debuger :  $(DOBJ) 
+	gcc  $(DOBJ) $(LIBS) `glib-config --libs glib` `libglade-config --libs gtk` -o debuger
 
 clean : 
 	rm -f *.o *~
-
-

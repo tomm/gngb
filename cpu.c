@@ -647,7 +647,7 @@ inline UINT8 gbcpu_exec(UINT32 nb_cycle)
 // GAMEBOY OPERANDE 
 
 inline UINT8 unknown(void){
-  return 0;
+  SUB_CYCLE(4);
 }
 
 inline UINT8 nop(void){
@@ -2217,11 +2217,11 @@ inline UINT8 ret_c(void){
 }
 
 inline UINT8 reti(void){
+#ifdef DEBUG
+  put_log("RETI\n");
+#endif 
   POP_R(REG_PC);
   EI;
-#ifdef USE_LOG
-  put_log("EI\n");
-#endif  
   SUB_CYCLE(16);
 }
 
@@ -2396,10 +2396,10 @@ inline UINT8 ld_a_mem_nn(void){
 }
 
 inline UINT8 ei(void){
-  EI;
-#ifdef USE_LOG
+#ifdef DEBUG
   put_log("EI\n");
 #endif
+  EI;
   SUB_CYCLE(4);
 }
 
@@ -4224,7 +4224,7 @@ inline UINT8 gbcpu_exec_one(void)
   case 0xb6: return or_mem_hl();
   case 0xb7: return or_a();
   case 0xb8: return cp_b();
-   case 0xb9: return cp_c();
+  case 0xb9: return cp_c();
   case 0xba: return cp_d();
   case 0xbb: return cp_e();
   case 0xbc: return cp_h();
@@ -4301,6 +4301,7 @@ inline UINT8 gbcpu_exec_one(void)
 
 inline void update_gb(void) {
   static UINT8 a;
+  static UINT32 divid_cycle;
   //static INT16 lcdc_cycle;
   static UINT32 timer_cycle;
   static UINT32 key_cycle;
@@ -4311,7 +4312,12 @@ inline void update_gb(void) {
     if (gbcpu->state!=HALT_STATE) a=gbcpu_exec_one();
     else a=4;
     nb_cycle+=a;
-    DIVID++;
+    divid_cycle+=a;
+
+    if (divid_cycle>256) {
+      DIVID++;
+      divid_cycle=0;
+    }
   
   if (LCDCCONT&0x80) {
     if (lcdc_cycle<=0) {

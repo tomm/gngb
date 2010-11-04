@@ -252,7 +252,7 @@ int open_rom(char *filename)
       printf("SGB\n");
     }
     
-    printf("configuration : ");
+    printf("configuration %02x : ",gb_memory[0x147]);
     switch(gb_memory[0x147]) {
     case 0x00: printf("ROM ONLY\n"); rom_type=ROM_ONLY;break;
     case 0x01: printf("MBC1\n"); rom_type=MBC1;break;
@@ -278,7 +278,7 @@ int open_rom(char *filename)
     case 0x1e: printf("MBC5+RUMBLE+SRAM+BATTERY\n"); rom_type=MBC5|RUMBLE|SRAM|BATTERY;break;
     default: printf("unknown %02x \n",gb_memory[0x147]); rom_type=UNKNOW_TYPE;break;
     }
-    printf("ROM size : %u * 16 kbyte \n", 1 << gb_memory[0x148] << 1 );
+    printf("ROM size %d : %u * 16 kbyte \n",gb_memory[0x148],1<<gb_memory[0x148]<<1);
       
     /* ROM */
        
@@ -296,13 +296,12 @@ int open_rom(char *filename)
     /* RAM */
 
     if ((rom_type&RAM) || (rom_type&SRAM)) {
-      printf("ram id %02x\n",gb_memory[0x149]);
       switch(gb_memory[0x149]) {
-      case 0:printf("RAM size : 0 ?????\n");nb_ram_page=1;ram_mask=0x00;break;
-      case 1:printf("RAM size : 2 kbyte\n");nb_ram_page=1;ram_mask=0x00;break;
-      case 2:printf("RAM size : 8 kbyte\n");nb_ram_page=1;ram_mask=0x00;break;
-      case 3:printf("RAM size : 32 kbyte\n");nb_ram_page=4;ram_mask=0x03;break;
-      case 4:printf("RAM size : 128 kbyte\n");nb_ram_page=16;ram_mask=0x0f;break;
+      case 0:printf("RAM size %02x : 0 ?????\n",gb_memory[0x149]);nb_ram_page=1;ram_mask=0x00;break;
+      case 1:printf("RAM size %02x : 2 kbyte\n",gb_memory[0x149]);nb_ram_page=1;ram_mask=0x00;break;
+      case 2:printf("RAM size %02x : 8 kbyte\n",gb_memory[0x149]);nb_ram_page=1;ram_mask=0x00;break;
+      case 3:printf("RAM size %02x : 32 kbyte\n",gb_memory[0x149]);nb_ram_page=4;ram_mask=0x03;break;
+      case 4:printf("RAM size %02x : 128 kbyte\n",gb_memory[0x149]);nb_ram_page=16;ram_mask=0x0f;break;
       }
           
     } else {

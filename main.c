@@ -26,10 +26,6 @@
 #include "vram.h"
 #include "interrupt.h"
 
-#ifdef LINUX_JOYSTICK
-#include "joystick.h"
-#endif
-
 #include "sound.h"
 #include <SDL/SDL.h>
 
@@ -42,9 +38,6 @@ void exit_gngb(void)
   if (vram_page) free_mem_page(vram_page,nb_vram_page);
   if (wram_page) free_mem_page(wram_page,nb_wram_page);
 
-#ifdef LINUX_JOYSTICK
-  if (my_joy) remove_joy(my_joy);
-#endif
   close_vram();
   if (conf.sound)
     close_sound();
@@ -61,6 +54,7 @@ void print_help(void) {
   printf("-f           : fullscreen\n");
   printf("-j joy_num   : use joy_num as joystick\n");
   printf("-s           : sound on\n");
+  printf("-r           : rumble on\n");
   exit_gngb();
 }
   
@@ -75,36 +69,19 @@ void check_option(int argc,char *argv[])
   conf.joy_no=0;
   conf.fs=0;
   conf.gb_done=0;
-  while((c=getopt(argc,argv,"ghasfj:"))!=EOF) {
+  conf.rumble_on=0;
+  while((c=getopt(argc,argv,"rghasfj:"))!=EOF) {
     switch(c) {
     case 'g':conf.normal_gb=1;break;
     case 'a':conf.autofs=1;break;
     case 's':conf.sound=1;break;
     case 'j':conf.joy_no=atoi(optarg);break;
     case 'f':conf.fs=1;fullscr|=SDL_FULLSCREEN;break;
+    case 'r':conf.rumble_on=1;break;  
     case 'h':print_help();break;
     }
   }
 }
-
-void remap_gb_pad(void) {
-  char *text_str[]={"up","down","left","right","A","B","Start","Select"};
-  int i=0;
-  SDL_Event event;
-
-  printf("%s\n",text_str[i]);
-  while(i<7) {
-    while(SDL_PollEvent(&event)) {
-      switch (event.type) {
-      case SDL_KEYDOWN:
-	printf("%d\n",event.key.keysym.scancode);
-	gb_pad_code[i]=event.key.keysym.scancode;
-	printf("%s\n",text_str[++i]);
-	break;
-      }
-    }
-  }
-}   
 
 int main(int argc,char *argv[])
 {
@@ -114,18 +91,12 @@ int main(int argc,char *argv[])
     print_help();
   
   if (open_rom(argv[optind])) {
-    printf("Error while trying to read file %s \n",argv[optind]);
+    fprintf(stderr,"Error while trying to read file %s \n",argv[optind]);
     exit_gngb();
   }
 
-#ifdef LINUX_JOYSTICK 
-  my_joy=install_joy(JOY_DEVICE0);
-#endif
-
   gbcpu_init();
-  init_gb_memory();
   init_vram(fullscr);
-  if (conf.sound) init_sound();
 
   if(SDL_NumJoysticks()>0){
     joy=SDL_JoystickOpen(conf.joy_no);
@@ -137,10 +108,11 @@ int main(int argc,char *argv[])
     }
   }
 
+  init_gb_memory(SDL_JoystickNumAxes(joy));
+  if (conf.sound) init_sound();
+  
   while(!conf.gb_done) {
     update_gb();
-    //main_loop();
-
   }
 
   if (rom_type&BATTERY) save_ram();

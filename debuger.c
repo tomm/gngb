@@ -282,7 +282,7 @@ void on_file_selector_ok_but_clicked(GtkButton *button,gpointer user_data) {
     return;
   }
   gbcpu_init();
-  init_gb_memory();
+  init_gb_memory(SDL_JoystickName(conf.joy_no));
   if (gameboy_type&COLOR_GAMEBOY) draw_screen=draw_screen_col;
   else draw_screen=draw_screen_wb;
   gtk_widget_hide(app.file_selector);
@@ -483,9 +483,6 @@ void quit_app(void) {
   if (wram_page) free_mem_page(wram_page,nb_wram_page);
   close_vram();
   if (conf.sound) close_sound();
-#ifdef LINUX_JOYSTICK
-  if (my_joy) remove_joy(my_joy);
-#endif
   /* DEBUGER */
   exit(0);
 }
@@ -705,16 +702,12 @@ int main(int argc,char **argv) {
 
   gtk_init(&argc,&argv);
   glade_init();
-#ifdef LINUX_JOYSTICK  // plus utiliser
-  my_joy=install_joy(JOY_DEVICE0);
-#endif
 
   open_log();
 
   init_tab_op();
  
   gbcpu_init();
-  init_gb_memory();
   init_vram(0);
 
   if(SDL_NumJoysticks()>0){
@@ -727,6 +720,8 @@ int main(int argc,char **argv) {
     }
   }
   
+  init_gb_memory(SDL_JoystickName(conf.joy_no));
+
   init_app();
   gtk_main();
 

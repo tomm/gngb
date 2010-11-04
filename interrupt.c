@@ -24,7 +24,7 @@
 #include "vram.h"
 #include "cpu.h"
 
-#ifdef USE_LOG
+#ifdef DEBUG
 #include "log.h"
 #endif
 
@@ -82,10 +82,9 @@ void go2simple_speed(void)
 }
 
 inline UINT8 make_interrupt(UINT8 n) {
-  //printf("try int %d  %02x %02x %d\n",n,INT_ENABLE,INT_FLAG,gbcpu->int_flag);
   if ((INT_ENABLE&n) && (gbcpu->int_flag)) {
-#ifdef USE_LOG
-    put_log("make int %d CURLINE %d CMP_LINE %d\n",n,CURLINE,CMP_LINE);
+#ifdef DEBUG
+    put_log("make int %d CURLINE %d CMP_LINE %d INT_ENABLE %02x \n",n,CURLINE,CMP_LINE,INT_ENABLE);
 #endif
     INT_FLAG&=(~n);
     gbcpu->int_flag=0;
@@ -115,23 +114,23 @@ inline UINT16 lcdc_update(void)  // LCDC is on
       else*/ INT_FLAG|=VBLANK_INT;
   }
   
+ 
+  
   if (CURLINE==0x9a) {
     CURLINE=0;
     if (LCDCCONT&0x80) {
      if (conf.autofs) {
-      skip_this_frame=skip_next_frame;
-      //      skip_next_frame=barath_skip_next_frame(0);
-      if (!skip_this_frame) blit_screen();
+       skip_this_frame=skip_next_frame;
+       //      skip_next_frame=barath_skip_next_frame(0);
+       if (!skip_this_frame) blit_screen();
      }
      else blit_screen();
     }
     lcdc_mode=OAM_PER;
     // printf("%d \n",get_nb_cycle());
   }
-    
   LCDCSTAT&=0xf8;
   if (CMP_LINE==CURLINE) LCDCSTAT|=0x04;
-  
   switch(lcdc_mode) {
   case HBLANK_PER:       // HBLANK
     if (LCDCSTAT&0x08 && LCDCCONT&0x80) INT_FLAG|=LCDC_INT;
@@ -183,7 +182,7 @@ inline void halt_update(void) // gbcpu->state=HALT_STATE
   if (INT_FLAG&INT_ENABLE) {
     gbcpu->state=0;
     gbcpu->pc.w++;
-#ifdef USE_LOG
+#ifdef DEBUG
     put_log("stop halt\n");
 #endif
   }

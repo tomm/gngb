@@ -56,6 +56,8 @@ typedef struct {
 GB_SPRITE gb_spr[11];
 extern UINT8 nb_spr;
 
+UINT8 rb_on;
+
 UINT8 draw_screen_wb(void);
 UINT8 draw_screen_col(void);
 extern UINT8 (*draw_screen)(void);

@@ -27,6 +27,9 @@
 #define SCREEN_Y 144
 #define BIT_PER_PIXEL 16
 
+INT8 rb_tab[]={0,-2,2,-2,2,0,0,0,0,0,0,0,0};
+UINT8 rb_shift=0;
+
 struct mask_shift tab_ms[8]={
   { 0x80,7 },
   { 0x40,6 },
@@ -127,8 +130,15 @@ void init_vram(UINT32 flag)
   atexit(SDL_Quit);   
   
   screen=SDL_SetVideoMode(SCREEN_X,SCREEN_Y,BIT_PER_PIXEL,SDL_HWSURFACE|flag);
+  back=SDL_CreateRGBSurface(SDL_HWSURFACE,SCREEN_X,SCREEN_Y,BIT_PER_PIXEL,
+			    0xf800,0x7e0,0x1f,0x00);
   if (screen==NULL) {
     printf("Couldn't set %dx%dx%d video mode: %s\n",
+	   SCREEN_X,SCREEN_Y,BIT_PER_PIXEL,SDL_GetError());
+    exit(1);
+  }
+  if (back==NULL) {
+    printf("Couldn't allocate %dx%dx%d SDL_Surface: %s\n",
 	   SCREEN_X,SCREEN_Y,BIT_PER_PIXEL,SDL_GetError());
     exit(1);
   }
@@ -220,13 +230,10 @@ inline void draw_spr_col(UINT16 *buf,GB_SPRITE *sp)
 	  if (!(back_col[sp->x+nx][CURLINE]&0x0f)) 
 	    buf[sp->x+nx]=pal_col_obj[sp->pal_col][c];
 	}
- 	//else if (!sp->priority) buf[sp->x+nx]=pal_col_obj[sp->pal_col][c].alleg_tp;
 	else if (!sp->priority) buf[sp->x+nx]=pal_col_obj[sp->pal_col][c];
-	//else if (!(back_col[sp->x+nx][CURLINE]&0x0f)) buf[sp->x+nx]=pal_col_obj[sp->pal_col][c].alleg_tp;
 	else if (!(back_col[sp->x+nx][CURLINE]&0x0f)) buf[sp->x+nx]=pal_col_obj[sp->pal_col][c];
       }
     }
-    //else buf[sp->x+nx]=pal_col_obj[sp->pal_col][c].alleg_tp;
     else buf[sp->x+nx]=pal_col_obj[sp->pal_col][c];
   }
 }
@@ -311,7 +318,6 @@ inline void draw_back_col(UINT16 *buf)
     bit0=((*tp)&tab_ms[wbit].mask)>>tab_ms[wbit].shift;
     bit1=((*(tp+1))&tab_ms[wbit].mask)>>tab_ms[wbit].shift;
     c=(bit1<<1)|bit0;
-    //buf[x]=pal_col_bck[p][c].alleg_tp;
     buf[x]=pal_col_bck[p][c];
     if (!(att&0x80)) back_col[x][CURLINE]=c;
     else back_col[x+sx][CURLINE]=0x80+c;
@@ -338,7 +344,6 @@ inline void draw_back_col(UINT16 *buf)
       bit0=((*tp)&tab_ms[wbit].mask)>>tab_ms[wbit].shift;
       bit1=((*(tp+1))&tab_ms[wbit].mask)>>tab_ms[wbit].shift;
       c=(bit1<<1)|bit0;
-      //buf[x+sx]=pal_col_bck[p][c].alleg_tp;
       buf[x+sx]=pal_col_bck[p][c];
       if (!(att&0x80)) back_col[x+sx][CURLINE]=c;
       else back_col[x+sx][CURLINE]=0x80+c;
@@ -436,7 +441,6 @@ inline void draw_win_col(UINT16 *buf)
 	bit0=((*tp)&tab_ms[wbit].mask)>>tab_ms[wbit].shift;
 	bit1=((*(tp+1))&tab_ms[wbit].mask)>>tab_ms[wbit].shift;
 	c=(bit1<<1)|bit0;
-	//buf[x+sx]=pal_col_bck[p][c].alleg_tp;
 	buf[x+sx]=pal_col_bck[p][c];
 	if (!(att&0x80)) back_col[x+sx][CURLINE]=c;
 	else back_col[x+sx][CURLINE]=0x80+c;	    
@@ -480,8 +484,7 @@ inline void draw_win(UINT16 *buf)
 
 UINT8 draw_screen_wb(void)
 {
-  //UINT16 *buf=(UINT16 *)(back->line[CURLINE]);
-  UINT16 *buf=(UINT16 *)screen->pixels + CURLINE*SCREEN_X;
+  UINT16 *buf=(UINT16 *)back->pixels + CURLINE*SCREEN_X;
   if (SDL_LockSurface(screen)<0) printf("can't lock surface\n");
   if (LCDCCONT&0x01) draw_back(buf);
   if (LCDCCONT&0x20) draw_win(buf);
@@ -492,8 +495,7 @@ UINT8 draw_screen_wb(void)
 
 UINT8 draw_screen_col(void) 
 {
-  //UINT16 *buf=(UINT16 *)(back->line[CURLINE]);
-  UINT16 *buf=(UINT16 *)screen->pixels + CURLINE*SCREEN_X;
+  UINT16 *buf=(UINT16 *)back->pixels + CURLINE*SCREEN_X;
   if (SDL_LockSurface(screen)<0) printf("can't lock surface\n");
   draw_back_col(buf);
   if (LCDCCONT&0x20) draw_win_col(buf);
@@ -506,7 +508,7 @@ inline void clear_screen(void)
 {
   UINT8 i,j;
  
-  SDL_FillRect(screen,NULL,pal_bck[0]);
+  SDL_FillRect(back,NULL,pal_bck[0]);
   for(i=0;i<170;i++)
     for(j=0;j<170;j++)
       back_col[i][j]=0x00;
@@ -514,6 +516,16 @@ inline void clear_screen(void)
 
 inline void blit_screen(void)
 {
+  SDL_Rect scrR={0,0,SCREEN_X,SCREEN_Y};
+  SDL_Rect dstR={rb_tab[rb_shift],0,SCREEN_X-rb_tab[rb_shift],SCREEN_Y};
+  if (rb_on) {
+    rb_shift++;
+    if (rb_shift>12) {
+      rb_on=0;
+      rb_shift=0;
+    }
+  }
+  SDL_BlitSurface(back,&scrR,screen,&dstR);
   SDL_Flip(screen);
   if ((!(LCDCCONT&0x20) || !(LCDCCONT&0x01)) && (gameboy_type&NORMAL_GAMEBOY))
       clear_screen();

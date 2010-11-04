@@ -164,7 +164,7 @@ void write_sound_reg(UINT16 add,UINT8 val)
     snd_m2.freq=((UINT16)(snd_m2.freq_lo))|(((UINT16)(snd_m2.freq_hi))<<8); // update freq
     snd_m2.sample=(float)sample_rate*freq_table[snd_m2.freq];
     snd_m2.sample_dut=(float)snd_m2.sample/wave_duty[snd_m2.duty];
-    break;
+     break;
 
     /*--- Sound Mode 3 ---*/
   case 0xFF1A : // NR30
@@ -172,7 +172,9 @@ void write_sound_reg(UINT16 add,UINT8 val)
     break;
   case 0xFF1B : // NR31
     snd_m3.len=val;
-    snd_m3.sample_len=(float)sample_rate*(256.0-snd_m3.len)/2.0;
+    // snd_m3.sample_len=(float)sample_rate*(256.0-snd_m3.len)/2.0;
+    snd_m3.sample_len=(float)sample_rate*(256.0-snd_m3.len)*(1.0/256.0);
+    // printf("SNDM3 LEN WRITE %d \n",snd_m3.len);
     break;
   case 0xFF1C : // NR32
     snd_m3.level=(val&0x60)>>5;
@@ -538,7 +540,7 @@ inline INT8 update_snd_m3(void)
       //     snd_m3.is_on=0;
       snd_g.Sound3_On_Off=0;
       sp=0;
-      lp=0;
+      // lp=0;
       cp=0;
       return 0;
       
@@ -589,8 +591,14 @@ inline INT8 update_snd_m4(void)
   static int cur_env_step;
   static UINT32 poly_counter;
   int vol;
+  static int rol=0;
   float j;
 
+  /* prohibited code */
+  if ((snd_m4.poly&0x80)>>4==0xE || (snd_m4.poly&0x80)>>4==0xF)
+    return 0;
+  if (snd_m4.sample==0)
+    return 0;
 
   if (snd_m4.initial) {
     snd_m4.initial=0;
@@ -661,17 +669,29 @@ inline INT8 update_snd_m4(void)
   if (env<0) env=0;
 
   vol=vol_table[env];
-
+  
   if (snd_m4.sample<0.8) {
     vol=vol*(snd_m4.sample+0.2);
   }
-
+  
   if (cp+1.0>snd_m4.sample) {
 
     for (j=0;j<1.0;j+=snd_m4.sample) {
       // if (snd_m4.sample<1.0) printf("%f %d\n",j,sp);
+      // rol=vol;
       sp =(poly_counter&1);
-
+      /*
+      if (snd_m4.sample<1.0) {
+	if (sp) 
+	  {rol+=vol;rol/=2.0;}
+	else
+	  {rol-=vol;rol/=2.0;}
+      } else {
+	if (sp) 
+	  rol=vol;
+	else
+	  rol=-vol;
+	  }*/
       if (snd_m4.poly&0x08)
 	poly_counter ^= (((poly_counter&0x1)^((poly_counter&0x2)>>1))<<7);
       else
@@ -691,6 +711,8 @@ inline INT8 update_snd_m4(void)
   } else
     cp+=1.0;
 
+
+  //  return rol;
 
   if (!sp)
     return -vol;
@@ -769,8 +791,8 @@ void update_gb_sound(UINT32 snd_len)
     l*=snd_g.SO2_OutputLevel;
     r*=snd_g.SO1_OutputLevel;
 
-    l=l>>2;
-    r=r>>2;
+    l=l>>3;
+    r=r>>3;
 
 
     if (l<-127) l=-127;

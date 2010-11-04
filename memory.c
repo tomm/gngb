@@ -28,23 +28,15 @@
 #include "frame_skip.h"
 #include "sound.h"
 
-#ifdef LINUX_JOYSTICK
-#include "joystick.h"
-#endif
-
-#ifdef USE_LOG
+#ifdef DEBUG
 #include "log.h"
 #endif
 
-INT32 joy_axis[2]={0};
+INT32 *joy_axis;
 UINT32 joy_but=0;
 
 UINT8 key[256];
 UINT8 gb_pad_code[8]={98,104,100,102,53,52,36,62};
-
-#ifdef LINUX_JOYSTICK
-JOY_CONTROL *my_joy=0;
-#endif
 
 UINT8 rom_mask;
 UINT16 nb_rom_page;
@@ -100,10 +92,9 @@ void select_default(UINT16 adr,UINT8 v)
 void mbc1_select_page(UINT16 adr,UINT8 v)
 {
   UINT8 bank=v/*&0x1f*/;
-  // printf("%d \n",v);
   if (bank<1) bank=1;
   active_rom_page=bank;
-#ifdef USE_LOG
+#ifdef DEBUG
   put_log2("mbc1 select page %d\n",active_rom_page);
 #endif
 }
@@ -116,7 +107,7 @@ void mbc2_select_page(UINT16 adr,UINT8 v)
     if (bank<1) bank=1;
     active_rom_page=bank;
   }
-#ifdef USE_LOG
+#ifdef DEBUG
   put_log2("mbc2 select page %d\n",active_rom_page);
 #endif
 }
@@ -126,7 +117,7 @@ void mbc3_select_page(UINT16 adr,UINT8 v)
   UINT8 bank=v&0x7f;
   if (bank<1) bank=1;
   active_rom_page=bank;
-#ifdef USE_LOG
+#ifdef DEBUG
   put_log2("mbc3 select page %d\n",active_rom_page);
 #endif
 }
@@ -141,13 +132,13 @@ void mbc5_select_page(UINT16 adr,UINT8 v)
   }
   bank=mbc5_lower+((mbc5_upper)?256:0);
   active_rom_page=bank&rom_mask;
-#ifdef USE_LOG
+#ifdef DEBUG
   put_log2("mbc5 select page %d\n",active_rom_page);
 #endif
 }
      
 
-void init_gb_memory(void)
+void init_gb_memory(int nb_axe)
 {
   memset(key,0,256);
   memset(oam_space,0,0xa0);
@@ -157,6 +148,10 @@ void init_gb_memory(void)
 
   dma_info.type=NO_DMA;
 
+  if (nb_axe<2) nb_axe=2;
+  joy_axis=(INT32 *)malloc(sizeof(INT32)*nb_axe);
+  memset(joy_axis,0,sizeof(INT32)*nb_axe);
+  
   if (rom_type&MBC1) select_rom_page=mbc1_select_page;
   else if (rom_type&MBC2) select_rom_page=mbc2_select_page;
   else if (rom_type&MBC3) select_rom_page=mbc3_select_page;
@@ -290,8 +285,6 @@ inline void do_dma(UINT8 v)
 
 inline UINT8 mem_read_ff(UINT16 adr)
 {
-  // if (adr==0xff04) printf("%04x %02x\n",gbcpu->pc.w,DIVID);
-
   if (adr==0xff00) {
      update_gb_pad();
     if (GB_PAD&0x10) GB_PAD=((~(gb_pad&0x0f))&0xdf);
@@ -495,22 +488,26 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
     else GB_PAD=v;
     break;
   case 0xff0f:
-#ifdef USE_LOG
+#ifdef DEBUG
     put_log("write to INT_FLAG %02x\n",v);
 #endif
     INT_FLAG=v&0x1f;break;
-  case 0xffff:INT_ENABLE=v&0x1f;break;
+  case 0xffff:
+    INT_ENABLE=v&0x1f;
+#ifdef DEBUG
+    put_log("write %02x to INT_ENABLE %02x\n",v,INT_ENABLE);
+#endif
+    break;
   case 0xff04:DIVID=0;break;
   case 0xff07:
     if (v&4) {
       UINT8 a;
-      if (gbcpu->mode==SIMPLE_SPEED) a=0;
-      else a=1;
+      
       switch(v&3) {
-      case 0: timer_clk_inc=1024<<a;break;
-      case 1: timer_clk_inc=16<<a;break;
-      case 2: timer_clk_inc=64<<a;break;
-      case 3: timer_clk_inc=256<<a;break;
+      case 0: timer_clk_inc=1024;break;
+      case 1: timer_clk_inc=16;break;
+      case 2: timer_clk_inc=64;break;
+      case 3: timer_clk_inc=256;break;
       }
     } else timer_clk_inc=0;
     TIME_CONTROL=v;
@@ -554,6 +551,8 @@ inline void mem_write_ff(UINT16 adr,UINT8 v) {
 inline void mem_write(UINT16 adr,UINT8 v) 
 {
   UINT8 bk;
+
+  //  if (adr==0xc664) printf("%02x %d \n",INT_FLAG,v);
   
   if (adr>=0xfe00 && adr<0xfea0) {
     oam_space[adr-0xfe00]=v;
@@ -586,8 +585,9 @@ inline void mem_write(UINT16 adr,UINT8 v)
       else active_ram_page=(v)&ram_mask;
     }
     else active_ram_page=(v)&ram_mask;
-#ifdef USE_LOG
-    put_log2("select RAM page %d\n",active_ram_page);
+    if (rom_type&RUMBLE && conf.rumble_on && v&0x08) rb_on=1;
+#ifdef DEBUG
+    put_log2("select RAM page %d v %d \n",active_ram_page,v);
 #endif
     return;
   case 6:
@@ -607,45 +607,21 @@ inline void mem_write(UINT16 adr,UINT8 v)
 }
 
 void update_gb_pad(void) {
-//  read_joy(my_joy);
-#ifdef LINUX_JOYSTICK
-  if ((my_joy->but&0x01) || (key[gb_pad_code[PAD_START]])) gb_pad|=0x08;   // Start
-  if ((my_joy->but&0x02) || (key[gb_pad_code[PAD_SELECT]])) gb_pad|=0x04;  // Select
-  if ((my_joy->but&0x08) || (key[gb_pad_code[PAD_A]])) gb_pad|=0x01;     // A
-  if ((my_joy->but&0x04) || (key[gb_pad_code[PAD_B]])) gb_pad|=0x02; // B
-
-  if ((my_joy->x<0) || (key[gb_pad_code[PAD_LEFT]])) gb_pad|=0x20;
-  if ((my_joy->x>0) || (key[gb_pad_code[PAD_RIGHT]])) gb_pad|=0x10;
-  if ((my_joy->y<0) || (key[gb_pad_code[PAD_UP]])) gb_pad|=0x40;
-  if ((my_joy->y>0) || (key[gb_pad_code[PAD_DOWN]])) gb_pad|=0x80;
-#else
-  /*x=SDL_JoystickGetAxis(joy,0);
-    y=SDL_JoystickGetAxis(joy,1);
-    b=SDL_JoystickGetButton(joy,0);
-    b|=SDL_JoystickGetButton(joy,1)<<1;
-    b|=SDL_JoystickGetButton(joy,2)<<2;
-    b|=SDL_JoystickGetButton(joy,3)<<3;*/
   gb_pad=0;
   if ((joy_but&0x01) || (key[gb_pad_code[PAD_START]])) gb_pad|=0x08;   // Start
   if ((joy_but&0x02) || (key[gb_pad_code[PAD_SELECT]])) gb_pad|=0x04;  // Select
   if ((joy_but&0x08) || (key[gb_pad_code[PAD_A]])) gb_pad|=0x01;     // A
   if ((joy_but&0x04) || (key[gb_pad_code[PAD_B]])) gb_pad|=0x02; // B
 
-  if ((joy_axis[0]<0) || (key[gb_pad_code[PAD_LEFT]])) gb_pad|=0x20;
-  if ((joy_axis[0]>0) || (key[gb_pad_code[PAD_RIGHT]])) gb_pad|=0x10;
-  if ((joy_axis[1]<0) || (key[gb_pad_code[PAD_UP]])) gb_pad|=0x40;
-  if ((joy_axis[1]>0) || (key[gb_pad_code[PAD_DOWN]])) gb_pad|=0x80;
-#endif
+  if ((joy_axis[0]<-1000) || (key[gb_pad_code[PAD_LEFT]])) gb_pad|=0x20;
+  if ((joy_axis[0]>1000) || (key[gb_pad_code[PAD_RIGHT]])) gb_pad|=0x10;
+  if ((joy_axis[1]<-1000) || (key[gb_pad_code[PAD_UP]])) gb_pad|=0x40;
+  if ((joy_axis[1]>1000) || (key[gb_pad_code[PAD_DOWN]])) gb_pad|=0x80;
 }
 
 
 inline void update_key(void) {
   SDL_Event event;
-
-#ifdef LINUX_JOYSTICK
-  read_joy(my_joy);
-#endif
-
   while(SDL_PollEvent(&event)) {
     switch (event.type) {
     case SDL_KEYUP:
@@ -655,8 +631,10 @@ inline void update_key(void) {
       key[event.key.keysym.scancode]=1;
       switch(event.key.keysym.scancode) {
       case 9: conf.gb_done=1;break; // ESC
+	/* FIXME : SaveSnap are experimental */
       case 67:if (!save_snap()) printf("save snap done\n");break;
       case 68:if (!load_snap()) printf("load snap done\n");break;
+      case 69:SDL_WM_ToggleFullScreen(screen);break;
       }
       break;
     case SDL_JOYAXISMOTION:

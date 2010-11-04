@@ -1,0 +1,9 @@
+WHAT'S NEW?
+
+20010219
+ * Fix a bug in the joystick code that crash the emulator (thanks for Aaron
+Rogers for reporting it
+ * Length conter of sound mode 3 wasn't working
+ * Timer cycle speed is the same for GB and GBC
+ * "Simulation" of the Rumble, -r for enable it (The screen will shake)
+

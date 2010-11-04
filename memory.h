@@ -23,17 +23,14 @@
 #include "global.h"
 #include <SDL/SDL.h>
 
-#ifdef LINUX_JOYSTICK
-#include "joystick.h"
-#endif
-
 typedef struct {
-  UINT8 autofs;
-  UINT8 fs;
+  UINT8 autofs;           /* auto frameskip */
+  UINT8 fs;               /* fullscreen */  
   UINT8 sound;
-  UINT8 joy_no;
   UINT8 normal_gb;
+  UINT8 rumble_on;
   UINT8 gb_done;
+  UINT8 joy_no;
 }GNGB_CONF;
 
 GNGB_CONF conf;
@@ -135,7 +132,7 @@ extern UINT8 ram_mask;
 UINT8 **alloc_mem_page(UINT16 nb_page,UINT32 size);
 void free_mem_page(UINT8 **page,UINT16 nb_page);
 
-void init_gb_memory(void);
+void init_gb_memory(int nb_axe);
 inline UINT8 mem_read(UINT16 adr);
 inline void mem_write(UINT16 adr,UINT8 v);
 inline UINT8 mem_read_ff(UINT16 adr);
@@ -162,10 +159,6 @@ typedef struct {
 }DMA_INFO;
 
 extern DMA_INFO dma_info;
-
-#ifdef LINUX_JOYSTICK
-extern JOY_CONTROL *my_joy;
-#endif
 
 #define PAD_UP 0
 #define PAD_DOWN 1

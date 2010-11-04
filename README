@@ -18,4 +18,5 @@ option:
 -f            : fullscreen
 -j joy_num    : use joy_num as joystick 
 -s            : sound on
+-r            : rumble on
 
