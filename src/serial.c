@@ -183,6 +183,8 @@ void gbserial_init(int server_side,char *servername) {
   gbserial.check=0;
   gbserial.wait=0;
 
+#ifndef WIN32
+/* hack! mingw doesn't have any of theses F_SET defines or SIGIO */
   fcntl(dest_socket, F_SETOWN, (int) getpid());
   flags = fcntl(dest_socket, F_GETFL);
   flags |= O_NONBLOCK|O_ASYNC;
@@ -191,6 +193,7 @@ void gbserial_init(int server_side,char *servername) {
   if ((signal(SIGIO,gbserial_signal_recv))==SIG_ERR) {
     printf("Heu ya une erreur\n");
   }
+#endif
   gbserial.ready2read=0;
 }
 

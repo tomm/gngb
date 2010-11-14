@@ -1,0 +1,91 @@
+# Project: gngb_win32
+#
+# make -B -f Makefile.win32
+# make -f Makefile.win32
+#
+
+CPP  = g++.exe
+CC   = gcc.exe
+OBJ  = src/cpu.o src/emu.o src/fileio.o src/frame_skip.o src/interrupt.o src/main.o src/memory.o src/menu.o src/message.o src/rom.o src/save.o src/serial.o src/sgb.o src/sound.o src/unzip.o src/video_gl.o src/video_std.o src/video_yuv.o src/video_yuy2.o src/video_yv12.o src/vram.o $(RES)
+LINKOBJ  = src/cpu.o src/emu.o src/fileio.o src/frame_skip.o src/interrupt.o src/main.o src/memory.o src/menu.o src/message.o src/rom.o src/save.o src/serial.o src/sgb.o src/sound.o src/unzip.o src/video_gl.o src/video_std.o src/video_yuv.o src/video_yuy2.o src/video_yv12.o src/vram.o $(RES)
+LIBS =  -L"C:/Dev-Cpp/lib" -mwindows -lmingw32 -lSDLmain -lSDL -liberty -lwsock32 -lzlib  
+INCS =  -I"C:/Dev-Cpp/include" 
+CXXINCS =  -I"C:/Dev-Cpp/lib/gcc/mingw32/3.4.2/include"  -I"C:/Dev-Cpp/include/c++/3.4.2/backward"  -I"C:/Dev-Cpp/include/c++/3.4.2/mingw32"  -I"C:/Dev-Cpp/include/c++/3.4.2"  -I"C:/Dev-Cpp/include" 
+BIN  = gngb_win32.exe
+CXXFLAGS = $(CXXINCS)  
+CFLAGS = $(INCS) -I"C:\Dev-Cpp\\include\SDL" -Dmain=SDL_main -I.  
+RM = rm -f
+
+.PHONY: all all-before all-after clean clean-custom
+
+all: all-before gngb_win32.exe all-after
+
+
+clean: clean-custom
+	${RM} $(OBJ) $(BIN)
+
+$(BIN): $(OBJ)
+	$(CC) $(LINKOBJ) -o "gngb_win32.exe" $(LIBS)
+
+src/cpu.o: src/cpu.c
+	$(CC) -c src/cpu.c -o src/cpu.o $(CFLAGS)
+
+src/emu.o: src/emu.c
+	$(CC) -c src/emu.c -o src/emu.o $(CFLAGS)
+
+src/fileio.o: src/fileio.c
+	$(CC) -c src/fileio.c -o src/fileio.o $(CFLAGS)
+
+src/frame_skip.o: src/frame_skip.c
+	$(CC) -c src/frame_skip.c -o src/frame_skip.o $(CFLAGS)
+
+src/interrupt.o: src/interrupt.c
+	$(CC) -c src/interrupt.c -o src/interrupt.o $(CFLAGS)
+
+src/main.o: src/main.c
+	$(CC) -c src/main.c -o src/main.o $(CFLAGS)
+
+src/memory.o: src/memory.c
+	$(CC) -c src/memory.c -o src/memory.o $(CFLAGS)
+
+src/menu.o: src/menu.c
+	$(CC) -c src/menu.c -o src/menu.o $(CFLAGS)
+
+src/message.o: src/message.c
+	$(CC) -c src/message.c -o src/message.o $(CFLAGS)
+
+src/rom.o: src/rom.c
+	$(CC) -c src/rom.c -o src/rom.o $(CFLAGS)
+
+src/save.o: src/save.c
+	$(CC) -c src/save.c -o src/save.o $(CFLAGS)
+
+src/serial.o: src/serial.c
+	$(CC) -c src/serial.c -o src/serial.o $(CFLAGS)
+
+src/sgb.o: src/sgb.c
+	$(CC) -c src/sgb.c -o src/sgb.o $(CFLAGS)
+
+src/sound.o: src/sound.c
+	$(CC) -c src/sound.c -o src/sound.o $(CFLAGS)
+
+src/unzip.o: src/unzip.c
+	$(CC) -c src/unzip.c -o src/unzip.o $(CFLAGS)
+
+src/video_gl.o: src/video_gl.c
+	$(CC) -c src/video_gl.c -o src/video_gl.o $(CFLAGS)
+
+src/video_std.o: src/video_std.c
+	$(CC) -c src/video_std.c -o src/video_std.o $(CFLAGS)
+
+src/video_yuv.o: src/video_yuv.c
+	$(CC) -c src/video_yuv.c -o src/video_yuv.o $(CFLAGS)
+
+src/video_yuy2.o: src/video_yuy2.c
+	$(CC) -c src/video_yuy2.c -o src/video_yuy2.o $(CFLAGS)
+
+src/video_yv12.o: src/video_yv12.c
+	$(CC) -c src/video_yv12.c -o src/video_yv12.o $(CFLAGS)
+
+src/vram.o: src/vram.c
+	$(CC) -c src/vram.c -o src/vram.o $(CFLAGS)

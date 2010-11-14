@@ -5,6 +5,7 @@
 #include "vram.h"
 #include "interrupt.h"
 #include "cpu.h"
+#include "save.h"
 
 #define FILENAME_LEN 1024
 static SDL_Surface *savestate_bmp=NULL;

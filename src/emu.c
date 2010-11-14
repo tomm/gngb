@@ -159,7 +159,7 @@ void print_help(void) {
   printf("      --yuv_type             set the type of the YUV overlay\n");
   printf("                              0 = YV12\n");
   printf("                              1 = YUY2\n");
-  printf("  -o, --opengl               turn OpenGL mode on (if conpiled in)\n");
+  printf("  -o, --opengl               turn OpenGL mode on (if compiled in)\n");
   printf("  -f, --fullscreen           run gngb in fullscreen\n");
   printf("      --fps                  show frame/sec\n");
   printf("  -s, --sound                turn on sound\n");
@@ -332,14 +332,14 @@ void check_option(int argc,char *argv[])
     case 'o' :
       conf.gl=1;break;
 #else
-    case 'o':printf("Opengl mode not conpiled in\n");break; 
+    case 'o':printf("Opengl mode not compiled in\n");break; 
 #endif
 #ifdef SDL_YUV
     case 'Y':
       conf.yuv=1;
       break;
 #else 
-    case 'Y':printf("YUV mode not conpiled in\n");break;   
+    case 'Y':printf("YUV mode not compiled in\n");break;   
 #endif
     case 'R': if (conf.yuv || conf.gl)
       sscanf(optarg,"%dx%d",&conf.res_w,&conf.res_h);

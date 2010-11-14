@@ -1,4 +1,6 @@
-before trying to compil this under windows, you must rename config_win32.h
+Before trying to compile this under windows, you must rename config_win32.h
 to config.h and add the current dir to the headers search path (ie: -I. )
 
+Or use the provided makefile:
 
+    make -B -f Makefile.win32
