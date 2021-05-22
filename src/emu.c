@@ -179,9 +179,9 @@ void print_help(void) {
 void setup_default_conf(void) {
   int i;
 
-  conf.autoframeskip=0;          
+  conf.autoframeskip=1;
   conf.throttle=1;
-  conf.sleep_idle=0;
+  conf.sleep_idle=1;
 
   conf.sound=0;
   conf.serial_on=0;
