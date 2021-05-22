@@ -176,7 +176,7 @@ __inline__ Uint8 unknown(void){
 
 
 
-__inline__ Uint8 gbcpu_exec_one(void)
+Uint8 gbcpu_exec_one(void)
 {
 	static Uint8 opcode;
 	if (gbcpu->ei_flag==1) {
@@ -2826,7 +2826,7 @@ __inline__ void rom_timer_inc(void) {
   }
 }
 
-__inline__ void cpu_run(void) {
+void cpu_run(void) {
   static Uint32 divid_cycle;
   int v=0;
   Uint8 a;

@@ -242,7 +242,7 @@ void switch_fullscreen(void) {
   conf.fs^=1;
 }
 
-__inline__ Uint8 get_nb_spr(void)
+Uint8 get_nb_spr(void)
 {
   Uint8 *sp=oam_space;
   Sint16 no_tile,x,y,att;
