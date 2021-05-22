@@ -2681,7 +2681,9 @@ SUB_CYCLE(16);
 		  PC+=2;
 		  SUB_CYCLE(12);
 	  }
-  case 0xdd: return unknown();
+  case 0xdd:
+      printf("A=%02x B=%02x C=%02x D=%02x E=%02x F=%02x HL=%02x%02x SP=%04x PC=%04x cycle=%ld\n", A, B, C, D, E, F, H, L, SP, PC, nb_cycle);
+      SUB_CYCLE(0);
   case 0xde:
 	  t16=GET_BYTE+((IS_SET(FLAG_C))?(1):(0));
 	  ((t16>A)?SET_FLAG(FLAG_C):UNSET_FLAG(FLAG_NC));
